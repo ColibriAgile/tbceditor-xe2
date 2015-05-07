@@ -3,7 +3,7 @@ unit BCEditor.Editor.Bookmarks;
 interface
 
 uses
-  Vcl.Controls, System.Classes, System.Contnrs, BCEditor.Consts;
+  Controls, Classes, Contnrs, BCEditor.Consts;
 
 type
   TBCEditorBookmark = class
@@ -62,7 +62,7 @@ type
 implementation
 
 uses
-  BCEditor.Editor.Base, System.Types;
+  BCEditor.Editor.Base, Types;
 
 { TBCEditorBookmark }
 

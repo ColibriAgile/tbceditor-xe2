@@ -3,7 +3,8 @@ unit BCEditor.Editor.LeftMargin;
 interface
 
 uses
-  System.Classes, Vcl.Graphics, System.UITypes, BCEditor.Editor.LeftMargin.Bookmarks, BCEditor.Editor.Bookmarks,
+  Classes, Graphics, Controls,
+  BCEditor.Editor.LeftMargin.Bookmarks, BCEditor.Editor.Bookmarks,
   BCEditor.Editor.LeftMargin.Border, BCEditor.Consts, BCEditor.Editor.LeftMargin.LineState,
   BCEditor.Editor.LeftMargin.LineNumbers;
 
@@ -59,7 +60,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.Math, BCEditor.Types;
+  SysUtils, Math, BCEditor.Types;
 
 { TBCEditorLeftMargin }
 
@@ -217,7 +218,7 @@ begin
       if FLineNumbers.StartFrom > 1 then
         Inc(LinesCount, FLineNumbers.StartFrom - 1);
 
-    NumberOfDigits := Max(Length(LinesCount.ToString), FLineNumbers.DigitCount);
+    NumberOfDigits := Max(Length(IntToStr(LinesCount)), FLineNumbers.DigitCount);
     if FLineNumbers.AutosizeDigitCount <> NumberOfDigits then
     begin
       FLineNumbers.AutosizeDigitCount := NumberOfDigits;

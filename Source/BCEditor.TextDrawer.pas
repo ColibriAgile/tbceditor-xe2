@@ -3,7 +3,7 @@ unit BCEditor.TextDrawer;
 interface
 
 uses
-  Winapi.Windows, System.SysUtils, System.Classes, Vcl.Graphics, System.Math, System.Types, System.UITypes,
+  Windows, SysUtils, Classes, Graphics, Math, Types,
   BCEditor.Utils;
 
 const
@@ -182,7 +182,7 @@ begin
   if tooClipped in Options then
     TextOutFlags := TextOutFlags or ETO_CLIPPED;
 
-  Result := Winapi.Windows.ExtTextOutW(AHandle, X, Y, TextOutFlags, @Rect, Str, Count, Pointer(ExtTextOutDistance));
+  Result := Windows.ExtTextOutW(AHandle, X, Y, TextOutFlags, @Rect, Str, Count, Pointer(ExtTextOutDistance));
 end;
 
 { TFontsInfoManager }
@@ -564,8 +564,8 @@ begin
     FHandle := AHandle;
     FSaveHandle := SaveDC(AHandle);
     SelectObject(AHandle, FCurrentFont);
-    Winapi.Windows.SetTextColor(AHandle, ColorToRGB(FColor));
-    Winapi.Windows.SetBkColor(AHandle, ColorToRGB(FBackgroundColor));
+    Windows.SetTextColor(AHandle, ColorToRGB(FColor));
+    Windows.SetBkColor(AHandle, ColorToRGB(FBackgroundColor));
     DoSetCharExtra(FCharExtra);
   end;
   Inc(FDrawingCount);
@@ -662,7 +662,7 @@ begin
   begin
     FBackgroundColor := Value;
     if FHandle <> 0 then
-      Winapi.Windows.SetBkColor(FHandle, ColorToRGB(Value));
+      Windows.SetBkColor(FHandle, ColorToRGB(Value));
   end;
 end;
 

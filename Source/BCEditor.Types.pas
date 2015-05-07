@@ -3,7 +3,7 @@ unit BCEditor.Types;
 interface
 
 uses
-  Winapi.Windows, System.Classes, Vcl.Graphics, Vcl.Controls, BCEditor.Highlighter.Attributes, System.SysUtils;
+  Windows, Classes, Graphics, Controls, BCEditor.Highlighter.Attributes, SysUtils;
 
 type
   TBCEditorCharMethod = function(AChar: Char): Boolean of object;

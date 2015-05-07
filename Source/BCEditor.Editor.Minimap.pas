@@ -3,7 +3,7 @@ unit BCEditor.Editor.Minimap;
 interface
 
 uses
-  System.Classes, Vcl.Graphics, BCEditor.Types;
+  Classes, Graphics, BCEditor.Types;
 
 type
   TBCEditorMinimap = class(TPersistent)
@@ -47,7 +47,7 @@ type
 implementation
 
 uses
-  System.Math;
+  Math;
 
 { TBCEditorMinimap }
 

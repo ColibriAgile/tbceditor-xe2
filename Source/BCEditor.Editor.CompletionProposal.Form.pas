@@ -3,7 +3,7 @@ unit BCEditor.Editor.CompletionProposal.Form;
 interface
 
 uses
-  Winapi.Messages, System.Classes, System.Types, Vcl.StdCtrls, Vcl.Forms, Vcl.Controls, Vcl.Graphics, BCEditor.Utils,
+  Messages, Classes, Types, StdCtrls, Forms, Controls, Graphics, BCEditor.Utils,
   BCEditor.Types, BCEditor.Editor.CompletionProposal.Columns{$IFDEF USE_ALPHASKINS}, sScrollBar{$ENDIF};
 
 const
@@ -133,8 +133,11 @@ function CompletionProposalHintForm(AOwner: TComponent): TBCEditorCompletionProp
 implementation
 
 uses
-  Winapi.Windows, System.SysUtils, System.UITypes, BCEditor.Editor.Base, BCEditor.Editor.KeyCommands,
-  BCEditor.Editor.Utils, BCEditor.Consts, System.Math{$IFDEF USE_ALPHASKINS}, sSkinProvider, sMessages{$ENDIF};
+  Windows, SysUtils, Math,
+  BCEditor.Editor.Base, BCEditor.Editor.KeyCommands,
+  BCEditor.Editor.Utils, BCEditor.Consts
+  {$IFDEF USE_ALPHASKINS}, sSkinProvider, sMessages{$ENDIF}
+  ;
 
 var
   FCompletionProposalHintForm: TBCEditorCompletionProposalForm;
@@ -161,7 +164,7 @@ begin
   Visible := False;
   FResizeable := True;
 
-  FBitmap := Vcl.Graphics.TBitmap.Create;
+  FBitmap := Graphics.TBitmap.Create;
   FItemList := TStringList.Create;
   FAssignedList := TStringList.Create;
   FFiltered := False;

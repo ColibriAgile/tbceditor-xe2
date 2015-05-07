@@ -3,7 +3,7 @@ unit BCEditor.Editor.Utils;
 interface
 
 uses
-  System.Classes, BCEditor.Types, System.UITypes;
+  Classes, BCEditor.Types;
 
 function AreCaretsEqual(const TextPosition1, TextPosition2: TBCEditorTextPosition): Boolean;
 function GetTextPosition(AChar, ALine: Integer): TBCEditorTextPosition;
@@ -15,7 +15,7 @@ function IsUTF8(Stream: TStream; out WithBOM: Boolean): Boolean;
 implementation
 
 uses
-  System.Character, System.Math, System.SysUtils, BCEditor.Consts;
+  Character, Math, SysUtils, BCEditor.Consts;
 
 function AreCaretsEqual(const TextPosition1, TextPosition2: TBCEditorTextPosition): Boolean;
 begin
@@ -47,7 +47,7 @@ end;
 
 function IsDigitChar(AChar: Char): Boolean;
 begin
-  Result := AChar.IsDigit or AChar.IsNumber
+  Result := TCharacter.IsDigit(AChar) or TCharacter.IsNumber(AChar)
 end;
 
 // checks for a BOM in UTF-8 format or searches the first 4096 bytes for typical UTF-8 octet sequences

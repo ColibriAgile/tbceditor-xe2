@@ -3,7 +3,7 @@ unit BCEditor.Utils;
 interface
 
 uses
-  Winapi.Windows, System.Math, System.Classes, Vcl.Graphics, System.UITypes, BCEditor.Consts, BCEditor.Types;
+  Windows, Math, Classes, Graphics, Dialogs, BCEditor.Consts, BCEditor.Types;
 
   function CharWidthTable(AChar: Char): SmallInt;
   function GetBestTabConvertProc(TabWidth: Integer): TBCEditorTabConvertProc;
@@ -23,7 +23,7 @@ uses
 implementation
 
 uses
-  Vcl.Forms, Vcl.Dialogs, System.SysUtils, Vcl.Clipbrd;
+  Forms, SysUtils, Clipbrd;
 
 procedure FreeList(var List: TList);
 begin
@@ -405,7 +405,7 @@ begin
     RequiredState([csHandleValid, csFontValid, csBrushValid]);
     if CanvasOrientation = coRightToLeft then
       Inc(x, BCEditor.Utils.TextWidth(ACanvas, Text) + 1);
-    Winapi.Windows.ExtTextOutW(Handle, x, Y, TextFlags, nil, PChar(Text), Length(Text), nil);
+    Windows.ExtTextOutW(Handle, x, Y, TextFlags, nil, PChar(Text), Length(Text), nil);
     MoveTo(x + BCEditor.Utils.TextWidth(ACanvas, Text), Y);
     Changed;
   end;
@@ -424,7 +424,7 @@ begin
       Options := Options or ETO_OPAQUE;
     if ((TextFlags and ETO_RTLREADING) <> 0) and (CanvasOrientation = coRightToLeft) then
       Inc(X, BCEditor.Utils.TextWidth(ACanvas, Text) + 1);
-    Winapi.Windows.ExtTextOutW(Handle, X, Y, Options, @Rect, PChar(Text), Length(Text), nil);
+    Windows.ExtTextOutW(Handle, X, Y, Options, @Rect, PChar(Text), Length(Text), nil);
     Changed;
   end;
 end;

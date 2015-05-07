@@ -3,7 +3,7 @@ unit BCEditor.Editor.Scroll;
 interface
 
 uses
-  System.Classes, System.UITypes, Vcl.Forms, BCEditor.Types, BCEditor.Editor.Scroll.Hint;
+  Classes, Forms, StdCtrls, BCEditor.Types, BCEditor.Editor.Scroll.Hint;
 
 const
   BCEDITOR_DEFAULT_SCROLL_OPTIONS = [soAutosizeMaxWidth, soPastEndOfLine, soShowHint];
@@ -13,13 +13,13 @@ type
 
   TBCEditorScroll = class(TPersistent)
   strict private
-    FBars: System.UITypes.TScrollStyle;
+    FBars: TScrollStyle;
     FHint: TBCEditorScrollHint;
     FMaxWidth: Integer;
     FOnChange: TNotifyEvent;
     FOptions: TBCEditorScrollOptions;
     procedure DoChange;
-    procedure SetBars(const Value: System.UITypes.TScrollStyle);
+    procedure SetBars(const Value: TScrollStyle);
     procedure SetHint(const Value: TBCEditorScrollHint);
     procedure SetOptions(const Value: TBCEditorScrollOptions);
     procedure SetMaxWidth(Value: Integer);
@@ -28,7 +28,7 @@ type
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
   published
-    property Bars: System.UITypes.TScrollStyle read FBars write SetBars default System.UITypes.TScrollStyle.ssBoth;
+    property Bars: TScrollStyle read FBars write SetBars default TScrollStyle.ssBoth;
     property Hint: TBCEditorScrollHint read FHint write SetHint;
     property MaxWidth: Integer read FMaxWidth write SetMaxWidth default 1024;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
@@ -48,7 +48,7 @@ begin
 
   FOptions := BCEDITOR_DEFAULT_SCROLL_OPTIONS;
   FMaxWidth := 1024;
-  FBars := System.UITypes.TScrollStyle.ssBoth;
+  FBars := TScrollStyle.ssBoth;
   FHint := TBCEditorScrollHint.Create;
 end;
 
@@ -59,7 +59,7 @@ begin
   inherited;
 end;
 
-procedure TBCEditorScroll.SetBars(const Value: System.UITypes.TScrollStyle);
+procedure TBCEditorScroll.SetBars(const Value: TScrollStyle);
 begin
   if FBars <> Value then
   begin

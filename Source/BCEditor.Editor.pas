@@ -107,7 +107,7 @@ type
 implementation
 
 uses
-  Winapi.Windows, System.Classes;
+  Windows, Classes;
 
 procedure TBCCustomEditor.DoOnProcessCommand(var Command: TBCEditorCommand; var AChar: Char; Data: Pointer);
 begin

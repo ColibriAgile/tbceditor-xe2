@@ -3,7 +3,7 @@ unit BCEditor.Editor.Scroll.Hint;
 interface
 
 uses
-  System.Classes, Vcl.Graphics;
+  Classes, Graphics;
 
 type
   TScrollHintFormat = (shfTopLineOnly, shfTopToBottom);

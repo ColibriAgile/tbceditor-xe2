@@ -3,7 +3,8 @@ unit BCEditor.Highlighter;
 interface
 
 uses
-  System.Classes, System.SysUtils, Vcl.Controls, Vcl.Graphics, BCEditor.Highlighter.Rules, BCEditor.Highlighter.Token,
+  Classes, SysUtils, Controls, Graphics,
+  BCEditor.Highlighter.Rules, BCEditor.Highlighter.Token,
   BCEditor.Types, BCEditor.Highlighter.Attributes, BCEditor.Highlighter.Info, BCEditor.Editor.SkipRegions,
   BCEditor.Highlighter.Colors, BCEditor.Editor.CodeFolding.FoldRegions;
 
@@ -83,7 +84,7 @@ type
 implementation
 
 uses
-  BCEditor.Highlighter.JSONImporter, System.Types, BCEditor.Consts, BCEditor.Editor.Base;
+  BCEditor.Highlighter.JSONImporter, Types, BCEditor.Consts, BCEditor.Editor.Base;
 
 { TBCEditorHighlighter }
 
@@ -332,7 +333,7 @@ begin
     Token := GetToken;
     for i := 0 to FCurrentRange.KeyListCount - 1 do
       for j := 0 to FCurrentRange.KeyList[i].KeyList.Count - 1 do
-      if FCurrentRange.KeyList[i].KeyList[j].Equals(Token) then
+      if FCurrentRange.KeyList[i].KeyList[j]=Token then
       begin
         Result := Integer(FCurrentRange.KeyList[i].TokenType);
         Exit;

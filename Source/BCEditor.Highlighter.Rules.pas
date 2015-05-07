@@ -3,7 +3,8 @@ unit BCEditor.Highlighter.Rules;
 interface
 
 uses
-  Vcl.Graphics, System.Classes, System.SysUtils, BCEditor.Highlighter.Token, BCEditor.Highlighter.Attributes,
+  Graphics, Classes, SysUtils,
+  BCEditor.Highlighter.Token, BCEditor.Highlighter.Attributes,
   BCEditor.Types;
 
 type
@@ -192,7 +193,7 @@ type
 implementation
 
 uses
-  BCEditor.Utils, BCEditor.Consts, System.Types;
+  BCEditor.Utils, BCEditor.Consts, Types;
 
 {function DoesNodeHaveAnyStart(Node: TBCEditorTokenNode): Boolean;
 var

@@ -3,7 +3,7 @@ unit BCEditor.Editor.LeftMargin.Bookmarks.Panel;
 interface
 
 uses
-  System.Classes, Vcl.Graphics, BCEditor.Consts;
+  Classes, Graphics, BCEditor.Consts;
 
 type
   TBCEditorLeftMarginBookMarkPanel = class(TPersistent)
@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  System.Math;
+  Math;
 
 constructor TBCEditorLeftMarginBookMarkPanel.Create;
 begin

@@ -3,7 +3,7 @@ unit BCEditor.Highlighter.JSONImporter;
 interface
 
 uses
-  System.Classes, BCEditor.Highlighter, BCEditor.Highlighter.Colors;
+  Classes, BCEditor.Highlighter, BCEditor.Highlighter.Colors;
 
 procedure ImportFromFile(Highlighter: TBCEditorHighlighter; AFileName: string);
 procedure ImportFromStream(Highlighter: TBCEditorHighlighter; AStream: TStream);
@@ -13,8 +13,9 @@ procedure ImportColorsFromStream(Highlighter: TBCEditorHighlighter; AStream: TSt
 implementation
 
 uses
-  JsonDataObjects, System.SysUtils, Vcl.Graphics, Vcl.Forms, BCEditor.Consts, BCEditor.Editor.Base, BCEditor.Utils,
-  BCEditor.Highlighter.Attributes, BCEditor.Highlighter.Rules, BCEditor.Types, Vcl.Dialogs,
+  JsonDataObjects, SysUtils, Graphics, Forms, Dialogs,
+  BCEditor.Consts, BCEditor.Editor.Base, BCEditor.Utils,
+  BCEditor.Highlighter.Attributes, BCEditor.Highlighter.Rules, BCEditor.Types,
   BCEditor.Highlighter.Token, BCEditor.Editor.CodeFolding.FoldRegions, BCEditor.Language,
   BCEditor.Editor.SkipRegions, BCEditor.Highlighter.Info, BCEditor.Editor.CodeFolding.Types;
 

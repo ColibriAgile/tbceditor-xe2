@@ -3,7 +3,7 @@ unit BCEditor.Highlighter.Colors;
 interface
 
 uses
-  System.Classes, Vcl.Graphics, BCEditor.Highlighter.Info;
+  Classes, Graphics, BCEditor.Highlighter.Info;
 
 type
   TBCEditorHighlighterElement = record

@@ -3,8 +3,8 @@ unit BCEditor.Editor.Base;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.Classes, System.SysUtils, System.Contnrs, System.UITypes,
-  Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Dialogs,
+  Windows, Messages, Classes, SysUtils, Contnrs,
+  Forms, Controls, Graphics, StdCtrls, ExtCtrls, Dialogs,
   BCEditor.Consts, BCEditor.Editor.ActiveLine, BCEditor.Editor.Bookmarks, BCEditor.Editor.Caret,
   BCEditor.Editor.CodeFolding, BCEditor.Editor.CodeFolding.FoldRegions, BCEditor.Editor.CodeFolding.Ranges,
   BCEditor.Editor.CodeFolding.Types, BCEditor.Editor.CompletionProposal, BCEditor.Editor.CompletionProposal.Form,
@@ -28,7 +28,7 @@ type
     FBookMarks: array [0 .. 8] of TBCEditorBookmark;
     FBorderStyle: TBorderStyle;
     FBreakWhitespace: Boolean;
-    FBufferBmp: Vcl.Graphics.TBitmap;
+    FBufferBmp: Graphics.TBitmap;
     FCaret: TBCEditorCaret;
     FCaretAtEndOfLine: Boolean;
     FCaretOffset: TPoint;
@@ -599,8 +599,9 @@ implementation
 {$R BCEditor.res}
 
 uses
-  Winapi.ShellAPI, Winapi.Imm, System.WideStrUtils, System.Math, System.Types, Vcl.Clipbrd,
-  Vcl.Menus, BCEditor.Editor.LeftMargin.Border, BCEditor.Editor.LeftMargin.LineNumbers, BCEditor.Editor.Scroll.Hint,
+  ShellAPI, Imm, WideStrUtils, Math, Types, Clipbrd,
+  Menus,
+  BCEditor.Editor.LeftMargin.Border, BCEditor.Editor.LeftMargin.LineNumbers, BCEditor.Editor.Scroll.Hint,
   BCEditor.Editor.Search.Map, BCEditor.Editor.Undo.Item, BCEditor.Editor.Utils, BCEditor.Encoding, BCEditor.Language,
   {$IFDEF USE_VCL_STYLES}Vcl.Themes, BCEditor.StyleHooks,{$ENDIF} BCEditor.Highlighter.Rules;
 
@@ -701,7 +702,7 @@ begin
   FMarkList := TBCEditorBookmarkList.Create(Self);
   FMarkList.OnChange := MarkListChange;
   { Painting }
-  FBufferBmp := Vcl.Graphics.TBitmap.Create;
+  FBufferBmp := Graphics.TBitmap.Create;
   FTextDrawer := TBCEditorTextDrawer.Create([fsBold], FFontDummy);
   Font.Assign(FFontDummy);
   Font.OnChange := FontChanged;
@@ -2705,7 +2706,7 @@ end;
 
 procedure TBCBaseEditor.DeflateMinimapRect(var ARect: TRect);
 begin
-  ARect.Right := ClientRect.Width - FMinimap.GetWidth - FSearch.Map.GetWidth;
+  ARect.Right := ClientRect.Right-ClientRect.Left - FMinimap.GetWidth - FSearch.Map.GetWidth;
 end;
 
 procedure TBCBaseEditor.DoCaseChange(const ACommand: TBCEditorCommand);
@@ -3059,7 +3060,7 @@ var
   LPoint: TPoint;
   LCaretStyle: TBCEditorCaretStyle;
   LCaretWidth, LCaretHeight, Y: Integer;
-  LTempBitmap: Vcl.Graphics.TBitmap;
+  LTempBitmap: Graphics.TBitmap;
 begin
   if GetSelectedLength > 0 then
     Exit;
@@ -3102,7 +3103,7 @@ begin
     end;
   end;
 
-  LTempBitmap := Vcl.Graphics.TBitmap.Create;
+  LTempBitmap := Graphics.TBitmap.Create;
   try
     LTempBitmap.Width := FCharWidth;
     LTempBitmap.Height := LineHeight;
@@ -3862,7 +3863,7 @@ var
   LDisplayPosition: TBCEditorDisplayPosition;
   LTextPosition: TBCEditorTextPosition;
 begin
-  Winapi.Windows.GetCursorPos(LCursorPoint);
+  Windows.GetCursorPos(LCursorPoint);
   LCursorPoint := ScreenToClient(LCursorPoint);
   LDisplayPosition := PixelsToRowColumn(LCursorPoint.X, LCursorPoint.Y);
   LDisplayPosition.Row := MinMax(LDisplayPosition.Row, 1, DisplayLineCount);
@@ -3935,7 +3936,7 @@ procedure TBCBaseEditor.SearchHighlighterAfterPaint(ACanvas: TCanvas; AFirstLine
       FSearchHighlighterBitmap.Canvas.Font.Assign(Font);
       FSearchHighlighterBitmap.Canvas.Font.Color := FSearch.Highlighter.Colors.Foreground;
       FSearchHighlighterBitmap.Canvas.TextOut(0, 0, S);
-      Winapi.Windows.AlphaBlend(ACanvas.Handle, LPoint.X, LPoint.Y, FSearchHighlighterBitmap.Width,
+      Windows.AlphaBlend(ACanvas.Handle, LPoint.X, LPoint.Y, FSearchHighlighterBitmap.Width,
         FSearchHighlighterBitmap.Height, FSearchHighlighterBitmap.Canvas.Handle, 0, 0,
         FSearchHighlighterBitmap.Width, FSearchHighlighterBitmap.Height, FSearchHighlighterBlendFunction);
     end;
@@ -5128,7 +5129,7 @@ begin
   if Focused or FAlwaysShowCaret then
     Exit;
   HideCaret;
-  Winapi.Windows.DestroyCaret;
+  Windows.DestroyCaret;
   if not Selection.Visible and SelectionAvailable then
     InvalidateSelection;
 end;
@@ -5475,7 +5476,7 @@ procedure TBCBaseEditor.DblClick;
 var
   LCursorPoint: TPoint;
 begin
-  Winapi.Windows.GetCursorPos(LCursorPoint);
+  Windows.GetCursorPos(LCursorPoint);
   LCursorPoint := ScreenToClient(LCursorPoint);
 
   if LCursorPoint.X >= FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2 then
@@ -6181,7 +6182,7 @@ end;
 procedure TBCBaseEditor.HideCaret;
 begin
   if sfCaretVisible in FStateFlags then
-    if Winapi.Windows.HideCaret(Handle) then
+    if Windows.HideCaret(Handle) then
       Exclude(FStateFlags, sfCaretVisible);
 end;
 
@@ -6192,7 +6193,7 @@ end;
 
 procedure TBCBaseEditor.InvalidateRect(const ARect: TRect; AErase: Boolean = False);
 begin
-  Winapi.Windows.InvalidateRect(Handle, @ARect, AErase);
+  Windows.InvalidateRect(Handle, @ARect, AErase);
 end;
 
 procedure TBCBaseEditor.KeyDown(var Key: Word; Shift: TShiftState);
@@ -6229,7 +6230,7 @@ begin
   { URI mouse over }
   if (ssCtrl in Shift) and URIOpener then
   begin
-    Winapi.Windows.GetCursorPos(LCursorPoint);
+    Windows.GetCursorPos(LCursorPoint);
     LCursorPoint := ScreenToClient(LCursorPoint);
     LTextPosition := DisplayToTextPosition(PixelsToRowColumn(LCursorPoint.X, LCursorPoint.Y));
     GetHighlighterAttributeAtRowColumn(LTextPosition, LToken, LTokenType, LStart, LHighlighterAttribute);
@@ -6461,7 +6462,7 @@ begin
   LEndPosition := FSelectionEndPosition;
   LLeftMarginWidth := FLeftMargin.GetWidth + FCodeFolding.GetWidth;
 
-  if not FMinimap.Moving and FMinimap.Visible and (X > ClientRect.Width - FMinimap.GetWidth - FSearch.Map.GetWidth) then
+  if not FMinimap.Moving and FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
   begin
     DoOnMinimapClick(Button, X, Y);
     Exit;
@@ -6619,7 +6620,7 @@ begin
   if CanFocus then
   begin
     SetFocus;
-    Winapi.Windows.SetFocus(Handle);
+    Windows.SetFocus(Handle);
   end;
 end;
 
@@ -6636,7 +6637,7 @@ begin
   if LeftMargin.Bookmarks.Visible and (X < LeftMargin.Bookmarks.Panel.Width) then
     Exit;
 
-  if FMinimap.Visible and (X > ClientRect.Width - FMinimap.GetWidth - FSearch.Map.GetWidth) then
+  if FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
   begin
     SetCursor(Screen.Cursors[crArrow]);
     if FMinimap.Moving then
@@ -6817,7 +6818,7 @@ begin
 
   if FMouseOverURI and (Button = mbLeft) and (X > FLeftMargin.GetWidth + FCodeFolding.GetWidth) then
   begin
-    Winapi.Windows.GetCursorPos(LCursorPoint);
+    Windows.GetCursorPos(LCursorPoint);
     LCursorPoint := ScreenToClient(LCursorPoint);
     LTextPosition := DisplayToTextPosition(PixelsToRowColumn(LCursorPoint.X, LCursorPoint.Y));
     GetHighlighterAttributeAtRowColumn(LTextPosition, LToken, LTokenType, LStart, LHighlighterAttribute);
@@ -6912,7 +6913,7 @@ begin
     begin
       DrawRect := LClipRect;
       DrawRect.Left := Max(DrawRect.Left, FLeftMargin.GetWidth + FCodeFolding.GetWidth);
-      DrawRect.Right := ClientRect.Width;
+      DrawRect.Right := (ClientRect.Right-ClientRect.Left);
       DeflateMinimapRect(DrawRect);
       FTextDrawer.SetBaseFont(Font);
       FTextDrawer.Style := Font.Style;
@@ -6953,11 +6954,11 @@ begin
 
     { Paint minimap text lines }
     if FMinimap.Visible then
-      if (LClipRect.Right >= ClientRect.Width - FMinimap.GetWidth - FSearch.Map.GetWidth) then
+      if (LClipRect.Right >= (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
       begin
         DrawRect := LClipRect;
-        DrawRect.Left := ClientRect.Width - FMinimap.GetWidth - FSearch.Map.GetWidth;
-        DrawRect.Right := ClientRect.Width - FSearch.Map.GetWidth;
+        DrawRect.Left := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth;
+        DrawRect.Right := (ClientRect.Right-ClientRect.Left) - FSearch.Map.GetWidth;
 
         FTextDrawer.SetBaseFont(FMinimap.Font);
         FTextDrawer.Style := FMinimap.Font.Style;
@@ -6966,7 +6967,7 @@ begin
         FMinimap.VisibleLines := ClientHeight div FMinimap.CharHeight;
 
         LLine1 := Max(FMinimap.TopLine, 1);
-        LLine2 := Min(GetDisplayLineCount, LLine1 + (LClipRect.Height div FMinimap.CharHeight) - 1);
+        LLine2 := Min(GetDisplayLineCount, LLine1 + ((LClipRect.Bottom-LClipRect.Top) div FMinimap.CharHeight) - 1);
         LColumn1 := 1;
         LColumn2 := FMinimap.GetWidth div FTextDrawer.CharWidth;
 
@@ -6977,10 +6978,10 @@ begin
 
     { Paint search map }
     if FSearch.Map.Visible then
-      if (LClipRect.Right >= ClientRect.Width - FSearch.Map.GetWidth) then
+      if (LClipRect.Right >= (ClientRect.Right-ClientRect.Left) - FSearch.Map.GetWidth) then
       begin
         DrawRect := LClipRect;
-        DrawRect.Left := ClientRect.Width - FSearch.Map.GetWidth;
+        DrawRect.Left := (ClientRect.Right-ClientRect.Left) - FSearch.Map.GetWidth;
         PaintSearchMap(DrawRect);
       end;
 
@@ -7147,7 +7148,7 @@ begin
         if (X - AScrolledXBy > 0) and not AMinimap or AMinimap and (X > 0 {Offset}) then
         begin
           if AMinimap then
-            X := ClientRect.Width - FMinimap.GetWidth - FSearch.Map.GetWidth + X
+            X := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth + X
           else
             X := FLeftMargin.GetWidth + FCodeFolding.Width + X - AScrolledXBy;
           LTempColor := Canvas.Pen.Color;
@@ -7302,7 +7303,7 @@ begin
         end;
 
         GetTextExtentPoint32(Canvas.Handle, PChar(LLineNumber), Length(LLineNumber), LTextSize);
-        Winapi.Windows.ExtTextOut(Canvas.Handle, (FLeftMargin.GetWidth - FLeftMargin.LineState.Width - 2) - LTextSize.cx,
+        Windows.ExtTextOut(Canvas.Handle, (FLeftMargin.GetWidth - FLeftMargin.LineState.Width - 2) - LTextSize.cx,
           LLineRect.Top + ((LineHeight - Integer(LTextSize.cy)) div 2), ETO_OPAQUE, @LLineRect, PChar(LLineNumber),
           Length(LLineNumber), nil);
       end;
@@ -7325,7 +7326,7 @@ begin
     if FLeftMargin.Bookmarks.Panel.Color <> clNone then
     begin
       Canvas.Brush.Color := FLeftMargin.Bookmarks.Panel.Color;
-      Canvas.FillRect(System.Types.Rect(0, 0, FLeftMargin.Bookmarks.Panel.Width, ClientHeight));
+      Canvas.FillRect(Types.Rect(0, 0, FLeftMargin.Bookmarks.Panel.Width, ClientHeight));
     end;
   { Code folding }
   if FCodeFolding.Visible then
@@ -7508,7 +7509,7 @@ begin
     Canvas.Brush.Color := FBackgroundColor;
   Canvas.FillRect(AClipRect);
   { Lines in window }
-  LHeight := ClientRect.Height / Max(Lines.Count, 1);
+  LHeight := (ClientRect.Bottom-ClientRect.Top) / Max(Lines.Count, 1);
   AClipRect.Top := RoundCorrect((TopLine - 1) * LHeight);
   AClipRect.Bottom := RoundCorrect((TopLine - 1 + VisibleLines) * LHeight);
   Canvas.Brush.Color := FBackgroundColor;
@@ -7818,7 +7819,7 @@ var
   function ColumnToXValue(AColumn: Integer; AMinimap: Boolean = False): Integer;
   begin
     if AMinimap then
-      Result := ClientRect.Width - FMinimap.GetWidth - FSearch.Map.GetWidth
+      Result := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth
     else
       Result := FTextOffset;
 
@@ -8733,7 +8734,7 @@ begin
       else
       begin
         HideCaret;
-        Winapi.Windows.DestroyCaret;
+        Windows.DestroyCaret;
       end;
     end;
   end;
@@ -9279,7 +9280,7 @@ end;
 procedure TBCBaseEditor.ShowCaret;
 begin
   if FCaret.Visible and not FCaret.NonBlinking.Enabled and not (sfCaretVisible in FStateFlags) then
-    if Winapi.Windows.ShowCaret(Handle) then
+    if Windows.ShowCaret(Handle) then
       Include(FStateFlags, sfCaretVisible);
 end;
 
@@ -9460,7 +9461,7 @@ var
   LTextPosition: TBCEditorTextPosition;
   LNewCursor: TCursor;
 begin
-  Winapi.Windows.GetCursorPos(LCursorPoint);
+  Windows.GetCursorPos(LCursorPoint);
   LCursorPoint := ScreenToClient(LCursorPoint);
   if LCursorPoint.X < FLeftMargin.GetWidth + FCodeFolding.GetWidth then
     SetCursor(Screen.Cursors[FLeftMargin.Cursor])
@@ -9546,7 +9547,7 @@ function TBCBaseEditor.GetPositionOfMouse(out ATextPosition: TBCEditorTextPositi
 var
   LCursorPoint: TPoint;
 begin
-  Winapi.Windows.GetCursorPos(LCursorPoint);
+  Windows.GetCursorPos(LCursorPoint);
   LCursorPoint := ScreenToClient(LCursorPoint);
   if (LCursorPoint.X < 0) or (LCursorPoint.Y < 0) or (LCursorPoint.X > Self.Width) or (LCursorPoint.Y > Self.Height) then
   begin
@@ -12390,7 +12391,7 @@ begin
       TWinControl(FFocusList.Last).SetFocus;
     Exit;
   end;
-  Winapi.Windows.SetFocus(Handle);
+  Windows.SetFocus(Handle);
   inherited;
 end;
 

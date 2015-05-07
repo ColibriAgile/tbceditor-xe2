@@ -3,7 +3,7 @@ unit BCEditor.Search.RegularExpressions;
 interface
 
 uses
-  System.Classes, System.RegularExpressions,
+  Classes, RegularExpressions,
   BCEditor.Search;
 
 type

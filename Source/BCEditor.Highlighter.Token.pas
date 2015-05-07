@@ -3,7 +3,7 @@ unit BCEditor.Highlighter.Token;
 interface
 
 uses
-  System.Classes, BCEditor.Types, BCEditor.Highlighter.Attributes;
+  Classes, BCEditor.Types, BCEditor.Highlighter.Attributes;
 
 type
   TBCEditorAbstractRule = class(TObject)
@@ -111,7 +111,7 @@ type
 implementation
 
 uses
-  System.SysUtils, BCEditor.Utils;
+  SysUtils, BCEditor.Utils;
 
 { TBCEditorAbstractToken }
 

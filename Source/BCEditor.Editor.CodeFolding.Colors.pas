@@ -3,7 +3,7 @@ unit BCEditor.Editor.CodeFolding.Colors;
 interface
 
 uses
-  System.Classes, Vcl.Graphics, BCEditor.Consts, BCEditor.Editor.CodeFolding.Types;
+  Classes, Graphics, BCEditor.Consts, BCEditor.Editor.CodeFolding.Types;
 
 type
   TBCEditorCodeFoldingColors = class(TPersistent)

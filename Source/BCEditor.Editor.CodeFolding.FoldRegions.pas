@@ -3,7 +3,7 @@ unit BCEditor.Editor.CodeFolding.FoldRegions;
 interface
 
 uses
-  System.Classes, System.SysUtils, BCEditor.Editor.SkipRegions;
+  Classes, SysUtils, BCEditor.Editor.SkipRegions;
 
 type
   TBCEditorCodeFoldingRegions = class;

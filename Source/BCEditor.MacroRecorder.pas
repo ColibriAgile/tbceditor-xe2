@@ -3,8 +3,9 @@ unit BCEditor.MacroRecorder;
 interface
 
 uses
-  Winapi.Windows, System.WideStrUtils, System.Classes, Vcl.Controls, Vcl.Graphics, BCEditor.Language,
-  Vcl.Menus, BCEditor.Editor.Base, BCEditor.Editor.KeyCommands, BCEditor.Types;
+  Windows, WideStrUtils, Classes, Controls, Graphics, Menus,
+  BCEditor.Language,
+  BCEditor.Editor.Base, BCEditor.Editor.KeyCommands, BCEditor.Types;
 
 type
   TBCEditorMacroState = (msStopped, msRecording, msPlaying, msPaused);
@@ -182,7 +183,7 @@ type
 implementation
 
 uses
-  Vcl.Forms, System.SysUtils, BCEditor.Editor.Utils, BCEditor.Consts, System.Types;
+  Forms, SysUtils, BCEditor.Editor.Utils, BCEditor.Consts, Types;
 
 { TBCEditorDatAEvent }
 
@@ -272,8 +273,8 @@ begin
   FMacroName := 'unnamed';
   FCommandIDs[mcRecord] := NewPluginCommand;
   FCommandIDs[mcPlayback] := NewPluginCommand;
-  FShortCuts[mcRecord] := Vcl.Menus.ShortCut(Ord('R'), [ssCtrl, ssShift]);
-  FShortCuts[mcPlayback] := Vcl.Menus.ShortCut(Ord('P'), [ssCtrl, ssShift]);
+  FShortCuts[mcRecord] := Menus.ShortCut(Ord('R'), [ssCtrl, ssShift]);
+  FShortCuts[mcPlayback] := Menus.ShortCut(Ord('P'), [ssCtrl, ssShift]);
 end;
 
 function TBCBaseEditorMacroRecorder.CreateMacroEvent(ACommand: TBCEditorCommand): TBCEditorMacroEvent;

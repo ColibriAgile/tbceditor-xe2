@@ -3,7 +3,7 @@ unit BCEditor.Editor.Caret;
 interface
 
 uses
-  System.Classes, BCEditor.Editor.Caret.NonBlinking, BCEditor.Editor.Caret.Styles, BCEditor.Editor.Caret.Offsets,
+  Classes, BCEditor.Editor.Caret.NonBlinking, BCEditor.Editor.Caret.Styles, BCEditor.Editor.Caret.Offsets,
   BCEditor.Types;
 
 type

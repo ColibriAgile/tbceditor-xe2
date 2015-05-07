@@ -3,7 +3,7 @@ unit BCEditor.Editor.LineSpacing;
 interface
 
 uses
-  System.Classes, Vcl.Graphics;
+  Classes, Graphics;
 
 type
   TLineSpacingRule = (lsSingle, lsOneAndHalf, lsDouble, lsSpecified);

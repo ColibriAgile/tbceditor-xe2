@@ -3,7 +3,7 @@ unit BCEditor.Editor.WordWrap.Helper;
 interface
 
 uses
-  System.SysUtils, System.Classes, BCEditor.Types, BCEditor.Lines, Vcl.Controls;
+  SysUtils, Classes, BCEditor.Types, BCEditor.Lines, Controls;
 
 const
   MaxIndex = MaxInt div 16;
@@ -67,7 +67,7 @@ type
 implementation
 
 uses
-  System.RTLConsts, System.Math, BCEditor.Editor.Base, BCEditor.Editor.WordWrap, BCEditor.Consts;
+  RTLConsts, Math, BCEditor.Editor.Base, BCEditor.Editor.WordWrap, BCEditor.Consts;
 
 { TBCEditorWordWrapHelper }
 

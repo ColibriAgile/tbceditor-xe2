@@ -3,7 +3,8 @@ unit BCEditor.Editor.Search;
 interface
 
 uses
-  System.Classes, Vcl.Controls, BCEditor.Editor.Search.Map, BCEditor.Types,
+  Classes, Controls,
+  BCEditor.Editor.Search.Map, BCEditor.Types,
   BCEditor.Editor.Search.Highlighter;
 
 const
