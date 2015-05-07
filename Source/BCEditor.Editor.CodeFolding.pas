@@ -16,6 +16,7 @@ type
     FOptions: TBCEditorCodeFoldingOptions;
     FWidth: Integer;
     FVisible: Boolean;
+    FPadding: Integer;
     procedure DoChange;
     procedure SetColors(const Value: TBCEditorCodeFoldingColors);
     procedure SetHint(Value: TBCEditorCodeFoldingHint);
@@ -36,6 +37,7 @@ type
     property OnChange: TBCEditorCodeFoldingChangeEvent read FOnChange write SetOnChange;
     property Options: TBCEditorCodeFoldingOptions read FOptions write SetOptions default [cfoShowCollapsedCodeHint, cfoHighlightIndentGuides, cfoHighlightMatchingPair, cfoShowIndentGuides, cfoUncollapseByHintClick];
     property Width: Integer read FWidth write SetWidth default 10;
+    property Padding : Integer read FPadding write FPadding;
     property Visible: Boolean read FVisible write SetVisible default False;
   end;
 
