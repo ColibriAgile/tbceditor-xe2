@@ -1,4 +1,4 @@
-package BCEditorDXE6;
+package BCEditorDXE;
 
 {$R *.res}
 {$R '..\Source\BCEditor.Register.dcr'}
@@ -34,11 +34,10 @@ requires
   designide,
   dbrtl,
   vcldb,
-  BCEditorRXE6;
+  BCEditorRXE;
 
 contains
   BCEditor.Register in '..\Source\BCEditor.Register.pas',
   BCEditor.RegisterProperty in '..\Source\BCEditor.RegisterProperty.pas';
 
 end.
-

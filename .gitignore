@@ -1,1 +1,7 @@
 /Source/__history
+*.dcu
+*.local
+/Packages/__history
+*.identcache
+*.2007
+*.~dsk
