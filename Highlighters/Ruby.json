@@ -4,7 +4,7 @@
             "General": {
                 "Version": "1.0",
                 "Date": "10.5.2015",
-                "Sample": "// Hello World in C Sharp\r\n\r\nusing System;\r\nclass Program\r\n{\r\n    public static void Main()\r\n    {\r\n        Console.WriteLine(\"Hello, world!\");\r\n        Console.ReadKey(true);\r\n    }\r\n}"
+                "Sample": "#!/usr/bin/ruby -w\r\n\r\n# This is a single line comment.\r\n\r\nputs \"Hello, Ruby!\""
             },
             "Author": {
                 "Name": "Lasse Rautiainen",
@@ -24,8 +24,8 @@
                             "ParentBackground": "True"
                         },
                         "TokenRange": {
-                            "Open": "/*",
-                            "Close": "*/"
+                            "Open": "=begin",
+                            "Close": "=end"
                         }
                     },
                     {
@@ -38,7 +38,7 @@
                             "CloseOnEol": "True"
                         },
                         "TokenRange": {
-                            "Open": "//"
+                            "Open": "#"
                         }
                     },
                     {
@@ -147,7 +147,7 @@
                             "CloseOnEol": "True"
                         },
                         "TokenRange": {
-                            "Open": "#"
+                            "Open": "#!"
                         }
                     },
                     {
@@ -169,7 +169,7 @@
                 "KeyList": [
                     {
                         "Type": "ReservedWord",
-                        "Words": "abstract\r\nadd\r\nalias\r\nas\r\nascending\r\nasync\r\nawait\r\nbase\r\nbool\r\nbreak\r\nbyte\r\ncase\r\ncatch\r\nchar\r\nchecked\r\nclass\r\nconst\r\ncontinue\r\ndecimal\r\ndefault\r\ndelegate\r\ndescending\r\ndo\r\ndouble\r\ndynamic\r\nelse\r\nenum\r\nevent\r\nexplicit\r\nextern\r\nfalse\r\nfinally\r\nfixed\r\nfloat\r\nfor\r\nforeach\r\nfrom\r\nget\r\nglobal\r\ngoto\r\ngroup\r\nif\r\nimplicit\r\nin\r\nint\r\ninterface\r\ninternal\r\ninto\r\nis\r\njoin\r\nlet\r\nlock\r\nlong\r\nnamespace\r\nnew\r\nnull\r\nobject\r\noperator\r\norderby\r\nout\r\noverride\r\nparams\r\npartial\r\nprivate\r\nprotected\r\npublic\r\nreadonly\r\nref\r\nremove\r\nreturn\r\nsbyte\r\nsealed\r\nselect\r\nset\r\nshort\r\nsizeof\r\nstackalloc\r\nstatic\r\nstring\r\nstruct\r\nswitch\r\nthis\r\nthrow\r\ntrue\r\ntry\r\ntypeof\r\nuint\r\nulong\r\nunchecked\r\nunsafe\r\nushort\r\nusing\r\nvalue\r\nvar\r\nwhere\r\nwhile\r\nvirtual\r\nvoid\r\nvolatile\r\nyield\r\n",
+                        "Words": "__encoding__\r\n__line__\r\n__file__\r\nalias\r\nand\r\nbreak\r\ncase\r\nclass\r\ndef\r\ndefined?\r\ndo\r\nelse\r\nelseif\r\nend\r\nensure\r\nfalse\r\nfor\r\nif\r\nin\r\nmodule\r\nnext\r\nnil\r\nnot\r\nor\r\nredo\r\nrescue\r\nretry\r\nreturn\r\nself\r\nsuper\r\nthen\r\ntrue\r\nundef\r\nunless\r\nuntil\r\nwhen\r\nwhilte\r\nyield",
                         "Attributes": {
                             "Element": "ReservedWord",
                             "ParentBackground": "True"
@@ -186,7 +186,7 @@
                 ],
                 "Set": [
                     {
-                        "Type": "Number",
+                        "Type": "Numbers",
                         "Symbols": "0123456789",
                         "Attributes": {
                             "Element": "Number",
@@ -218,12 +218,12 @@
                 "RegionType": "String"
             },
             {
-                "OpenToken": "//",
+                "OpenToken": "#",
                 "RegionType": "SingleLine"
             },
             {
-                "OpenToken": "/*",
-                "CloseToken": "*/",
+                "OpenToken": "=BEGIN",
+                "CloseToken": "=END",
                 "RegionType": "MultiLine"
             }
         ],
@@ -231,6 +231,10 @@
             {
                 "OpenToken": "{",
                 "CloseToken": "}"
+            },
+            {
+                "OpenToken": "DEF",
+                "CloseToken": "END"
             }
         ]
     },
@@ -263,12 +267,12 @@
                 "RegionType": "String"
             },
             {
-                "OpenToken": "//",
+                "OpenToken": "#",
                 "RegionType": "SingleLine"
             },
             {
-                "OpenToken": "/*",
-                "CloseToken": "*/",
+                "OpenToken": "=begin",
+                "CloseToken": "=end",
                 "RegionType": "MultiLine"
             }
         ]

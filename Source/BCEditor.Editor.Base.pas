@@ -213,6 +213,7 @@ type
     procedure AssignSearchEngine;
     procedure CaretChanged(Sender: TObject);
     procedure CheckIfAtMatchingKeywords;
+    procedure ClearSearchLines;
     procedure CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange);
     procedure CodeFoldingExpandCollapsedLine(const ALine: Integer);
     procedure CodeFoldingExpandCollapsedLines(const AFirst, ALast: Integer);
@@ -242,7 +243,6 @@ type
     procedure OpenLink(AURI: string; ALinkType: Integer);
     procedure ProperSetLine(ALine: Integer; const ALineText: string);
     procedure RightMarginChanged(Sender: TObject);
-    procedure ScanCodeFoldingRanges(var ATopFoldRanges: TBCEditorAllCodeFoldingRanges; AStrings: TStrings);
     procedure ScrollChanged(Sender: TObject);
     procedure ScrollTimerHandler(Sender: TObject);
     procedure SearchChanged(AEvent: TBCEditorSearchChanges);
@@ -393,6 +393,7 @@ type
     procedure RedoItem;
     procedure RepaintGuides;
     procedure ResetCaret(DoUpdate: Boolean = True);
+    procedure ScanCodeFoldingRanges(var ATopFoldRanges: TBCEditorAllCodeFoldingRanges; AStrings: TStrings); virtual;
     procedure ScanMatchingPair;
     procedure SetAlwaysShowCaret(const Value: Boolean);
     procedure SetBreakWhitespace(Value: Boolean);
@@ -748,6 +749,7 @@ begin
   FSearchLines := TList.Create;
   FSearch := TBCEditorSearch.Create;
   FSearch.OnChange := SearchChanged;
+  AssignSearchEngine;
   FReplace := TBCEditorReplace.Create;
   { Scroll }
   FScroll := TBCEditorScroll.Create;
@@ -805,6 +807,7 @@ begin
   FActiveLine.Free;
   FRightMargin.Free;
   FScroll.Free;
+  ClearSearchLines;
   FSearchLines.Free;
   FSearch.Free;
   FSearchHighlighterBitmap.Free;
@@ -3127,6 +3130,15 @@ begin
   end;
 end;
 
+procedure TBCBaseEditor.ClearSearchLines;
+var
+  i: Integer;
+begin
+  for i := FSearchLines.Count - 1 downto 0 do
+    Dispose(PBCEditorTextPosition(FSearchLines.Items[i]));
+  FSearchLines.Clear;
+end;
+
 procedure TBCBaseEditor.FindAll;
 var
   i: Integer;
@@ -3134,7 +3146,7 @@ var
   LTextPtr, LKeyWordPtr, LBookmarkTextPtr: PChar;
   LPTextPosition: PBCEditorTextPosition;
 begin
-  FSearchLines.Clear;
+  ClearSearchLines;
   LKeyword := FSearch.SearchText;
   if LKeyword = '' then
     Exit;
@@ -6044,37 +6056,14 @@ end;
 
 procedure TBCBaseEditor.DoOnMinimapClick(Button: TMouseButton; X, Y: Integer);
 var
-  LNewLine, LPreviousLine: Integer;
+  LNewLine: Integer;
 begin
-  LPreviousLine := -1;
   LNewLine := PixelsToMinimapRowColumn(X, Y).Row;
 
   if (LNewLine > TopLine) and (LNewLine < TopLine + VisibleLines) then
-    FMinimap.Clicked := True
+    CaretY := LNewLine
   else
-  begin
-    LNewLine := LNewLine - VisibleLines div 2;
-    if LNewLine < TopLine then
-      while LNewLine < TopLine do
-      begin
-        TopLine := TopLine - 2;
-        if TopLine <> LPreviousLine then
-          LPreviousLine := TopLine
-        else
-          Break;
-        Application.ProcessMessages;
-      end
-    else
-      while LNewLine > TopLine do
-      begin
-        TopLine := TopLine + 2;
-        if TopLine <> LPreviousLine then
-          LPreviousLine := TopLine
-        else
-          Break;
-        Application.ProcessMessages;
-      end;
-  end;
+    TopLine := LNewLine - VisibleLines div 2;
 end;
 
 procedure TBCBaseEditor.DoOnPaint;
@@ -6441,7 +6430,6 @@ begin
   inherited Loaded;
   LeftMarginChanged(Self);
   MinimapChanged(Self);
-  SearchChanged(scEngineUpdate);
   UpdateScrollBars;
 end;
 
@@ -6470,7 +6458,7 @@ begin
 
   LWasSelected := False;
   LStartDrag := False;
-  if (Button = mbLeft) {and NotOverMinimap} then
+  if Button = mbLeft then
     if SelectionAvailable then
     begin
       LWasSelected := True;
@@ -6629,12 +6617,12 @@ var
   LDisplayPosition: TBCEditorDisplayPosition;
   LFoldRange: TBCEditorCodeFoldingRange;
   LPoint: TPoint;
-  i, j, k, LScrolledXBy, LScrolledYBy: Integer;
+  i, j, LScrolledXBy: Integer;
   LRect: TRect;
   LHintWindow: THintWindow;
   S: string;
 begin
-  if LeftMargin.Bookmarks.Visible and (X < LeftMargin.Bookmarks.Panel.Width) then
+  if LeftMargin.Bookmarks.Visible and (X < FLeftMargin.Width + FCodeFolding.Width) then
     Exit;
 
   if FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
@@ -6642,31 +6630,10 @@ begin
     SetCursor(Screen.Cursors[crArrow]);
     if FMinimap.Moving then
     begin
-      i := PixelsToMinimapRowColumn(X, Y).Row;
-      j := TopLine + VisibleLines div 2;
-      k := Abs(i - j);
-      LScrolledYBy := 1;
-      if k > VisibleLines div 4 then
-        LScrolledYBy := 2
-      else
-      if k > VisibleLines div 2 then
-        LScrolledYBy := 5;
-      if i < j then
-      begin
-        TopLine := Max(TopLine - LScrolledYBy, 1);
-        if moShowMoveDirectionCursors in FMinimap.Options then
-          SetCursor(Screen.Cursors[crArrowUp])
-      end
-      else
-      if i > j then
-      begin
-        TopLine := Min(TopLine + LScrolledYBy, Lines.Count);
-        if moShowMoveDirectionCursors in FMinimap.Options then
-          SetCursor(Screen.Cursors[crArrowDown])
-      end;
+      TopLine := PixelsToMinimapRowColumn(X, Y).Row - VisibleLines div 2;
       Paint;
     end;
-    if FMinimap.Clicked and not FMinimap.Moving then
+    if {FMinimap.Clicked and} not FMinimap.Moving then
       if (ssLeft in Shift) and MouseCapture then
         FMinimap.Moving := True;
     Exit;
@@ -6806,7 +6773,7 @@ var
   LCursorPoint: TPoint;
   LTextPosition: TBCEditorTextPosition;
 begin
-  FMinimap.Clicked := False;
+  //FMinimap.Clicked := False;
   FMinimap.Moving := False;
 
   inherited MouseUp(Button, Shift, X, Y);
@@ -7001,10 +6968,8 @@ var
   X, LHeight: Integer;
   LFoldRange: TBCEditorCodeFoldingRange;
 begin
-  if CodeFolding.Padding>0 then
-  begin
+  if CodeFolding.Padding > 0 then
     InflateRect(AClipRect, -CodeFolding.Padding, 0);
-  end;
   Canvas.Pen.Color := CodeFolding.Colors.FoldingLine;
   Canvas.Pen.Style := psSolid;
   if CodeFoldingTreeLineForLine(RowToLine(ALine)) then
@@ -7132,7 +7097,8 @@ begin
   LOldColor := Canvas.Pen.Color;
   LDeepestLevel := 0;
 
-  if FCodeFolding.Visible and (cfoShowIndentGuides in CodeFolding.Options) then
+  if FCodeFolding.Visible and (cfoShowIndentGuides in CodeFolding.Options) and
+    ((not AMinimap) or AMinimap and (moShowIndentGuides in FMinimap.Options)) then
   begin
     for i := FAllCodeFoldingRanges.AllCount - 1 downto 0 do
       if (FAllCodeFoldingRanges[i].IndentLevel > LDeepestLevel) and (CaretY >= FAllCodeFoldingRanges[i].FromLine) and
@@ -7581,12 +7547,6 @@ begin
     LTextHeight := Max(FTextHeight - 8, 0) shr 4;
     with ALineRect do
       X := Top + (Bottom - Top) shr 1;
-
-    {with LCharRect do
-    begin
-      Top := X - LTextHeight;
-      Bottom := X + 2 + LTextHeight;
-    end;  }
 
     LCharPosition := 1;
     while LPLine^ <> #0 do
@@ -8355,7 +8315,6 @@ var
         end;
         PaintHighlightToken(True);
         PaintCodeFoldingCollapseMark(LFoldRange, LTokenPosition, LTokenLength, LCurrentLine, LScrolledXBy);
-
         PaintSpecialChars(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
         PaintGuides(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
         PaintCodeFoldingCollapsedLine(LFoldRange, LLineRect);
@@ -9634,7 +9593,7 @@ var
   LIsPrompt: Boolean;
   LIsReplaceAll, LIsDeleteLine: Boolean;
   LIsEndUndoBlock: Boolean;
-  LReplaceAction: TBCEditorReplaceAction;
+  LActionReplace: TBCEditorReplaceAction;
   LResultOffset: Integer;
 
   function InValidSearchRange(First, Last: Integer): Boolean;
@@ -9746,17 +9705,17 @@ begin
 
         if LIsPrompt and Assigned(FOnReplaceText) then
         begin
-          LReplaceAction := DoOnReplaceText(ASearchText, AReplaceText, LCurrentTextPosition.Line, LFound, LIsDeleteLine);
-          if LReplaceAction = raCancel then
+          LActionReplace := DoOnReplaceText(ASearchText, AReplaceText, LCurrentTextPosition.Line, LFound, LIsDeleteLine);
+          if LActionReplace = raCancel then
             Exit;
         end
         else
-          LReplaceAction := raReplace;
-        if LReplaceAction = raSkip then
+          LActionReplace := raReplace;
+        if LActionReplace = raSkip then
           Dec(Result)
         else
         begin
-          if LReplaceAction = raReplaceAll then
+          if LActionReplace = raReplaceAll then
           begin
             if not LIsReplaceAll or LIsPrompt then
             begin
@@ -9782,7 +9741,7 @@ begin
         if not LIsBackward then
         begin
           InternalCaretX := LFound + LReplaceLength;
-          if (LSearchLength <> LReplaceLength) and (LReplaceAction <> raSkip) then
+          if (LSearchLength <> LReplaceLength) and (LActionReplace <> raSkip) then
           begin
             Inc(LResultOffset, LReplaceLength - LSearchLength);
             if (FSelection.ActiveMode <> smColumn) and (CaretY = LEndTextPosition.Line) then
@@ -10129,7 +10088,7 @@ end;
 
 procedure TBCBaseEditor.ClearBookmark(ABookmark: Integer);
 begin
-  if (ABookmark in [0 .. 9]) and Assigned(FBookmarks[ABookmark]) then
+  if (ABookmark in [0 .. 8]) and Assigned(FBookmarks[ABookmark]) then
   begin
     DoOnClearBookmark(FBookmarks[ABookmark]);
     FMarkList.Remove(FBookmarks[ABookmark]);
@@ -11648,7 +11607,7 @@ procedure TBCBaseEditor.GotoBookmark(ABookmark: Integer);
 var
   LTextPosition: TBCEditorTextPosition;
 begin
-  if (ABookmark in [0 .. 9]) and Assigned(FBookmarks[ABookmark]) and (FBookmarks[ABookmark].Line <= FLines.Count) then
+  if (ABookmark in [0 .. 8]) and Assigned(FBookmarks[ABookmark]) and (FBookmarks[ABookmark].Line <= FLines.Count) then
   begin
     LTextPosition.Char := FBookmarks[ABookmark].Char;
     LTextPosition.Line := FBookmarks[ABookmark].Line;
@@ -12109,10 +12068,10 @@ begin
         else
         begin
           if LAutoComplete then
-            LKeepGoing := (FRedoList.LastChangeReason <> crAutoCompleteEnd)
+            LKeepGoing := FRedoList.LastChangeReason <> crAutoCompleteEnd
           else
           if LPasteAction then
-            LKeepGoing := (FRedoList.LastChangeReason <> crPasteEnd)
+            LKeepGoing := FRedoList.LastChangeReason <> crPasteEnd
           else
           if LUndoItem.ChangeNumber = LOldChangeNumber then
             LKeepGoing := True
@@ -12356,7 +12315,7 @@ begin
       Line := Y;
       Char := X;
       ImageIndex := Index;
-      BookmarkNumber := Index + 1;
+      BookmarkNumber := Index;
       Visible := True;
       InternalImage := not Assigned(FLeftMargin.Bookmarks.Images);
     end;
@@ -12580,15 +12539,10 @@ initialization
   ClipboardFormatBorland := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_BORLAND);
   ClipboardFormatMSDev := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_MSDEV);
 
-  Screen.Cursors[crArrowUp] := LoadCursor(hInstance, BCEDITOR_CURSOR_ARROWUP);
-  Screen.Cursors[crArrowDown] := LoadCursor(hInstance, BCEDITOR_CURSOR_ARROWDOWN);
-
 finalization
   {$IFDEF USE_VCL_STYLES}
   TCustomStyleEngine.UnregisterStyleHook(TBCBaseEditor, TBCEditorStyleHook);
   {$ENDIF}
-  DestroyIcon(Screen.Cursors[crArrowUp]);
-  DestroyIcon(Screen.Cursors[crArrowDown]);
 
 end.
 

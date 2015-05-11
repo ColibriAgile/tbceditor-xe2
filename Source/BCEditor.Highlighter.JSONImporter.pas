@@ -68,30 +68,6 @@ begin
     Include(Result, fsStrikeOut);
 end;
 
-{function StrToStartLine(const AString: string): TBCEditorStartLine;
-begin
-  Result := slNotFirst;
-  if (AString = 'True') or (AString = 'First') then
-    Result := slFirst
-  else
-  if AString = 'NonSpace' then
-    Result := slFirstNonSpace
-  else
-  if (AString = 'False') or (AString = '') then
-    Result := slNotFirst
-end;  }
-
-{function StrToStartType(const AString: string): TBCEditorStartType;
-begin
-  if (AString = 'Any') or (AString = '') then
-    Result := stAny
-  else
-  if AString = 'Term' then
-    Result := stTerm
-  else
-    Result := stUnspecified
-end;    }
-
 function StrToBreakType(const AString: string): TBCEditorBreakType;
 begin
   if (AString = 'Any') or (AString = '') then
@@ -518,7 +494,7 @@ begin
   begin
     { Add element }
     New(TokenMatch);
-    TokenMatch.OpenToken :=  MatchingPairObject['Pairs'].ArrayValue.Items[i].ObjectValue['OpenToken'].Value;
+    TokenMatch.OpenToken := MatchingPairObject['Pairs'].ArrayValue.Items[i].ObjectValue['OpenToken'].Value;
     TokenMatch.CloseToken := MatchingPairObject['Pairs'].ArrayValue.Items[i].ObjectValue['CloseToken'].Value;
     AMatchingPairs.Add(TokenMatch)
   end;
@@ -543,13 +519,17 @@ begin
 end;
 
 procedure ImportHighlighter(Highlighter: TBCEditorHighlighter; JSONObject: TJsonObject);
+var
+  Editor: TBCBaseEditor;
 begin
+  Editor := Highlighter.Editor as TBCBaseEditor;
+
   Highlighter.Clear;
 
   ImportInfo(Highlighter.Info, JSONObject['Highlighter']['Info'].ObjectValue);
-  ImportEditorProperties(Highlighter.Editor as TBCBaseEditor, JSONObject['Highlighter']['Editor'].ObjectValue);
+  ImportEditorProperties(Editor, JSONObject['Highlighter']['Editor'].ObjectValue);
   ImportRange(Highlighter.MainRules, JSONObject['Highlighter']['MainRules'].ObjectValue);
-  ImportCodeFolding(Highlighter.Editor as TBCBaseEditor, Highlighter.CodeFoldingRegions, JSONObject['CodeFolding'].ObjectValue);
+  ImportCodeFolding(Editor, Highlighter.CodeFoldingRegions, JSONObject['CodeFolding'].ObjectValue);
   ImportMatchingPair(Highlighter.MatchingPairs, JSONObject['MatchingPair'].ObjectValue);
   ImportCompletionProposal(Highlighter.CompletionProposalSkipRegions, JSONObject['CompletionProposal'].ObjectValue);
 end;

@@ -469,6 +469,7 @@ destructor TBCEditorRule.Destroy;
 begin
   FAttribute.Free;
   FAttribute := nil;
+
   inherited;
 end;
 
@@ -515,8 +516,9 @@ end;
 
 destructor TBCEditorRange.Destroy;
 begin
-  Reset;
   Clear;
+  Reset;
+
   FOpenToken.Free;
   FOpenToken := nil;
   FCloseToken.Free;
@@ -531,6 +533,7 @@ begin
   FTokens := nil;
   FRanges.Free;
   FRanges := nil;
+
   inherited;
 end;
 
