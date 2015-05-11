@@ -3,7 +3,7 @@ unit BCEditor.Print.HeaderFooter;
 interface
 
 uses
-  Winapi.Windows, System.Classes, System.SysUtils, Vcl.Graphics, BCEditor.Print.Types, BCEditor.Print.Margins,
+  Windows, Classes, SysUtils, Graphics, BCEditor.Print.Types, BCEditor.Print.Margins,
   BCEditor.Utils;
 
 type
@@ -103,7 +103,7 @@ type
 implementation
 
 uses
-  System.Math, System.UITypes, BCEditor.Consts;
+  Math, BCEditor.Consts;
 
 { TBCEditorSectionItem }
 

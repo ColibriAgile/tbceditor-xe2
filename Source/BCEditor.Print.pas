@@ -3,7 +3,7 @@ unit BCEditor.Print;
 interface
 
 uses
-  Winapi.Windows, System.SysUtils, System.Classes, Vcl.Graphics, Vcl.Printers, BCEditor.Editor.Base, BCEditor.Types,
+  Windows, SysUtils, Classes, Graphics, Printers, BCEditor.Editor.Base, BCEditor.Types,
   BCEditor.Print.Types, BCEditor.Print.HeaderFooter, BCEditor.Print.PrinterInfo, BCEditor.Print.Margins,
   BCEditor.Utils, BCEditor.Highlighter, BCEditor.Editor.Selection, BCEditor.TextDrawer;
 
@@ -127,7 +127,7 @@ type
 implementation
 
 uses
-  System.Math, System.UITypes, BCEditor.Highlighter.Attributes, BCEditor.Consts;
+  Math, BCEditor.Highlighter.Attributes, BCEditor.Consts;
 
 { TBCEditorPrint }
 
@@ -407,7 +407,7 @@ var
   S: string;
 begin
   SaveCurrentFont;
-  S := (FLineNumber + FLineOffset).ToString + ': ';
+  S := IntToStr(FLineNumber + FLineOffset) + ': ';
   FCanvas.Brush.Color := FDefaultBackground;
   FCanvas.Font.Style := [];
   FCanvas.Font.Color := clBlack;
