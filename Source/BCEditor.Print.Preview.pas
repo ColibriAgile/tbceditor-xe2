@@ -5,7 +5,7 @@ unit BCEditor.Print.Preview;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.Classes, System.SysUtils, Vcl.Controls, Vcl.Graphics, Vcl.Forms,
+  Windows, Messages, Classes, SysUtils, Controls, Graphics, Forms,
   BCEditor.Print;
 
 type
@@ -87,7 +87,7 @@ type
 implementation
 
 uses
-  System.Types, BCEditor.Language;
+  Types, BCEditor.Language;
 
 const
   MARGIN_WIDTH_LEFT_AND_RIGHT = 12;

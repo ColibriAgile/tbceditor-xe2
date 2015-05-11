@@ -3,8 +3,8 @@ unit BCEditor.Editor.DB;
 interface
 
 uses
-  Winapi.Messages, System.SysUtils, System.Classes, Vcl.Controls, Vcl.DbCtrls, BCEditor.Editor,
-  BCEditor.Editor.KeyCommands, Data.DB;
+  Messages, SysUtils, Classes, Controls, DbCtrls, BCEditor.Editor,
+  BCEditor.Editor.KeyCommands, DB;
 
 type
   TBCCustomDBEditor = class(TBCCustomEditor)
