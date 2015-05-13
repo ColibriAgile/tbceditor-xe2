@@ -50,9 +50,11 @@ type
     property Anchors;
     property BackgroundColor;
     property BorderStyle;
+    property OnBookmarkPanelAfterPaint;
+    property OnBookmarkPanelBeforePaint;
+    property OnBookmarkPanelLinePaint;
     property Caret;
     property CodeFolding;
-    //property Color;
     property CompletionProposal;
     property Constraints;
     property Ctl3D;
@@ -76,6 +78,7 @@ type
     property OnClick;
     property OnCommandProcessed;
     property OnContextHelp;
+    property OnCustomLineColors;
     property OnDblClick;
     property OnDragDrop;
     property OnDragOver;

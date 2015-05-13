@@ -3,7 +3,7 @@ unit BCEditor.Types;
 interface
 
 uses
-  Windows, Classes, Graphics, Controls, BCEditor.Highlighter.Attributes, SysUtils;
+  Windows, Classes, Forms, Graphics, Controls, BCEditor.Highlighter.Attributes, SysUtils;
 
 type
   TBCEditorCharMethod = function(AChar: Char): Boolean of object;
@@ -19,7 +19,15 @@ type
   TBCEditorReplaceTextEvent = procedure(Sender: TObject; const ASearch, AReplace: string; ALine, AColumn: Integer;
     ADeleteLine: Boolean; var AAction: TBCEditorReplaceAction) of object;
 
-  TBCEditorStateFlag = (sfCaretChanged, sfScrollbarChanged, sfLinesChanging, sfIgnoreNextChar, sfCaretVisible, sfDblClicked,
+  TBCEditorScrollEvent = procedure(Sender: TObject; ScrollBar: TScrollBarKind) of object;
+
+  TBCEditorBookmarkPanelPaintEvent = procedure(Sender: TObject; ACanvas: TCanvas; ARect: TRect; AFirstLine: Integer; ALastLine: Integer) of object;
+  TBCEditorBookmarkPanelLinePaintEvent = procedure(Sender: TObject; ACanvas: TCanvas; ARect: TRect; ALineNumber: Integer) of object;
+
+  TBCEditorCustomLineColorsEvent = procedure(Sender: TObject; ALine: Integer; var AUseColors: Boolean;
+    var AForeground: TColor; var ABackground: TColor) of object;
+
+  TBCEditorStateFlag = (sfCaretChanged, sfScrollBarChanged, sfLinesChanging, sfIgnoreNextChar, sfCaretVisible, sfDblClicked,
     sfPossibleLeftMarginClick, sfWaitForDragging, sfInsideRedo, sfLeftMarginDragging, sfJustIndented, sfCodeFoldingInfoClicked);
   TBCEditorStateFlags = set of TBCEditorStateFlag;
 
@@ -109,9 +117,14 @@ type
   );
   TBCEditorCompletionProposalOptions = set of TBCEditorCompletionProposalOption;
 
+  TBCEditorLeftMarginBookMarkPanelOption = (
+    bpoToggleBookmarkByClick
+  );
+  TBCEditorLeftMarginBookMarkPanelOptions = set of TBCEditorLeftMarginBookMarkPanelOption;
+
   TBCEditorRightMarginOption = (
-    reoMouseMove,
-    reoShowMovingHint
+    rmoMouseMove,
+    rmoShowMovingHint
   );
   TBCEditorRightMarginOptions = set of TBCEditorRightMarginOption;
 

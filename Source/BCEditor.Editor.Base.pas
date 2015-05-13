@@ -25,6 +25,9 @@ type
     FAltEnabled: Boolean;
     FAlwaysShowCaret: Boolean;
     FBackgroundColor: TColor;
+    FBookmarkPanelAfterPaint: TBCEditorBookmarkPanelPaintEvent;
+    FBookmarkPanelBeforePaint: TBCEditorBookmarkPanelPaintEvent;
+    FBookmarkPanelLinePaint: TBCEditorBookmarkPanelLinePaintEvent;
     FBookMarks: array [0 .. 8] of TBCEditorBookmark;
     FBorderStyle: TBorderStyle;
     FBreakWhitespace: Boolean;
@@ -81,6 +84,7 @@ type
     FMatchingPairOpenDuplicate, FMatchingPairCloseDuplicate: array of Integer;
     FMatchingPairMatchStack: array of TBCEditorMatchingPairTokenMatch;
     FMinimap: TBCEditorMinimap;
+    FMinimapClickOffsetY: Integer;
     FModified: Boolean;
     FMouseDownX: Integer;
     FMouseDownY: Integer;
@@ -92,6 +96,7 @@ type
     FOnClearMark: TBCEditorBookmarkEvent;
     FOnCommandProcessed: TBCEditorProcessCommandEvent;
     FOnContextHelp: TBCEditorContextHelpEvent;
+    FOnCustomLineColors: TBCEditorCustomLineColorsEvent;
     FOnDropFiles: TBCEditorDropFilesEvent;
     FOnKeyPressW: TBCEditorKeyPressWEvent;
     FOnLeftMarginClick: TLeftMarginClickEvent;
@@ -104,7 +109,7 @@ type
     FOnProcessUserCommand: TBCEditorProcessCommandEvent;
     FOnReplaceText: TBCEditorReplaceTextEvent;
     FOnRightMarginMouseUp: TNotifyEvent;
-    FOnScroll: TScrollEvent;
+    FOnScroll: TBCEditorScrollEvent;
     FOptions: TBCEditorOptions;
     FOriginalLines: TBCEditorLines;
     FOriginalRedoList: TBCEditorUndoList;
@@ -149,6 +154,7 @@ type
     function CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingTreeEndForLine(ALine: Integer): Boolean;
     function CodeFoldingTreeLineForLine(ALine: Integer): Boolean;
+    function DoOnCustomLineColors(ALine: Integer; var AForeground: TColor; var ABackground: TColor): Boolean;
     function DoOnCodeFoldingHintClick(X, Y: Integer): Boolean;
     function DoTrimTrailingSpaces(ALine: Integer): Integer; overload;
     function ExtraLineSpacing: Integer;
@@ -179,7 +185,7 @@ type
     function GetMatchingToken(APoint: TBCEditorTextPosition; var AMatch: TBCEditorMatchingPairMatch): TBCEditorMatchingTokenResult;
     function GetSelectionAvailable: Boolean;
     function GetSelectedText: string;
-    function GetSearchCount: Integer;
+    function GetSearchResultCount: Integer;
     function GetSelectionBeginPosition: TBCEditorTextPosition;
     function GetSelectionEndPosition: TBCEditorTextPosition;
     function GetText: string;
@@ -196,14 +202,10 @@ type
     function MinPoint(const APoint1, APoint2: TPoint): TPoint;
     function NextWordPosition: TBCEditorTextPosition; overload;
     function NextWordPosition(const ATextPosition: TBCEditorTextPosition): TBCEditorTextPosition; overload;
-    function PixelsToMinimapRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
-    function PixelsToNearestRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
-    function PixelsToRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
     function PreviousWordPosition: TBCEditorTextPosition; overload;
     function PreviousWordPosition(const ATextPosition: TBCEditorTextPosition): TBCEditorTextPosition; overload;
     function RescanHighlighterRangesFrom(Index: Integer): Integer;
     function RowColumnToCharIndex(ATextPosition: TBCEditorTextPosition): Integer;
-    function RowColumnToPixels(const ADisplayPosition: TBCEditorDisplayPosition): TPoint;
     function RowToLine(ARow: Integer): Integer;
     function SearchText(const ASearchText: string): Integer;
     function StringReverseScan(const ALine: string; AStart: Integer; ACharMethod: TBCEditorCharMethod): Integer;
@@ -327,6 +329,11 @@ type
     function DoOnReplaceText(const ASearch, AReplace: string; ALine, AColumn: Integer; DeleteLine: Boolean): TBCEditorReplaceAction;
     function GetReadOnly: Boolean; virtual;
     function GetSelectedLength: Integer;
+    function PixelsToMinimapMouseMoveRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
+    function PixelsToMinimapRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
+    function PixelsToNearestRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
+    function PixelsToRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
+    function RowColumnToPixels(const ADisplayPosition: TBCEditorDisplayPosition): TPoint;
     function TranslateKeyCode(ACode: Word; AShift: TShiftState; var AData: pointer): TBCEditorCommand;
     procedure ChainLinesChanged(Sender: TObject);
     procedure ChainLinesChanging(Sender: TObject);
@@ -418,8 +425,11 @@ type
 
     function CaretInView: Boolean;
     function DisplayToTextPosition(const ADisplayPosition: TBCEditorDisplayPosition): TBCEditorTextPosition;
+    function FindPrevious: Boolean;
+    function FindNext: Boolean;
     function GetBookmark(ABookmark: Integer; var X, Y: Integer): Boolean;
     function GetPositionOfMouse(out ATextPosition: TBCEditorTextPosition): Boolean;
+    function GetWordAtPixels(X, Y: Integer): string;
     function IsBookmark(ABookmark: Integer): Boolean;
     function IsIdentChar(AChar: Char): Boolean;
     function IsPointInSelection(const ATextPosition: TBCEditorTextPosition): Boolean;
@@ -465,8 +475,6 @@ type
     procedure EnsureCursorPositionVisible; overload;
     procedure EnsureCursorPositionVisible(ForceToMiddle: Boolean; EvenIfVisible: Boolean = False); overload;
     procedure ExecuteCommand(ACommand: TBCEditorCommand; AChar: Char; AData: pointer); virtual;
-    procedure FindPrevious;
-    procedure FindNext;
     procedure GotoBookmark(ABookmark: Integer);
     procedure GotoLineAndCenter(ALine: Integer);
     procedure HookTextBuffer(ABuffer: TBCEditorLines; AUndo, ARedo: TBCEditorUndoList);
@@ -547,10 +555,14 @@ type
     property MatchingPair: TBCEditorMatchingPair read FMatchingPair write FMatchingPair;
     property Minimap: TBCEditorMinimap read FMinimap write FMinimap;
     property Modified: Boolean read FModified write SetModified;
+    property OnBookmarkPanelAfterPaint: TBCEditorBookmarkPanelPaintEvent read FBookmarkPanelAfterPaint write FBookmarkPanelAfterPaint;
+    property OnBookmarkPanelBeforePaint: TBCEditorBookmarkPanelPaintEvent read FBookmarkPanelBeforePaint write FBookmarkPanelBeforePaint;
+    property OnBookmarkPanelLinePaint: TBCEditorBookmarkPanelLinePaintEvent read FBookmarkPanelLinePaint write FBookmarkPanelLinePaint;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnClearBookmark: TBCEditorBookmarkEvent read FOnClearMark write FOnClearMark;
     property OnCommandProcessed: TBCEditorProcessCommandEvent read FOnCommandProcessed write FOnCommandProcessed;
     property OnContextHelp: TBCEditorContextHelpEvent read FOnContextHelp write FOnContextHelp;
+    property OnCustomLineColors: TBCEditorCustomLineColorsEvent read FOnCustomLineColors write FOnCustomLineColors;
     property OnDropFiles: TBCEditorDropFilesEvent read FOnDropFiles write FOnDropFiles;
     property OnKeyPress: TBCEditorKeyPressWEvent read FOnKeyPressW write FOnKeyPressW;
     property OnLeftMarginClick: TLeftMarginClickEvent read FOnLeftMarginClick write FOnLeftMarginClick;
@@ -563,7 +575,7 @@ type
     property OnProcessUserCommand: TBCEditorProcessCommandEvent read FOnProcessUserCommand write FOnProcessUserCommand;
     property OnReplaceText: TBCEditorReplaceTextEvent read FOnReplaceText write FOnReplaceText;
     property OnRightMarginMouseUp: TNotifyEvent read FOnRightMarginMouseUp write FOnRightMarginMouseUp;
-    property OnScroll: TScrollEvent read FOnScroll write FOnScroll;
+    property OnScroll: TBCEditorScrollEvent read FOnScroll write FOnScroll;
     property Options: TBCEditorOptions read FOptions write SetOptions default BCEDITOR_DEFAULT_OPTIONS;
     property PaintLock: Integer read FPaintLock;
     property ParentColor default False;
@@ -574,7 +586,7 @@ type
     property RightMargin: TBCEditorRightMargin read FRightMargin write SetRightMargin;
     property Scroll: TBCEditorScroll read FScroll write SetScroll;
     property Search: TBCEditorSearch read FSearch write SetSearch;
-    property SearchCount: Integer read GetSearchCount;
+    property SearchResultCount: Integer read GetSearchResultCount;
     property Selection: TBCEditorSelection read FSelection write SetSelection;
     property SelectionAvailable: Boolean read GetSelectionAvailable;
     property SelectionBeginPosition: TBCEditorTextPosition read GetSelectionBeginPosition write SetSelectionBeginPosition;
@@ -916,6 +928,15 @@ begin
     Result := True;
     Break;
   end;
+end;
+
+function TBCBaseEditor.DoOnCustomLineColors(ALine: Integer; var AForeground: TColor; var ABackground: TColor): Boolean;
+begin
+  Result := False;
+  AForeground := clNone;
+  ABackground := clNone;
+  if Assigned(FOnCustomLineColors) then
+    FOnCustomLineColors(Self, ALine, Result, AForeground, ABackground);
 end;
 
 function TBCBaseEditor.DoOnCodeFoldingHintClick(X, Y: Integer): Boolean;
@@ -1332,12 +1353,14 @@ var
     Result := True;
     for i := 0 to LOpenDuplicateLength - 1 do
     if LToken = PBCEditorMatchingPairToken(FHighlighter.MatchingPairs[FMatchingPairOpenDuplicate[i]])^.OpenToken then
-    begin
+      Exit;
+   { TODO: Check what I was trying to fix with this hack...
+     begin
       LPLine := PChar(UpperCase(FLines[APoint.Line]));
       Inc(LPLine, FHighlighter.GetTokenPosition - 1);
       if (Length(LToken) > 2) and ((LPLine^ = #0) or (LPLine^ = BCEDITOR_SPACE_CHAR) or (LPLine^ = BCEDITOR_TAB_CHAR)) then
         Exit;
-    end;
+    end; }
     Result := False
   end;
 
@@ -1774,7 +1797,7 @@ begin
     Result := DoGetSelectedText;
 end;
 
-function TBCBaseEditor.GetSearchCount: Integer;
+function TBCBaseEditor.GetSearchResultCount: Integer;
 begin
   Result := FSearchLines.Count;
 end;
@@ -1826,17 +1849,8 @@ begin
 end;
 
 function TBCBaseEditor.GetWordAtCursor: string;
-var
-  LBeginTextPosition: TBCEditorTextPosition;
-  LEndTextPosition: TBCEditorTextPosition;
 begin
-  LBeginTextPosition := GetSelectionBeginPosition;
-  LEndTextPosition := GetSelectionEndPosition;
-  SetSelectionBeginPosition(WordStart);
-  SetSelectionEndPosition(WordEnd);
-  Result := SelectedText;
-  SetSelectionBeginPosition(LBeginTextPosition);
-  SetSelectionEndPosition(LEndTextPosition);
+  Result := GetWordAtRowColumn(GetTextPosition(CaretX, CaretY));
 end;
 
 function TBCBaseEditor.GetWordAtMouse: string;
@@ -2144,6 +2158,12 @@ function TBCBaseEditor.PixelsToMinimapRowColumn(X, Y: Integer): TBCEditorDisplay
 begin
   Result.Column := Max(1, LeftChar + ((X - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2) div FMinimap.CharWidth));
   Result.Row := Max(1, FMinimap.TopLine + (Y div FMinimap.CharHeight));
+end;
+
+function TBCBaseEditor.PixelsToMinimapMouseMoveRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
+begin
+  Result.Column := Max(1, LeftChar + ((X - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2) div FMinimap.CharWidth));
+  Result.Row := Max(1, RoundCorrect(DisplayLineCount * ((Y / FMinimap.CharHeight) / Min(DisplayLineCount, FMinimap.VisibleLines))) );
 end;
 
 function TBCBaseEditor.PixelsToNearestRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
@@ -3528,6 +3548,13 @@ var
       Result := (TextPtr - 1)^ = Highlighter.CodeFoldingRegions.StringEscapeChar;
   end;
 
+  function IsNextCharStringEscape(TextPtr: PChar): Boolean;
+  begin
+    Result := False;
+    if Highlighter.CodeFoldingRegions.StringEscapeChar <> #0 then
+      Result := (TextPtr + 1)^ = Highlighter.CodeFoldingRegions.StringEscapeChar;
+  end;
+
   function SkipRegionsOpen: Boolean;
   var
     i, j: Integer;
@@ -3539,7 +3566,7 @@ var
         j := Highlighter.CodeFoldingRegions.SkipRegions.Count - 1;
         for i := 0 to j do
         if (LTextPtr^ = PChar(Highlighter.CodeFoldingRegions.SkipRegions[i].OpenToken)^) and
-          not IsPreviousCharStringEscape(LTextPtr) then { if the first character is a match and previous is not a string escape char }
+          not IsPreviousCharStringEscape(LTextPtr) and not IsNextCharStringEscape(LTextPtr) then { if the first character is a match and previous is not a string escape char }
         begin
           LKeyWordPtr := PChar(Highlighter.CodeFoldingRegions.SkipRegions[i].OpenToken);
           LBookmarkTextPtr := LTextPtr;
@@ -6008,8 +6035,8 @@ var
   i: Integer;
   LOffset: Integer;
   LLine: Integer;
-  LBookmarks: TBCEditorBookmarks;
-  LBookMark: TBCEditorBookmark;
+  LMarks: TBCEditorBookmarks;
+  LMark: TBCEditorBookmark;
   LFoldRange: TBCEditorCodeFoldingRange;
   LCodeFoldingRegion: Boolean;
 begin
@@ -6034,36 +6061,60 @@ begin
     LLine := DisplayToTextPosition(PixelsToRowColumn(X, Y)).Line;
     if LLine <= Lines.Count then
     begin
-      Marks.GetMarksForLine(LLine, LBookmarks);
+      Marks.GetMarksForLine(LLine, LMarks);
       LOffset := 0;
-      LBookMark := nil;
+      LMark := nil;
       for i := 1 to BCEDITOR_MAX_BOOKMARKS do
       begin
-        if Assigned(LBookmarks[i]) then
+        if Assigned(LMarks[i]) then
         begin
           Inc(LOffset, FLeftMargin.Bookmarks.Panel.OtherMarkXOffset);
           if X < LOffset then
           begin
-            LBookMark := LBookmarks[i];
+            LMark := LMarks[i];
             Break;
           end;
         end;
       end;
-      FOnLeftMarginClick(Self, Button, X, Y, LLine, LBookMark);
+      FOnLeftMarginClick(Self, Button, X, Y, LLine, LMark);
     end;
   end;
 end;
 
 procedure TBCBaseEditor.DoOnMinimapClick(Button: TMouseButton; X, Y: Integer);
 var
-  LNewLine: Integer;
+  LNewLine, LPreviousLine: Integer;
 begin
+  LPreviousLine := -1;
   LNewLine := PixelsToMinimapRowColumn(X, Y).Row;
 
-  if (LNewLine > TopLine) and (LNewLine < TopLine + VisibleLines) then
+  if (LNewLine >= TopLine) and (LNewLine <= TopLine + VisibleLines) then
     CaretY := LNewLine
   else
-    TopLine := LNewLine - VisibleLines div 2;
+  begin
+    LNewLine := LNewLine - VisibleLines div 2;
+    if LNewLine < TopLine then
+    while LNewLine < TopLine do
+    begin
+      TopLine := TopLine - 4;
+      if TopLine <> LPreviousLine then
+        LPreviousLine := TopLine
+      else
+        Break; 
+      Paint;
+    end
+    else
+    while LNewLine > TopLine do
+    begin
+      TopLine := TopLine + 4;
+      if TopLine <> LPreviousLine then
+        LPreviousLine := TopLine
+      else
+        Break;
+      Paint;
+    end;
+  end;
+  FMinimapClickOffsetY := LNewLine - TopLine;
 end;
 
 procedure TBCBaseEditor.DoOnPaint;
@@ -6450,26 +6501,25 @@ begin
   LEndPosition := FSelectionEndPosition;
   LLeftMarginWidth := FLeftMargin.GetWidth + FCodeFolding.GetWidth;
 
-  if not FMinimap.Moving and FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
+  LWasSelected := False;
+  LStartDrag := False;
+  if Button = mbLeft then
+  begin
+    LWasSelected := SelectionAvailable;
+    FMouseDownX := X;
+    FMouseDownY := Y;
+  end;
+
+  if not FMinimap.Dragging and FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
   begin
     DoOnMinimapClick(Button, X, Y);
     Exit;
   end;
 
-  LWasSelected := False;
-  LStartDrag := False;
-  if Button = mbLeft then
-    if SelectionAvailable then
-    begin
-      LWasSelected := True;
-      FMouseDownX := X;
-      FMouseDownY := Y;
-    end;
-
   inherited MouseDown(Button, Shift, X, Y);
 
   { Can move right edge? }
-  if (reoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
+  if (rmoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
     if (Button = mbLeft) and (Abs(RowColumnToPixels(GetDisplayPosition(FRightMargin.Position + 1, 0)).X - X) < 3) then
     begin
       FRightMargin.Moving := True;
@@ -6592,7 +6642,8 @@ begin
   begin
     CaretX := 0;
     CaretY := DisplayToTextPosition(PixelsToRowColumn(X, Y)).Line;
-    if LeftMargin.Bookmarks.Visible and (X < LeftMargin.Bookmarks.Panel.Width) then
+    if (X < LeftMargin.Bookmarks.Panel.Width) and LeftMargin.Bookmarks.Visible and
+      (bpoToggleBookmarkByClick in LeftMargin.Bookmarks.Panel.Options) then
       ToggleBookmark;
     Include(FStateFlags, sfPossibleLeftMarginClick);
   end;
@@ -6621,6 +6672,7 @@ var
   LRect: TRect;
   LHintWindow: THintWindow;
   S: string;
+  LTopLine: Integer;
 begin
   if LeftMargin.Bookmarks.Visible and (X < FLeftMargin.Width + FCodeFolding.Width) then
     Exit;
@@ -6628,14 +6680,18 @@ begin
   if FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
   begin
     SetCursor(Screen.Cursors[crArrow]);
-    if FMinimap.Moving then
+    if FMinimap.Dragging then
     begin
-      TopLine := PixelsToMinimapRowColumn(X, Y).Row - VisibleLines div 2;
-      Paint;
+      LTopLine := PixelsToMinimapMouseMoveRowColumn(X, Y).Row - FMinimapClickOffsetY;
+      if TopLine <> LTopLine then
+      begin
+        TopLine := LTopLine;
+        Paint;
+      end;
     end;
-    if {FMinimap.Clicked and} not FMinimap.Moving then
-      if (ssLeft in Shift) and MouseCapture then
-        FMinimap.Moving := True;
+    if not FMinimap.Dragging then
+      if (ssLeft in Shift) and MouseCapture and (Abs(FMouseDownY - Y) >= GetSystemMetrics(SM_CYDRAG)) then
+        FMinimap.Dragging := True;
     Exit;
   end;
 
@@ -6644,7 +6700,7 @@ begin
   if FMouseOverURI and not (ssCtrl in Shift) then
     FMouseOverURI := False;
 
-  if (reoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
+  if (rmoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
   begin
     FRightMargin.MouseOver := (Abs(RowColumnToPixels(GetDisplayPosition(FRightMargin.Position + 1, 0)).X - X) < 3);
     if FRightMargin.Moving or FRightMargin.MouseOver then
@@ -6656,7 +6712,7 @@ begin
     if FRightMargin.Moving and (X > FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2) then
     begin
       FRightMarginMovePosition := X;
-      if reoShowMovingHint in FRightMargin.Options then
+      if rmoShowMovingHint in FRightMargin.Options then
       begin
         LHintWindow := GetRightMarginHint;
 
@@ -6774,7 +6830,7 @@ var
   LTextPosition: TBCEditorTextPosition;
 begin
   //FMinimap.Clicked := False;
-  FMinimap.Moving := False;
+  FMinimap.Dragging := False;
 
   inherited MouseUp(Button, Shift, X, Y);
 
@@ -6793,11 +6849,11 @@ begin
     Exit;
   end;
 
-  if (reoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
+  if (rmoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
     if FRightMargin.Moving then
     begin
       FRightMargin.Moving := False;
-      if reoShowMovingHint in FRightMargin.Options then
+      if rmoShowMovingHint in FRightMargin.Options then
         ShowWindow(GetRightMarginHint.Handle, SW_HIDE);
       with PixelsToRowColumn(FRightMarginMovePosition, Y) do
         FRightMargin.Position := Column;
@@ -7172,7 +7228,7 @@ procedure TBCBaseEditor.PaintLeftMargin(const AClipRect: TRect; AFirstRow, ALast
         else
           Y := 0;
         with FLeftMargin.Bookmarks do
-          Images.Draw(Canvas, Panel.LeftMargin + ALeftMarginOffset, (aMarkRow - TopLine) * LineHeight + Y,
+          Images.Draw(Canvas, Panel.LeftMargin + ALeftMarginOffset, (AMarkRow - TopLine) * LineHeight + Y,
             ABookMark.ImageIndex);
         Inc(ALeftMarginOffset, FLeftMargin.Bookmarks.Panel.OtherMarkXOffset);
       end;
@@ -7207,7 +7263,8 @@ var
   LTextSize: TSize;
   LLeftMarginWidth: Integer;
   LOldColor: TColor;
-  LineStateRect: TRect;
+  LLineStateRect: TRect;
+  LPanelRect: TRect;
   LPEditorLineAttribute: PBCEditorLineAttribute;
   LCodeFoldingRect: TRect;
 begin
@@ -7293,11 +7350,16 @@ begin
     Canvas.FillRect(AClipRect);
   { Bookmark panel }
   if FLeftMargin.Bookmarks.Panel.Visible then
+  begin
+    LPanelRect := Types.Rect(0, 0, FLeftMargin.Bookmarks.Panel.Width, ClientHeight);
     if FLeftMargin.Bookmarks.Panel.Color <> clNone then
     begin
       Canvas.Brush.Color := FLeftMargin.Bookmarks.Panel.Color;
-      Canvas.FillRect(Types.Rect(0, 0, FLeftMargin.Bookmarks.Panel.Width, ClientHeight));
+      Canvas.FillRect(LPanelRect);
     end;
+    if Assigned(FBookmarkPanelBeforePaint) then
+      FBookmarkPanelBeforePaint(Self, Canvas, LPanelRect, LFirstLine, LLastLine);
+  end;
   { Code folding }
   if FCodeFolding.Visible then
   begin
@@ -7376,24 +7438,41 @@ begin
   { Line state }
   if FLeftMargin.LineState.Enabled then
   begin
-    LineStateRect.Left := FLeftMargin.GetWidth - FLeftMargin.LineState.Width - 1;
-    LineStateRect.Right := LineStateRect.Left + FLeftMargin.LineState.Width;
-    for LLine := aFirstRow to aLastRow do
+    LLineStateRect.Left := FLeftMargin.GetWidth - FLeftMargin.LineState.Width - 1;
+    LLineStateRect.Right := LLineStateRect.Left + FLeftMargin.LineState.Width;
+    for LLine := AFirstRow to ALastRow do
     begin
       i := RowToLine(LLine) - 1;
       LPEditorLineAttribute := Lines.Attributes[i];
 
       if (i < Lines.Count) and (LPEditorLineAttribute.LineState <> lsNone) then
       begin
-        LineStateRect.Top := (LLine - TopLine) * LineHeight;
-        LineStateRect.Bottom := LineStateRect.Top + LineHeight;
+        LLineStateRect.Top := (LLine - TopLine) * LineHeight;
+        LLineStateRect.Bottom := LLineStateRect.Top + LineHeight;
         if LPEditorLineAttribute.LineState = lsNormal then
           Canvas.Brush.Color := FLeftMargin.LineState.Colors.Normal
         else
           Canvas.Brush.Color := FLeftMargin.LineState.Colors.Modified;
-        Canvas.FillRect(LineStateRect);
+        Canvas.FillRect(LLineStateRect);
       end;
     end;
+  end;
+  if FLeftMargin.Bookmarks.Panel.Visible then
+  begin
+    if Assigned(FBookmarkPanelLinePaint) then
+    begin
+      for LLine := AFirstRow to ALastRow do
+      begin
+        i := RowToLine(LLine) - 1;
+        LLineRect.Left := LPanelRect.Left;
+        LLineRect.Right := LPanelRect.Right;
+        LLineRect.Top := (LLine - TopLine) * LineHeight;
+        LLineRect.Bottom := LLineRect.Top + LineHeight;
+        FBookmarkPanelLinePaint(Self, Canvas, LLineRect, i);
+      end;
+    end;
+    if Assigned(FBookmarkPanelAfterPaint) then
+      FBookmarkPanelAfterPaint(Self, Canvas, LPanelRect, LFirstLine, LLastLine);
   end;
 end;
 
@@ -7419,6 +7498,8 @@ begin
   else
     Exit;
 
+  if Assigned(FCurrentMatchingPairMatch.TokenAttribute) then
+    FTextDrawer.SetStyle(FCurrentMatchingPairMatch.TokenAttribute.Style);
   FTextDrawer.SetForegroundColor(Font.Color);
 
   LCurrentCaret := CaretPosition;
@@ -7685,6 +7766,9 @@ var
   LSelectionForegroundColor, LSelectionBackgroundColor: TColor;
   LSelectionStartPosition: TBCEditorDisplayPosition;
   LTokenHelper: TBCEditorTokenHelper;
+  LCustomLineColors: Boolean;
+  LCustomForegroundColor: TColor;
+  LCustomBackgroundColor: TColor;
 
   function GetBackgroundColor: TColor;
   var
@@ -7959,6 +8043,11 @@ var
         if (LCurrentLine >= RowToLine(TopLine)) and (LCurrentLine < RowToLine(TopLine + VisibleLines)) then
           LBackgroundColor := FActiveLine.Color;
 
+      if LCustomLineColors and (LCustomForegroundColor <> clNone) then
+        LForegroundColor := LCustomForegroundColor;
+      if LCustomLineColors and (LCustomBackgroundColor <> clNone) then
+        LBackgroundColor := LCustomBackgroundColor;
+
       if LIsTokenSelected then
       begin
         if LFirstUnselectedPartOfToken then
@@ -7999,6 +8088,12 @@ var
       if AMinimap then
         if (LCurrentLine >= RowToLine(TopLine)) and (LCurrentLine < RowToLine(TopLine + VisibleLines)) then
           LBackgroundColor := FActiveLine.Color;
+
+      if LCustomLineColors and (LCustomForegroundColor <> clNone) then
+        LForegroundColor := LCustomForegroundColor;
+      if LCustomLineColors and (LCustomBackgroundColor <> clNone) then
+        LBackgroundColor := LCustomBackgroundColor;
+
       if LIsComplexLine then
       begin
         X1 := ColumnToXValue(LLineSelectionStart, AMinimap);
@@ -8195,6 +8290,8 @@ var
 
       for LCurrentRow := LStartRow to LEndRow do
       begin
+        LCustomLineColors := DoOnCustomLineColors(LCurrentLine, LCustomForegroundColor, LCustomBackgroundColor);
+
         if GetWordWrap then
         begin
           LDisplayPosition.Row := LCurrentRow;
@@ -9490,6 +9587,51 @@ begin
   end;
 end;
 
+function TBCBaseEditor.FindPrevious: Boolean;
+begin
+  Result := False;
+  if Trim(FSearch.SearchText) = '' then
+    Exit;
+  FSearch.Options := FSearch.Options + [soBackwards];
+  if SearchText(FSearch.SearchText) = 0 then
+  begin
+    if soBeepIfStringNotFound in FSearch.Options then
+      Beep;
+    SelectionEndPosition := SelectionBeginPosition;
+    CaretPosition := SelectionBeginPosition;
+  end
+  else
+    Result := True;
+end;
+
+function TBCBaseEditor.FindNext: Boolean;
+begin
+  Result := False;
+  if Trim(FSearch.SearchText) = '' then
+    Exit;
+  FSearch.Options := FSearch.Options - [soBackwards];
+  if SearchText(FSearch.SearchText) = 0 then
+  begin
+    if soBeepIfStringNotFound in FSearch.Options then
+      Beep;
+    SelectionBeginPosition := SelectionEndPosition;
+    CaretPosition := SelectionBeginPosition;
+    if (CaretX = 1) and (CaretY = 1) then
+    begin
+      if soShowStringNotFound in FSearch.Options then
+        MessageDialog(Format(SBCEditorSearchStringNotFound, [FSearch.SearchText]), mtInformation, [mbOK]);
+    end
+    else
+    if MessageDialog(SBCEditorSearchMatchNotFound, mtConfirmation, [mbYes, mbNo]) = MrYes then
+    begin
+      CaretZero;
+      Result := FindNext;
+    end;
+  end
+  else
+    Result := True;
+end;
+
 function TBCBaseEditor.GetBookmark(ABookmark: Integer; var X, Y: Integer): Boolean;
 var
   i: Integer;
@@ -9519,6 +9661,11 @@ begin
   end;
   ATextPosition := DisplayToTextPosition(PixelsToRowColumn(LCursorPoint.X, LCursorPoint.Y));
   Result := True;
+end;
+
+function TBCBaseEditor.GetWordAtPixels(X, Y: Integer): string;
+begin
+  Result := GetWordAtRowColumn(DisplayToTextPosition(PixelsToRowColumn(X, Y)));
 end;
 
 function TBCBaseEditor.IsBookmark(ABookmark: Integer): Boolean;
@@ -11564,45 +11711,6 @@ begin
   end;
 end;
 
-procedure TBCBaseEditor.FindPrevious;
-begin
-  if Trim(FSearch.SearchText) = '' then
-    Exit;
-  FSearch.Options := FSearch.Options + [soBackwards];
-  if SearchText(FSearch.SearchText) = 0 then
-  begin
-    if soBeepIfStringNotFound in FSearch.Options then
-      Beep;
-    SelectionEndPosition := SelectionBeginPosition;
-    CaretPosition := SelectionBeginPosition;
-  end;
-end;
-
-procedure TBCBaseEditor.FindNext;
-begin
-  if Trim(FSearch.SearchText) = '' then
-    Exit;
-  FSearch.Options := FSearch.Options - [soBackwards];
-  if SearchText(FSearch.SearchText) = 0 then
-  begin
-    if soBeepIfStringNotFound in FSearch.Options then
-      Beep;
-    SelectionBeginPosition := SelectionEndPosition;
-    CaretPosition := SelectionBeginPosition;
-    if (CaretX = 1) and (CaretY = 1) then
-    begin
-      if soShowStringNotFound in FSearch.Options then
-        MessageDialog(Format(SBCEditorSearchStringNotFound, [FSearch.SearchText]), mtInformation, [mbOK]);
-    end
-    else
-    if MessageDialog(SBCEditorSearchMatchNotFound, mtConfirmation, [mbYes, mbNo]) = MrYes then
-    begin
-      CaretZero;
-      FindNext;
-    end;
-  end;
-end;
-
 procedure TBCBaseEditor.GotoBookmark(ABookmark: Integer);
 var
   LTextPosition: TBCEditorTextPosition;
@@ -12292,15 +12400,16 @@ end;
 
 procedure TBCBaseEditor.SelectAll;
 var
-  LLastTextPosition: TBCEditorTextPosition;
+  LOldCaretPosition, LLastTextPosition: TBCEditorTextPosition;
 begin
+  LOldCaretPosition := CaretPosition;
   LLastTextPosition.Char := 1;
   LLastTextPosition.Line := Lines.Count;
   if LLastTextPosition.Line > 0 then
     Inc(LLastTextPosition.Char, Length(Lines[LLastTextPosition.Line - 1]))
   else
     LLastTextPosition.Line := 1;
-  SetCaretAndSelection(LLastTextPosition, GetTextPosition(1, 1), LLastTextPosition);
+  SetCaretAndSelection(LOldCaretPosition, GetTextPosition(1, 1), LLastTextPosition);
 end;
 
 procedure TBCBaseEditor.SetBookmark(Index: Integer; X: Integer; Y: Integer);
