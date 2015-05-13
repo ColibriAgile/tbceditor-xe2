@@ -111,6 +111,9 @@ type
     FBackgroundColor: TColor;
     FCharExtra: Integer;
     FDrawingCount: Integer;
+    // GetCharABCWidthsW cache
+    FCharABCWidthCache : array [0..127] of TABC;
+    FCharWidthCache : array [0..127] of Integer;
   protected
     procedure ReleaseExtTextOutDistance; virtual;
     procedure AfterStyleSet; virtual;
@@ -120,6 +123,9 @@ type
     property FontStock: TBCEditorFontStock read FFontStock;
     property BaseCharWidth: Integer read FBaseCharWidth;
     property BaseCharHeight: Integer read FBaseCharHeight;
+
+    procedure FlushCharABCWidthCache;
+    function GetCachedABCWidth(c : Cardinal; var abc : TABC) : Boolean;
   public
     constructor Create(CalcExtentBaseStyle: TFontStyles; BaseFont: TFont); virtual;
     destructor Destroy; override;
@@ -599,6 +605,7 @@ procedure TBCEditorTextDrawer.SetBaseFont(Value: TFont);
 begin
   if Assigned(Value) then
   begin
+    FlushCharABCWidthCache;
     ReleaseExtTextOutDistance;
     FStockBitmap.Canvas.Font.Assign(Value);
     FStockBitmap.Canvas.Font.Style := [];
@@ -619,6 +626,7 @@ procedure TBCEditorTextDrawer.SetBaseStyle(const Value: TFontStyles);
 begin
   if FCalcExtentBaseStyle <> Value then
   begin
+    FlushCharABCWidthCache;
     FCalcExtentBaseStyle := Value;
     ReleaseExtTextOutDistance;
     with FFontStock do
@@ -681,6 +689,30 @@ begin
     SetTextCharacterExtra(FHandle, Value);
 end;
 
+// FlushCharABCWidthCache
+//
+procedure TBCEditorTextDrawer.FlushCharABCWidthCache;
+begin
+   FillChar(FCharABCWidthCache, SizeOf(TABC)*Length(FCharABCWidthCache), 0);
+   FillChar(FCharWidthCache, SizeOf(Integer)*Length(FCharWidthCache), 0);
+end;
+
+// GetCachedABCWidth
+//
+function TBCEditorTextDrawer.GetCachedABCWidth(c : Cardinal; var abc : TABC) : Boolean;
+begin
+   if c>High(FCharABCWidthCache) then begin
+      Result:=GetCharABCWidthsW(FHandle, c, c, abc);
+      Exit;
+   end;
+   abc:=FCharABCWidthCache[c];
+   if (abc.abcA or Integer(abc.abcB) or abc.abcC)=0 then begin
+      Result:=GetCharABCWidthsW(FHandle, c, c, abc);
+      if Result then
+         FCharABCWidthCache[c]:=abc;
+   end else Result:=True;
+end;
+
 procedure TBCEditorTextDrawer.TextOut(X, Y: Integer; Text: PChar; Length: Integer);
 var
   TempRect: TRect;
@@ -719,7 +751,7 @@ var
       LCharWidth := FExtTextOutDistance[Length - 1];
     LRealCharWidth := LCharWidth;
 
-    if GetCharABCWidthsW(FHandle, LLastChar, LLastChar, LCharInfo) then
+    if GetCachedABCWidth(LLastChar, LCharInfo) then
     begin
       LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
       if LCharInfo.abcC >= 0 then
