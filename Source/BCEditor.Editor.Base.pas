@@ -12410,6 +12410,7 @@ begin
   else
     LLastTextPosition.Line := 1;
   SetCaretAndSelection(LOldCaretPosition, GetTextPosition(1, 1), LLastTextPosition);
+  Invalidate;
 end;
 
 procedure TBCBaseEditor.SetBookmark(Index: Integer; X: Integer; Y: Integer);
