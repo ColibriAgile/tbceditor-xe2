@@ -3955,8 +3955,12 @@ end;
 
 procedure TBCBaseEditor.SearchChanged(AEvent: TBCEditorSearchChanges);
 begin
-  if AEvent in [scEngineUpdate, scSearch] then
+  if AEvent = scEngineUpdate then
     CaretZero;
+  if AEvent = scSearch then
+    if SelectionAvailable then
+      CaretPosition := SelectionBeginPosition;
+
   case AEvent of
     scEngineUpdate:
       AssignSearchEngine;
