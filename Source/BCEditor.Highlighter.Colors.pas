@@ -37,7 +37,7 @@ type
 implementation
 
 uses
-  System.SysUtils, BCEditor.Editor.Base, BCEditor.Highlighter, BCEditor.Highlighter.JSONImporter;
+  SysUtils, BCEditor.Editor.Base, BCEditor.Highlighter, BCEditor.Highlighter.JSONImporter;
 
 { TBCEditorHighlighterColors }
 
