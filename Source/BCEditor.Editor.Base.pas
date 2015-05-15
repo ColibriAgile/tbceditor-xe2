@@ -423,7 +423,7 @@ type
     destructor Destroy; override;
 
     function CaretInView: Boolean;
-    function CreateHighlighterIncludeFileStream(AFileName: string): TStream; virtual;
+    function CreateFileStream(AFileName: string): TStream; virtual;
     function DisplayToTextPosition(const ADisplayPosition: TBCEditorDisplayPosition): TBCEditorTextPosition;
     function GetColorsFileName(AFileName: string): string;
     function GetHighlighterFileName(AFileName: string): string;
@@ -9572,7 +9572,7 @@ begin
     (LDisplayPosition.Row >= TopLine) and (LDisplayPosition.Row <= TopLine + VisibleLines);
 end;
 
-function TBCBaseEditor.CreateHighlighterIncludeFileStream(AFileName: string): TStream;
+function TBCBaseEditor.CreateFileStream(AFileName: string): TStream;
 begin
   Result := TFileStream.Create(GetHighlighterFileName(AFileName), fmOpenRead);
 end;
