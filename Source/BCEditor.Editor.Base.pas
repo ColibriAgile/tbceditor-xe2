@@ -6687,8 +6687,6 @@ var
   S: string;
   LTopLine: Integer;
 begin
-  Exclude(FStateFlags, sfInSelection);
-
   if FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
   begin
     if FMinimap.Clicked then
@@ -6841,6 +6839,7 @@ var
 begin
   FMinimap.Clicked := False;
   FMinimap.Dragging := False;
+  Exclude(FStateFlags, sfInSelection);
 
   inherited MouseUp(Button, Shift, X, Y);
 
@@ -9630,8 +9629,8 @@ begin
   if Result = '' then
     Result := FDirectories.Highlighters;
   if Trim(ExtractFilePath(Result)) = '' then
-    Result := Format('%s%s', [IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)), Result]);
-  Result := Format('%s%s', [IncludeTrailingPathDelimiter(Result), ExtractFileName(AFileName)]);
+    Result := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)) + Result;
+  Result := IncludeTrailingPathDelimiter(Result) + ExtractFileName(AFileName);
 end;
 
 function TBCBaseEditor.FindPrevious: Boolean;
@@ -11589,9 +11588,6 @@ begin
               end
               else
               begin
-                if LIsJustIndented then
-                  FUndoList.AddGroupBreak;
-
                 FUndoList.AddChange(crInsert, LBlockStartPosition, GetTextPosition(FCaretX + 1, FCaretY), LHelper, smNormal);
                 FLines.Attributes[FCaretY - 1].LineState := lsModified;
 
