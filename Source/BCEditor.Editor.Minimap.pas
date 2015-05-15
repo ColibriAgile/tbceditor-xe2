@@ -10,6 +10,7 @@ type
   strict private
     FCharHeight: Integer;
     FCharWidth: Integer;
+    FClicked: Boolean;
     FDragging: Boolean;
     FFont: TFont;
     FOnChange: TNotifyEvent;
@@ -31,13 +32,14 @@ type
     procedure Assign(Source: TPersistent); override;
     property CharWidth: Integer read FCharWidth write FCharWidth;
     property CharHeight: Integer read FCharHeight write FCharHeight;
+    property Clicked: Boolean read FClicked write FClicked;
     property Dragging: Boolean read FDragging write FDragging;
     property TopLine: Integer read FTopLine write FTopLine default 1;
     property VisibleLines: Integer read FVisibleLines write FVisibleLines;
   published
     property Font: TFont read FFont write SetFont;
     property OnChange: TNotifyEvent read FOnChange write SetOnChange;
-    property Options: TBCEditorMinimapOptions read FOptions write FOptions default [moShowIndentGuides];
+    property Options: TBCEditorMinimapOptions read FOptions write FOptions default [];
     property Visible: Boolean read FVisible write SetVisible default False;
     property Width: Integer read FWidth write SetWidth default 100;
   end;
@@ -55,13 +57,15 @@ begin
 
   FFont := TFont.Create;
   FFont.Name := 'Courier New';
-  FFont.Size := 3;
+  FFont.Size := 1;
   FFont.Style := [];
 
   FVisible := False;
   FWidth := 140;
   FDragging := False;
-  FOptions := [moShowIndentGuides];
+  FOptions := [];
+
+  FClicked := False;
 
   FTopLine := 1;
 end;

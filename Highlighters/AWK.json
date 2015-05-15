@@ -3,8 +3,11 @@
         "Info": {
             "General": {
                 "Version": "1.0",
-                "Date": "1.5.2015",
-                "Sample": "# Hello World in AWK\r\nBEGIN { print \"Hello, world!\" }"
+                "Date": "14.5.2015",
+                "Sample": [
+                    "# Hello World in AWK\r\n",
+                    "BEGIN { print \"Hello, world!\" }"
+                ]
             },
             "Author": {
                 "Name": "Lasse Rautiainen",
@@ -21,10 +24,10 @@
                         "Type": "Comment",
                         "Attributes": {
                             "Element": "Comment",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         },
                         "Properties": {
-                            "CloseOnEol": "True"
+                            "CloseOnEol": true
                         },
                         "TokenRange": {
                             "Open": "#"
@@ -34,11 +37,11 @@
                         "Type": "Character",
                         "Attributes": {
                             "Element": "Character",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         },
                         "Properties": {
-                            "CloseOnTerm": "True",
-                            "CloseOnEol": "True"
+                            "CloseOnTerm": true,
+                            "CloseOnEol": true
                         },
                         "TokenRange": {
                             "Open": "$",
@@ -49,10 +52,10 @@
                         "Type": "String",
                         "Attributes": {
                             "Element": "String",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         },
                         "Properties": {
-                            "CloseOnEol": "True"
+                            "CloseOnEol": true
                         },
                         "TokenRange": {
                             "Open": "'",
@@ -64,11 +67,11 @@
                                     "Type": "String",
                                     "Attributes": {
                                         "Element": "String",
-                                        "ParentBackground": "True"
+                                        "ParentBackground": true
                                     },
                                     "Properties": {
-                                        "CloseOnEol": "True",
-                                        "CloseOnTerm": "True"
+                                        "CloseOnEol": true,
+                                        "CloseOnTerm": true
                                     },
                                     "TokenRange": {
                                         "Open": "\\'",
@@ -79,11 +82,11 @@
                                     "Type": "String",
                                     "Attributes": {
                                         "Element": "String",
-                                        "ParentBackground": "True"
+                                        "ParentBackground": true
                                     },
                                     "Properties": {
-                                        "CloseOnEol": "True",
-                                        "CloseOnTerm": "True"
+                                        "CloseOnEol": true,
+                                        "CloseOnTerm": true
                                     },
                                     "TokenRange": {
                                         "Open": "\\\\",
@@ -97,10 +100,10 @@
                         "Type": "String",
                         "Attributes": {
                             "Element": "String",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         },
                         "Properties": {
-                            "CloseOnEol": "True"
+                            "CloseOnEol": true
                         },
                         "TokenRange": {
                             "Open": "\"",
@@ -112,11 +115,11 @@
                                     "Type": "String",
                                     "Attributes": {
                                         "Element": "String",
-                                        "ParentBackground": "True"
+                                        "ParentBackground": true
                                     },
                                     "Properties": {
-                                        "CloseOnEol": "True",
-                                        "CloseOnTerm": "True"
+                                        "CloseOnEol": true,
+                                        "CloseOnTerm": true
                                     },
                                     "TokenRange": {
                                         "Open": "\\\"",
@@ -127,11 +130,11 @@
                                     "Type": "String",
                                     "Attributes": {
                                         "Element": "String",
-                                        "ParentBackground": "True"
+                                        "ParentBackground": true
                                     },
                                     "Properties": {
-                                        "CloseOnEol": "True",
-                                        "CloseOnTerm": "True"
+                                        "CloseOnEol": true,
+                                        "CloseOnTerm": true
                                     },
                                     "TokenRange": {
                                         "Open": "\\\\",
@@ -145,26 +148,87 @@
                 "KeyList": [
                     {
                         "Type": "ReservedWord",
-                        "Words": "BEGIN\r\nbreak\r\ncontinue\r\ndo\r\nelse\r\nEND\r\nexit\r\nfor\r\nfunction\r\ngetline\r\nif\r\nnext\r\nprint\r\nreturn\r\nwhile",
+                        "Words": [
+                            "begin",
+                            "break",
+                            "continue",
+                            "do",
+                            "else",
+                            "end",
+                            "exit",
+                            "for",
+                            "function",
+                            "getline",
+                            "if",
+                            "next",
+                            "print",
+                            "return",
+                            "while"
+                        ],
                         "Attributes": {
                             "Element": "ReservedWord",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         }
                     },
                     {
                         "Type": "ReservedWord",
-                        "Words": "FS\r\nNF\r\nRS\r\nNR\r\nFILENAME\r\nOFS\r\nORS\r\nARGC\r\nARGV\r\nARGIND\r\nFNR\r\nOFMT\r\nRSTART\r\nRLENGTH\r\nSUBSEP\r\nENVIRON\r\nIGNORECASE\r\nCONVFMT\r\nERRNO\r\nFIELDWIDTHS\r\nBINMODE\r\nLINT\r\nPROCINFO\r\nRT\r\nTEXTDOMAIN",
+                        "Words": [
+                            "FS",
+                            "NF",
+                            "RS",
+                            "NR",
+                            "FILENAME",
+                            "OFS",
+                            "ORS",
+                            "ARGC",
+                            "ARGV",
+                            "ARGIND",
+                            "FNR",
+                            "OFMT",
+                            "RSTART",
+                            "RLENGTH",
+                            "SUBSEP",
+                            "ENVIRON",
+                            "IGNORECASE",
+                            "CONVFMT",
+                            "ERRNO",
+                            "FIELDWIDTHS",
+                            "BINMODE",
+                            "LINT",
+                            "PROCINFO",
+                            "RT",
+                            "TEXTDOMAIN"
+                        ],
                         "Attributes": {
                             "Element": "Directive",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         }
                     },
                     {
                         "Type": "Symbol",
-                        "Words": "..\r\n:\r\n;\r\n<\r\n>\r\n=\r\n/\r\n*\r\n.\r\n,\r\n-\r\n+\r\n(\r\n)\r\n[\r\n]\r\n{\r\n}",
+                        "Words": [
+                            "..",
+                            ":",
+                            ";",
+                            "<",
+                            ">",
+                            "=",
+                            "/",
+                            "*",
+                            ".",
+                            ",",
+                            "-",
+                            "+",
+                            "(",
+                            ")",
+                            "[",
+                            "]",
+                            "{",
+                            "}"
+                        ],
                         "Attributes": {
                             "Element": "Symbol",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         }
                     }
                 ],
@@ -174,7 +238,7 @@
                         "Symbols": "0123456789",
                         "Attributes": {
                             "Element": "Number",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         }
                     },
                     {
@@ -182,7 +246,7 @@
                         "Symbols": ".0123456789",
                         "Attributes": {
                             "Element": "Number",
-                            "ParentBackground": "True"
+                            "ParentBackground": true
                         }
                     }
                 ]

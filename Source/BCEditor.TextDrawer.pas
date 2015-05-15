@@ -32,6 +32,7 @@ type
     IsTrueType: Boolean;
     FontsData: TBCEditorFontsData;
   end;
+
   PBCEditorSharedFontsInfo = ^TBCEditorSharedFontsInfo;
 
   { TBCEditorFontsInfoManager }
@@ -98,34 +99,32 @@ type
 
   TBCEditorTextDrawer = class(TObject)
   strict private
+    FBackgroundColor: TColor;
+    FBaseCharHeight: Integer;
+    FBaseCharWidth: Integer;
+    FCalcExtentBaseStyle: TFontStyles;
+    FCharABCWidthCache: array [0 .. 127] of TABC;
+    FCharExtra: Integer;
+    FCharWidthCache: array [0 .. 127] of Integer;
+    FColor: TColor;
+    FCurrentFont: HFont;
+    FDrawingCount: Integer;
+    FExtTextOutDistance: PIntegerArray;
+    FFontStock: TBCEditorFontStock;
     FHandle: HDC;
     FSaveHandle: Integer;
-    FFontStock: TBCEditorFontStock;
     FStockBitmap: TBitmap;
-    FCalcExtentBaseStyle: TFontStyles;
-    FBaseCharWidth: Integer;
-    FBaseCharHeight: Integer;
-    FCurrentFont: HFont;
-    FExtTextOutDistance: PIntegerArray;
-    FColor: TColor;
-    FBackgroundColor: TColor;
-    FCharExtra: Integer;
-    FDrawingCount: Integer;
-    // GetCharABCWidthsW cache
-    FCharABCWidthCache : array [0..127] of TABC;
-    FCharWidthCache : array [0..127] of Integer;
   protected
-    procedure ReleaseExtTextOutDistance; virtual;
+    function GetCachedABCWidth(AChar: Cardinal; var AABC: TABC): Boolean;
     procedure AfterStyleSet; virtual;
     procedure DoSetCharExtra(Value: Integer); virtual;
-    property StockHandle: HDC read FHandle;
+    procedure FlushCharABCWidthCache;
+    procedure ReleaseExtTextOutDistance; virtual;
+    property BaseCharHeight: Integer read FBaseCharHeight;
+    property BaseCharWidth: Integer read FBaseCharWidth;
     property DrawingCount: Integer read FDrawingCount;
     property FontStock: TBCEditorFontStock read FFontStock;
-    property BaseCharWidth: Integer read FBaseCharWidth;
-    property BaseCharHeight: Integer read FBaseCharHeight;
-
-    procedure FlushCharABCWidthCache;
-    function GetCachedABCWidth(c : Cardinal; var abc : TABC) : Boolean;
+    property StockHandle: HDC read FHandle;
   public
     constructor Create(CalcExtentBaseStyle: TFontStyles; BaseFont: TFont); virtual;
     destructor Destroy; override;
@@ -159,8 +158,8 @@ type
 
 function GetFontsInfoManager: TBCEditorFontsInfoManager;
 
-function UniversalExtTextOut(AHandle: HDC; X, Y: Integer; Options: TBCEditorTextOutOptions; Rect: TRect; Str: PChar; Count: Integer;
-  ExtTextOutDistance: PIntegerArray): Boolean;
+function UniversalExtTextOut(AHandle: HDC; X, Y: Integer; Options: TBCEditorTextOutOptions; Rect: TRect; Str: PChar;
+  Count: Integer; ExtTextOutDistance: PIntegerArray): Boolean;
 
 implementation
 
@@ -176,8 +175,8 @@ begin
   Result := GFontsInfoManager;
 end;
 
-function UniversalExtTextOut(AHandle: HDC; X, Y: Integer; Options: TBCEditorTextOutOptions; Rect: TRect; Str: PChar; Count: Integer;
-  ExtTextOutDistance: PIntegerArray): Boolean;
+function UniversalExtTextOut(AHandle: HDC; X, Y: Integer; Options: TBCEditorTextOutOptions; Rect: TRect; Str: PChar;
+  Count: Integer; ExtTextOutDistance: PIntegerArray): Boolean;
 
 var
   TextOutFlags: DWORD;
@@ -435,26 +434,26 @@ end;
 procedure TBCEditorFontStock.ReleaseFontHandles;
 begin
   if FUsingFontHandles then
-  with GetFontsInfoManager do
-  begin
-    UnLockFontsInfo(FPSharedFontsInfo);
-    FUsingFontHandles := False;
-  end;
+    with GetFontsInfoManager do
+    begin
+      UnLockFontsInfo(FPSharedFontsInfo);
+      FUsingFontHandles := False;
+    end;
 end;
 
 procedure TBCEditorFontStock.ReleaseFontsInfo;
 begin
   if Assigned(FPSharedFontsInfo) then
-  with GetFontsInfoManager do
-  begin
-    if FUsingFontHandles then
+    with GetFontsInfoManager do
     begin
-      UnLockFontsInfo(FPSharedFontsInfo);
-      FUsingFontHandles := False;
+      if FUsingFontHandles then
+      begin
+        UnLockFontsInfo(FPSharedFontsInfo);
+        FUsingFontHandles := False;
+      end;
+      ReleaseFontsInfo(FPSharedFontsInfo);
+      FPSharedFontsInfo := nil;
     end;
-    ReleaseFontsInfo(FPSharedFontsInfo);
-    FPSharedFontsInfo := nil;
-  end;
 end;
 
 procedure TBCEditorFontStock.SetBaseFont(Value: TFont);
@@ -648,10 +647,34 @@ begin
   AfterStyleSet;
 end;
 
+procedure TBCEditorTextDrawer.FlushCharABCWidthCache;
+begin
+  FillChar(FCharABCWidthCache, SizeOf(TABC) * Length(FCharABCWidthCache), 0);
+  FillChar(FCharWidthCache, SizeOf(Integer) * Length(FCharWidthCache), 0);
+end;
+
 procedure TBCEditorTextDrawer.AfterStyleSet;
 begin
   if FHandle <> 0 then
     SelectObject(FHandle, FCurrentFont);
+end;
+
+function TBCEditorTextDrawer.GetCachedABCWidth(AChar: Cardinal; var AABC: TABC): Boolean;
+begin
+  if AChar > High(FCharABCWidthCache) then
+  begin
+    Result := GetCharABCWidthsW(FHandle, AChar, AChar, AABC);
+    Exit;
+  end;
+  AABC := FCharABCWidthCache[AChar];
+  if (AABC.abcA or Integer(AABC.abcB) or AABC.abcC) = 0 then
+  begin
+    Result := GetCharABCWidthsW(FHandle, AChar, AChar, AABC);
+    if Result then
+      FCharABCWidthCache[AChar] := AABC;
+  end
+  else
+    Result := True;
 end;
 
 procedure TBCEditorTextDrawer.SetForegroundColor(Value: TColor);
@@ -687,30 +710,6 @@ procedure TBCEditorTextDrawer.DoSetCharExtra(Value: Integer);
 begin
   if FHandle <> 0 then
     SetTextCharacterExtra(FHandle, Value);
-end;
-
-// FlushCharABCWidthCache
-//
-procedure TBCEditorTextDrawer.FlushCharABCWidthCache;
-begin
-   FillChar(FCharABCWidthCache, SizeOf(TABC)*Length(FCharABCWidthCache), 0);
-   FillChar(FCharWidthCache, SizeOf(Integer)*Length(FCharWidthCache), 0);
-end;
-
-// GetCachedABCWidth
-//
-function TBCEditorTextDrawer.GetCachedABCWidth(c : Cardinal; var abc : TABC) : Boolean;
-begin
-   if c>High(FCharABCWidthCache) then begin
-      Result:=GetCharABCWidthsW(FHandle, c, c, abc);
-      Exit;
-   end;
-   abc:=FCharABCWidthCache[c];
-   if (abc.abcA or Integer(abc.abcB) or abc.abcC)=0 then begin
-      Result:=GetCharABCWidthsW(FHandle, c, c, abc);
-      if Result then
-         FCharABCWidthCache[c]:=abc;
-   end else Result:=True;
 end;
 
 procedure TBCEditorTextDrawer.TextOut(X, Y: Integer; Text: PChar; Length: Integer);
@@ -757,8 +756,7 @@ var
       if LCharInfo.abcC >= 0 then
         Inc(LRealCharWidth, LCharInfo.abcC);
     end
-    else
-    if LLastChar < Ord(High(AnsiChar)) then
+    else if LLastChar < Ord(High(AnsiChar)) then
     begin
       GetTextMetricsA(FHandle, LTextMetricA);
       LRealCharWidth := LTextMetricA.tmAveCharWidth + LTextMetricA.tmOverhang;
@@ -807,7 +805,7 @@ initialization
 
 finalization
 
-  if Assigned(GFontsInfoManager) then
-    GFontsInfoManager.Free;
+if Assigned(GFontsInfoManager) then
+  GFontsInfoManager.Free;
 
 end.

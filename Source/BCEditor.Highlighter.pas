@@ -84,7 +84,7 @@ type
 implementation
 
 uses
-  BCEditor.Highlighter.JSONImporter, Types, BCEditor.Consts, BCEditor.Editor.Base;
+  BCEditor.Highlighter.JSONImporter, Types, BCEditor.Utils, BCEditor.Consts, BCEditor.Editor.Base;
 
 { TBCEditorHighlighter }
 
@@ -119,22 +119,11 @@ end;
 destructor TBCEditorHighlighter.Destroy;
 begin
   Clear;
-  {if Assigned(FCurrentToken) and FCurrentToken.Temporary then
-  begin
-    FCurrentToken.Free;
-    FCurrentToken := nil;
-    //FreeAndNil(FCurrentToken);
-  end;     }
-  //FreeAndNil(FMainRules);
+
   FMainRules.Free;
   FMainRules := nil;
   FInfo.Free;
   FInfo := nil;
-  while FAttributes.Count > 0 do
-  begin
-    TBCEditorHighlighterAttribute(FAttributes.Objects[0]).Free;
-    FAttributes.Objects[0] := nil;
-  end;
   FAttributes.Free;
   FAttributes := nil;
   FCodeFoldingRegions.Free;
@@ -145,6 +134,7 @@ begin
   FMatchingPairs := nil;
   FColors.Free;
   FColors := nil;
+
   inherited;
 end;
 
@@ -413,13 +403,23 @@ begin
   FName := ExtractFileName(AFileName);
   FName := Copy(FName, 1, Pos('.', FName) - 1);
 
-  ImportFromFile(Self, AFileName);
+  with TBCEditorHighlighterJSONImporter.Create(Self) do
+  try
+    ImportFromFile(TBCBaseEditor(FEditor).GetHighlighterFileName(AFileName));
+  finally
+    Free;
+  end;
   UpdateColors;
 end;
 
 procedure TBCEditorHighlighter.LoadFromStream(AStream: TStream);
 begin
-  ImportFromStream(Self, AStream);
+  with TBCEditorHighlighterJSONImporter.Create(Self) do
+  try
+    ImportFromStream(AStream);
+  finally
+    Free;
+  end;
   UpdateColors;
 end;
 
@@ -429,13 +429,23 @@ begin
   FColors.Name := ExtractFileName(AFileName);
   FColors.Name := Copy(Colors.Name, 1, Pos('.', Colors.Name) - 1);
 
-  ImportColorsFromFile(Self, AFileName);
+  with TBCEditorHighlighterJSONImporter.Create(Self) do
+  try
+    ImportColorsFromFile(TBCBaseEditor(FEditor).GetColorsFileName(AFileName));
+  finally
+    Free;
+  end;
   UpdateColors;
 end;
 
 procedure TBCEditorHighlighter.LoadColorsFromStream(AStream: TStream);
 begin
-  ImportColorsFromStream(Self, AStream);
+  with TBCEditorHighlighterJSONImporter.Create(Self) do
+  try
+    ImportColorsFromStream(AStream);
+  finally
+    Free;
+  end;
   UpdateColors;
 end;
 

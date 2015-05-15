@@ -410,8 +410,8 @@ begin
     if CharInSet(APLine[ARun], AllowedDelimiters) then
     begin
       Result := True;
-      AToken := TBCEditorToken.Create(TBCEditorSet(Sets[i]).Attribute);
-      AToken.Temporary := True;
+      //AToken := TBCEditorToken.Create(TBCEditorSet(Sets[i]).Attribute);
+      //AToken.Temporary := True;
       Exit;
     end;
   end;
@@ -856,12 +856,12 @@ var
   FirstChar: Char;
   BreakType: TBCEditorBreakType;
 
-  function InsertTokenDefault(Token: TBCEditorToken; Rules: TBCEditorRange; Attribute: TBCEditorHighlighterAttribute): TBCEditorToken;
+  function InsertTokenDefault(AToken: TBCEditorToken; Rules: TBCEditorRange; Attribute: TBCEditorHighlighterAttribute): TBCEditorToken;
   begin
-    Result := Rules.FindToken(Token.Symbol);
+    Result := Rules.FindToken(AToken.Symbol);
     if not Assigned(Result) then
     begin
-      Result := TBCEditorToken.Create(Token);
+      Result := TBCEditorToken.Create(AToken);
       Rules.AddToken(Result);
     end;
     if not Assigned(Result.Attribute) then

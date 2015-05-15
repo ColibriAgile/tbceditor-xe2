@@ -10,7 +10,7 @@ uses
   BCEditor.Editor.CodeFolding.Types, BCEditor.Editor.CompletionProposal, BCEditor.Editor.CompletionProposal.Form,
   BCEditor.Editor.Glyph, BCEditor.Editor.InternalImage, BCEditor.Editor.KeyCommands, BCEditor.Editor.LeftMargin,
   BCEditor.Editor.LineSpacing, BCEditor.Editor.MatchingPair, BCEditor.Editor.Minimap, BCEditor.Editor.Replace,
-  BCEditor.Editor.RightMargin, BCEditor.Editor.Scroll, BCEditor.Editor.Search,
+  BCEditor.Editor.RightMargin, BCEditor.Editor.Scroll, BCEditor.Editor.Search, BCEditor.Editor.Directories,
   BCEditor.Editor.Selection, BCEditor.Editor.SkipRegions, BCEditor.Editor.SpecialChars, BCEditor.Editor.Tabs,
   BCEditor.Editor.Undo, BCEditor.Editor.Undo.List, BCEditor.Editor.WordWrap, BCEditor.Editor.WordWrap.Helper,
   BCEditor.Highlighter, BCEditor.Highlighter.Attributes, BCEditor.KeyboardHandler, BCEditor.Lines, BCEditor.Search,
@@ -55,6 +55,7 @@ type
     FCompletionProposalTimer: TTimer;
     FCurrentMatchingPair: TBCEditorMatchingTokenResult;
     FCurrentMatchingPairMatch: TBCEditorMatchingPairMatch;
+    FDirectories: TBCEditorDirectories;
     FDoubleClickTime: Cardinal;
     FEncoding: TEncoding;
     FFocusList: TList;
@@ -190,11 +191,13 @@ type
     function GetSelectionEndPosition: TBCEditorTextPosition;
     function GetText: string;
     function GetUncollapsedLineNumber(ALine: Integer): Integer;
+    function GetUncollapsedLineNumberDifference(ALine: Integer): Integer;
     function GetWordAtCursor: string;
     function GetWordAtMouse: string;
     function GetWordAtRowColumn(ATextPosition: TBCEditorTextPosition): string;
     function GetWordWrap: Boolean;
     function GetWrapAtColumn: Integer;
+    function IsLineInsideCollapsedCodeFolding(ALine: Integer): Boolean;
     function IsKeywordAtCursorPosition(AOpenKeyWord: PBoolean = nil): Boolean;
     function IsKeywordAtCurrentLine: Boolean;
     function IsStringAllWhite(const ALine: string): Boolean;
@@ -219,7 +222,6 @@ type
     procedure CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange);
     procedure CodeFoldingExpandCollapsedLine(const ALine: Integer);
     procedure CodeFoldingExpandCollapsedLines(const AFirst, ALast: Integer);
-    procedure CodeFoldingLinesDeleted(AFirstLine: Integer; ACount: Integer);
     procedure CodeFoldingOnChange(AEvent: TBCEditorCodeFoldingChanges);
     procedure CodeFoldingUncollapse(AFoldRange: TBCEditorCodeFoldingRange);
     procedure CompletionProposalTimerHandler(Sender: TObject);
@@ -329,12 +331,9 @@ type
     function DoOnReplaceText(const ASearch, AReplace: string; ALine, AColumn: Integer; DeleteLine: Boolean): TBCEditorReplaceAction;
     function GetReadOnly: Boolean; virtual;
     function GetSelectedLength: Integer;
-    function PixelsToMinimapMouseMoveRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
-    function PixelsToMinimapRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
     function PixelsToNearestRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
     function PixelsToRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
     function RowColumnToPixels(const ADisplayPosition: TBCEditorDisplayPosition): TPoint;
-    function TranslateKeyCode(ACode: Word; AShift: TShiftState; var AData: pointer): TBCEditorCommand;
     procedure ChainLinesChanged(Sender: TObject);
     procedure ChainLinesChanging(Sender: TObject);
     procedure ChainListCleared(Sender: TObject);
@@ -424,7 +423,10 @@ type
     destructor Destroy; override;
 
     function CaretInView: Boolean;
+    function CreateHighlighterIncludeFileStream(AFileName: string): TStream; virtual;
     function DisplayToTextPosition(const ADisplayPosition: TBCEditorDisplayPosition): TBCEditorTextPosition;
+    function GetColorsFileName(AFileName: string): string;
+    function GetHighlighterFileName(AFileName: string): string;
     function FindPrevious: Boolean;
     function FindNext: Boolean;
     function GetBookmark(ABookmark: Integer; var X, Y: Integer): Boolean;
@@ -438,6 +440,7 @@ type
     function ReplaceText(const ASearchText: string; const AReplaceText: string): Integer;
     function SplitTextIntoWords(AStringList: TStrings; CaseSensitive: Boolean): string;
     function TextToDisplayPosition(const ATextPosition: TBCEditorTextPosition; ACollapsedLineNumber: Boolean = True): TBCEditorDisplayPosition;
+    function TranslateKeyCode(ACode: Word; AShift: TShiftState; var AData: pointer): TBCEditorCommand;
     function WordEnd: TBCEditorTextPosition; overload;
     function WordEnd(const ATextPosition: TBCEditorTextPosition): TBCEditorTextPosition; overload;
     function WordStart: TBCEditorTextPosition; overload;
@@ -535,6 +538,7 @@ type
     property CodeFolding: TBCEditorCodeFolding read FCodeFolding write SetCodeFolding;
     property CompletionProposal: TBCEditorCompletionProposal read FCompletionProposal write FCompletionProposal;
     property Cursor default crIBeam;
+    property Directories: TBCEditorDirectories read FDirectories write FDirectories;
     property DisplayLineCount: Integer read GetDisplayLineCount;
     property DisplayX: Integer read GetDisplayX;
     property DisplayPosition: TBCEditorDisplayPosition read GetDisplayPosition;
@@ -666,6 +670,8 @@ begin
   FPlugins := TList.Create;
   FCodeFolding := TBCEditorCodeFolding.Create;
   FCodeFolding.OnChange := CodeFoldingOnChange;
+  { Directory }
+  FDirectories := TBCEditorDirectories.Create;
   { Matching pair }
   FMatchingPair := TBCEditorMatchingPair.Create;
   { Line spacing }
@@ -788,6 +794,7 @@ destructor TBCBaseEditor.Destroy;
 begin
   ClearCodeFolding;
   FCodeFolding.Free;
+  FDirectories.Free;
   FAllCodeFoldingRanges.Free;
   FHighlighter.Free;
   FHighlighter := nil;
@@ -802,6 +809,7 @@ begin
   FPlugins := nil;
   FMarkList.Free;
   FKeyCommands.Free;
+  FKeyCommands := nil;
   FKeyboardHandler.Free;
   FFocusList.Free;
   FSelection.Free;
@@ -854,7 +862,7 @@ begin
 
   for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
   with FAllCodeFoldingRanges[i] do
-  if not ParentCollapsed and ((FromLine = ALine) {or (ToLine = ALine)}) and Collapsable then
+  if not ParentCollapsed and (FromLine = ALine) and Collapsable then
   begin
     Result := FAllCodeFoldingRanges[i];
     Break;
@@ -1826,26 +1834,28 @@ begin
 end;
 
 function TBCBaseEditor.GetUncollapsedLineNumber(ALine: Integer): Integer;
+begin
+  Result := ALine;
+  Inc(Result, GetUncollapsedLineNumberDifference(ALine));
+end;
+
+function TBCBaseEditor.GetUncollapsedLineNumberDifference(ALine: Integer): Integer;
 var
   i: Integer;
-  LDifference: Integer;
   LFoldRange: TBCEditorCodeFoldingRange;
 begin
-  LDifference := 0;
   LFoldRange := CodeFoldingRangeForLine(ALine);
-  Result := ALine;
+  Result := 0;
 
   for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
   with FAllCodeFoldingRanges[i] do
   if FromLine < ALine then
   begin
     if (FAllCodeFoldingRanges[i] <> LFoldRange) and Collapsed and not ParentCollapsed then
-      Inc(LDifference, Max(CollapsedLines.Count - 1, 0))
+      Inc(Result, Max(CollapsedLines.Count - 1, 0))
   end
   else
     Break;
-
-  Inc(Result, LDifference);
 end;
 
 function TBCBaseEditor.GetWordAtCursor: string;
@@ -1902,6 +1912,21 @@ begin
     wwsSpecified:
       Result := FWordWrap.Position;
   end
+end;
+
+function TBCBaseEditor.IsLineInsideCollapsedCodeFolding(ALine: Integer): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
+  with FAllCodeFoldingRanges[i] do
+  if FromLine > ALine then
+    Break
+  else
+  if (FromLine <= ALine) and (ALine <= ToLine) then
+    if Collapsed or ParentCollapsed then
+      Exit(True);
 end;
 
 function TBCBaseEditor.IsKeywordAtCursorPosition(AOpenKeyWord: PBoolean): Boolean;
@@ -2152,18 +2177,6 @@ begin
   end;
   Result.Char := X;
   Result.Line := Y;
-end;
-
-function TBCBaseEditor.PixelsToMinimapRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
-begin
-  Result.Column := Max(1, LeftChar + ((X - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2) div FMinimap.CharWidth));
-  Result.Row := Max(1, FMinimap.TopLine + (Y div FMinimap.CharHeight));
-end;
-
-function TBCBaseEditor.PixelsToMinimapMouseMoveRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
-begin
-  Result.Column := Max(1, LeftChar + ((X - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2) div FMinimap.CharWidth));
-  Result.Row := Max(1, RoundCorrect(DisplayLineCount * ((Y / FMinimap.CharHeight) / Min(DisplayLineCount, FMinimap.VisibleLines))) );
 end;
 
 function TBCBaseEditor.PixelsToNearestRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
@@ -2606,6 +2619,8 @@ begin
   UpdateWordWrapHiddenOffsets;
 end;
 
+{
+TODO: Needed?
 procedure TBCBaseEditor.CodeFoldingLinesDeleted(AFirstLine: Integer; ACount: Integer);
 var
   i: Integer;
@@ -2631,7 +2646,7 @@ begin
       UpdateFoldRanges(AFirstLine, -ACount);
     LeftMarginChanged(Self);
   end;
-end;
+end;  }
 
 procedure TBCBaseEditor.CodeFoldingOnChange(AEvent: TBCEditorCodeFoldingChanges);
 begin
@@ -2894,8 +2909,8 @@ begin
     if Marks[i].Line > AFirstLine then
       Marks[i].Line := AFirstLine;
 
-  if FCodeFolding.Visible then
-    CodeFoldingLinesDeleted(AFirstLine + 1, ACount);
+  //if FCodeFolding.Visible then
+  //  CodeFoldingLinesDeleted(AFirstLine + 1, ACount);
 
   if Assigned(FOnLinesDeleted) then
     FOnLinesDeleted(Self, AFirstLine, ACount);
@@ -3218,8 +3233,6 @@ end;
 
 procedure TBCBaseEditor.MinimapChanged(Sender: TObject);
 begin
-  if DisplayLineCount > 0 then
-    FMinimap.TopLine := Max(FTopLine - Abs(Trunc((FMinimap.VisibleLines - VisibleLines) * (FTopLine / DisplayLineCount))), 1);
   SizeOrFontChanged(True);
   Invalidate;
   if not (csLoading in ComponentState) then
@@ -3633,8 +3646,8 @@ var
             { Check if any shared close }
             if LOpenTokenFoldRangeList.Count > 0 then
             begin
-              j := LOpenTokenFoldRangeList.Count - 1;
-              for i := 0 to j do
+              i := 0;
+              while i < LOpenTokenFoldRangeList.Count do
               begin
                 LCodeFoldingRange := LOpenTokenFoldRangeList.Items[i];
                 if Assigned(LCodeFoldingRange.FoldRegion) then
@@ -3645,7 +3658,9 @@ var
                     LCodeFoldingRange.ToLine := LLine + 1; { +1 for not 0-based }
                     LOpenTokenFoldRangeList.Remove(LCodeFoldingRange);
                     Dec(LFoldCount);
+                    Continue;
                   end;
+                Inc(i);
               end;
             end;
             { Check if the close token is one of the open tokens }
@@ -4480,7 +4495,7 @@ begin
   if LDisplayLineCount = 0 then
     LDisplayLineCount := 1;
 
-  if soPastEndOfFileMarker in FScroll.Options then
+  if (soPastEndOfFileMarker in FScroll.Options) and not (sfInSelection in FStateFlags) then
     Value := Min(Value, LDisplayLineCount)
   else
     Value := Min(Value, LDisplayLineCount - FVisibleLines + 1);
@@ -4490,9 +4505,8 @@ begin
   begin
     LDelta := TopLine - Value;
     FTopLine := Value;
-    if FMinimap.Visible then
-      FMinimap.TopLine :=
-        Max(FTopLine - Abs(Trunc((FMinimap.VisibleLines - FVisibleLines) * (FTopLine / LDisplayLineCount))), 1);
+    if FMinimap.Visible and not FMinimap.Dragging then
+      FMinimap.TopLine := Max(FTopLine - Abs(Trunc((FMinimap.VisibleLines - FVisibleLines) * (FTopLine / LDisplayLineCount))), 1);
     LClientRect := ClientRect;
     DeflateMinimapRect(LClientRect);
     if Abs(LDelta) < FVisibleLines then
@@ -6083,36 +6097,39 @@ end;
 
 procedure TBCBaseEditor.DoOnMinimapClick(Button: TMouseButton; X, Y: Integer);
 var
-  LNewLine, LPreviousLine: Integer;
+  LNewLine, LPreviousLine, LStep: Integer;
 begin
+  FMinimap.Clicked := True;
   LPreviousLine := -1;
-  LNewLine := PixelsToMinimapRowColumn(X, Y).Row;
+  LNewLine := Max(1, FMinimap.TopLine + Y div FMinimap.CharHeight); // PixelsToMinimapRowColumn(X, Y).Row;
 
   if (LNewLine >= TopLine) and (LNewLine <= TopLine + VisibleLines) then
     CaretY := LNewLine
   else
   begin
     LNewLine := LNewLine - VisibleLines div 2;
+    LStep :=  Abs(LNewLine - TopLine) div 5;
     if LNewLine < TopLine then
-    while LNewLine < TopLine do
+    while LNewLine < TopLine - LStep do
     begin
-      TopLine := TopLine - 4;
+      TopLine := TopLine - LStep;
       if TopLine <> LPreviousLine then
         LPreviousLine := TopLine
       else
-        Break; 
+        Break;
       Paint;
     end
     else
-    while LNewLine > TopLine do
+    while LNewLine > TopLine + LStep do
     begin
-      TopLine := TopLine + 4;
+      TopLine := TopLine + LStep;
       if TopLine <> LPreviousLine then
         LPreviousLine := TopLine
       else
         Break;
       Paint;
     end;
+    TopLine := LNewLine;
   end;
   FMinimapClickOffsetY := LNewLine - TopLine;
 end;
@@ -6205,10 +6222,6 @@ begin
     LPoint := Point(Mouse.CursorPos.X, Mouse.CursorPos.Y);
     LRect := GetCodeFoldingCollapseMarkRect(LFoldRange, LDisplayPosition.Row);
   end;
-
-  if Cursor <> crIBeam then
-    if not PtInRect(LRect, LPoint) then
-      SetCursor(Screen.Cursors[crIBeam]);
 
   if Assigned(AForm) then
   begin
@@ -6674,26 +6687,31 @@ var
   S: string;
   LTopLine: Integer;
 begin
-  if LeftMargin.Bookmarks.Visible and (X < FLeftMargin.Width + FCodeFolding.Width) then
-    Exit;
+  Exclude(FStateFlags, sfInSelection);
 
   if FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
   begin
-    SetCursor(Screen.Cursors[crArrow]);
-    if FMinimap.Dragging then
+    if FMinimap.Clicked then
     begin
-      LTopLine := PixelsToMinimapMouseMoveRowColumn(X, Y).Row - FMinimapClickOffsetY;
-      if TopLine <> LTopLine then
+      if FMinimap.Dragging then
       begin
-        TopLine := LTopLine;
-        Paint;
+        FMinimap.TopLine := Max(TopLine - Abs(Trunc((FMinimap.VisibleLines - FVisibleLines) * (TopLine / GetDisplayLineCount))), 1);
+        LTopLine := Max(1, FMinimap.TopLine + Y div FMinimap.CharHeight - FMinimapClickOffsetY);
+        if TopLine <> LTopLine then
+        begin
+          TopLine := LTopLine;
+          Paint;
+        end;
       end;
+      if not FMinimap.Dragging then
+        if (ssLeft in Shift) and MouseCapture and (Abs(FMouseDownY - Y) >= GetSystemMetrics(SM_CYDRAG)) then
+          FMinimap.Dragging := True;
+      Exit;
     end;
-    if not FMinimap.Dragging then
-      if (ssLeft in Shift) and MouseCapture and (Abs(FMouseDownY - Y) >= GetSystemMetrics(SM_CYDRAG)) then
-        FMinimap.Dragging := True;
-    Exit;
   end;
+
+  if FMinimap.Clicked then
+    Exit;
 
   inherited MouseMove(Shift, X, Y);
 
@@ -6703,12 +6721,7 @@ begin
   if (rmoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
   begin
     FRightMargin.MouseOver := (Abs(RowColumnToPixels(GetDisplayPosition(FRightMargin.Position + 1, 0)).X - X) < 3);
-    if FRightMargin.Moving or FRightMargin.MouseOver then
-      SetCursor(Screen.Cursors[crHSplit])
-    else
-    if not FMouseOverURI then
-      if Cursor <> FCodeFolding.Hint.Cursor then { avoid cursor flickering when code folding hint is shown }
-        SetCursor(Screen.Cursors[crIBeam]);
+
     if FRightMargin.Moving and (X > FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2) then
     begin
       FRightMarginMovePosition := X;
@@ -6745,11 +6758,11 @@ begin
       if LRect.Right - LScrolledXBy > 0 then
       begin
         OffsetRect(LRect, -LScrolledXBy, 0);
-
+        FCodeFolding.MouseOverHint := False;
         if PtInRect(LRect, LPoint) then
         begin
-          if Cursor <> FCodeFolding.Hint.Cursor then
-            SetCursor(Screen.Cursors[FCodeFolding.Hint.Cursor]);
+          FCodeFolding.MouseOverHint := True;
+
           LPoint := RowColumnToPixels(GetDisplayPosition(0, LDisplayPosition.Row + 1));
           LPoint.X := Mouse.CursorPos.X - X + LPoint.X + 4 + LScrolledXBy;
           LPoint.Y := Mouse.CursorPos.Y - Y + LPoint.Y + 2;
@@ -6757,7 +6770,6 @@ begin
           if not Assigned(FCodeFoldingHintForm) then
           begin
             FCodeFoldingHintForm := TBCEditorCompletionProposalForm.Create(Self);
-
             with FCodeFoldingHintForm do
             begin
               BackgroundColor := FCodeFolding.Hint.Colors.Background;
@@ -6791,8 +6803,7 @@ begin
   { Drag & Drop }
   if MouseCapture and (sfWaitForDragging in FStateFlags) then
   begin
-    if (Abs(FMouseDownX - X) >= GetSystemMetrics(SM_CXDRAG)) or (Abs(FMouseDownY - Y) >= GetSystemMetrics(SM_CYDRAG))
-    then
+    if (Abs(FMouseDownX - X) >= GetSystemMetrics(SM_CXDRAG)) or (Abs(FMouseDownY - Y) >= GetSystemMetrics(SM_CYDRAG)) then
     begin
       Exclude(FStateFlags, sfWaitForDragging);
       BeginDrag(False);
@@ -6815,9 +6826,8 @@ begin
       InternalCaretPosition := DisplayToTextPosition(LDisplayPosition);
       SelectionEndPosition := CaretPosition;
     end;
+    Include(FStateFlags, sfInSelection);
     Exclude(FStateFlags, sfCodeFoldingInfoClicked);
-    if (sfPossibleLeftMarginClick in FStateFlags) and (FSelectionBeginPosition.Line <> CaretPosition.Line) then
-      Include(FStateFlags, sfLeftMarginDragging);
   end;
 end;
 
@@ -6829,7 +6839,7 @@ var
   LCursorPoint: TPoint;
   LTextPosition: TBCEditorTextPosition;
 begin
-  //FMinimap.Clicked := False;
+  FMinimap.Clicked := False;
   FMinimap.Dragging := False;
 
   inherited MouseUp(Button, Shift, X, Y);
@@ -6883,7 +6893,6 @@ begin
   end;
   Exclude(FStateFlags, sfDblClicked);
   Exclude(FStateFlags, sfPossibleLeftMarginClick);
-  Exclude(FStateFlags, sfLeftMarginDragging);
 end;
 
 procedure TBCBaseEditor.NotifyHookedCommandHandlers(AfterProcessing: Boolean; var ACommand: TBCEditorCommand;
@@ -6986,7 +6995,7 @@ begin
         FTextDrawer.SetBaseFont(FMinimap.Font);
         FTextDrawer.Style := FMinimap.Font.Style;
         FMinimap.CharWidth := FTextDrawer.CharWidth;
-        FMinimap.CharHeight := FTextDrawer.CharHeight;
+        FMinimap.CharHeight := FTextDrawer.CharHeight - 1;
         FMinimap.VisibleLines := ClientHeight div FMinimap.CharHeight;
 
         LLine1 := Max(FMinimap.TopLine, 1);
@@ -7217,7 +7226,7 @@ procedure TBCBaseEditor.PaintLeftMargin(const AClipRect: TRect; AFirstRow, ALast
   var
     Y: Integer;
   begin
-    if (not ABookMark.InternalImage) and Assigned(FLeftMargin.Bookmarks.Images) then
+    if not ABookMark.InternalImage and Assigned(FLeftMargin.Bookmarks.Images) then
     begin
       if ABookMark.ImageIndex <= FLeftMargin.Bookmarks.Images.Count then
       begin
@@ -7413,8 +7422,9 @@ begin
             else
             begin
               LMarkRow := LineToRow(Line);
-              if (LMarkRow - aFirstRow >= 0) and (LMarkRow - AFirstRow <= ALastRow - AFirstRow + 1) then
-                DrawMark(Marks[i], LLeftMarginOffsets[LMarkRow - AFirstRow], LMarkRow);
+              if not FCodeFolding.Visible or FCodeFolding.Visible and not IsLineInsideCollapsedCodeFolding(LMarkRow) then
+                if (LMarkRow - aFirstRow >= 0) and (LMarkRow - AFirstRow <= ALastRow - AFirstRow + 1) then
+                  DrawMark(Marks[i], LLeftMarginOffsets[LMarkRow - AFirstRow], LMarkRow);
             end
           end;
       if LHasOtherMarks then
@@ -7424,8 +7434,9 @@ begin
             if Visible and not IsBookmark and (Line >= LFirstLine) and (Line <= LLastLine) then
             begin
               LMarkRow := LineToRow(Line);
-              if (LMarkRow - aFirstRow >= 0) and (LMarkRow - AFirstRow <= ALastRow - AFirstRow + 1) then
-                DrawMark(Marks[i], LLeftMarginOffsets[LMarkRow - AFirstRow], LMarkRow);
+              if not FCodeFolding.Visible or FCodeFolding.Visible and not IsLineInsideCollapsedCodeFolding(LMarkRow) then
+                if (LMarkRow - aFirstRow >= 0) and (LMarkRow - AFirstRow <= ALastRow - AFirstRow + 1) then
+                  DrawMark(Marks[i], LLeftMarginOffsets[LMarkRow - AFirstRow], LMarkRow);
             end;
           end;
     finally
@@ -7463,7 +7474,9 @@ begin
     begin
       for LLine := AFirstRow to ALastRow do
       begin
-        i := RowToLine(LLine) - 1;
+        i := RowToLine(LLine);
+        if FCodeFolding.Visible then
+          i := GetUncollapsedLineNumber(i);
         LLineRect.Left := LPanelRect.Left;
         LLineRect.Right := LPanelRect.Right;
         LLineRect.Top := (LLine - TopLine) * LineHeight;
@@ -9526,13 +9539,22 @@ begin
   if LCursorPoint.X < FLeftMargin.GetWidth + FCodeFolding.GetWidth then
     SetCursor(Screen.Cursors[FLeftMargin.Cursor])
   else
+  if FMinimap.Visible and (LCursorPoint.X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
+    SetCursor(Screen.Cursors[crArrow])  // TODO: Option?
+  else
   begin
     LTextPosition := DisplayToTextPosition(PixelsToRowColumn(LCursorPoint.X, LCursorPoint.Y));
     if (eoDragDropEditing in FOptions) and not MouseCapture and IsPointInSelection(LTextPosition) then
       LNewCursor := crArrow
     else
+    if FRightMargin.Moving or FRightMargin.MouseOver then
+      LNewCursor := crHSplit
+    else
     if FMouseOverURI then
       LNewCursor := crHandPoint
+    else
+    if FCodeFolding.MouseOverHint then
+      LNewCursor := FCodeFolding.Hint.Cursor
     else
       LNewCursor := Cursor;
     FKeyboardHandler.ExecuteMouseCursor(Self, LTextPosition, LNewCursor);
@@ -9549,6 +9571,11 @@ begin
   LDisplayPosition := DisplayPosition;
   Result := (LDisplayPosition.Column >= LeftChar) and (LDisplayPosition.Column <= LeftChar + CharsInWindow) and
     (LDisplayPosition.Row >= TopLine) and (LDisplayPosition.Row <= TopLine + VisibleLines);
+end;
+
+function TBCBaseEditor.CreateHighlighterIncludeFileStream(AFileName: string): TStream;
+begin
+  Result := TFileStream.Create(GetHighlighterFileName(AFileName), fmOpenRead);
 end;
 
 function TBCBaseEditor.DisplayToTextPosition(const ADisplayPosition: TBCEditorDisplayPosition): TBCEditorTextPosition;
@@ -9585,6 +9612,26 @@ begin
     end;
     Result.Char := i;
   end;
+end;
+
+function TBCBaseEditor.GetColorsFileName(AFileName: string): string;
+begin
+  Result := Trim(ExtractFilePath(AFileName));
+  if Result = '' then
+    Result := FDirectories.Colors;
+  if Trim(ExtractFilePath(Result)) = '' then
+    Result := Format('%s%s', [IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)), Result]);
+  Result := Format('%s%s', [IncludeTrailingPathDelimiter(Result), ExtractFileName(AFileName)]);
+end;
+
+function TBCBaseEditor.GetHighlighterFileName(AFileName: string): string;
+begin
+  Result := Trim(ExtractFilePath(AFileName));
+  if Result = '' then
+    Result := FDirectories.Highlighters;
+  if Trim(ExtractFilePath(Result)) = '' then
+    Result := Format('%s%s', [IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)), Result]);
+  Result := Format('%s%s', [IncludeTrailingPathDelimiter(Result), ExtractFileName(AFileName)]);
 end;
 
 function TBCBaseEditor.FindPrevious: Boolean;
@@ -10639,11 +10686,7 @@ begin
         (ACommand = ecTab) or (ACommand = ecShiftTab) or (ACommand = ecString) then
         Exit;
   end;
-  { Drop indentation flag }
-  LIsJustIndented := sfJustIndented in FStateFlags;
-  Exclude(FStateFlags, sfJustIndented);
-
-  { Process a comand }
+{ Process a comand }
   LHelper := EmptyStr;
   IncPaintLock;
   try
@@ -11505,9 +11548,6 @@ begin
               end
               else
               begin
-                if LIsJustIndented then
-                  FUndoList.AddGroupBreak;
-
                 FUndoList.AddChange(crInsert, LBlockStartPosition, GetTextPosition(FCaretX + 1, FCaretY), '', smNormal);
                 FLines.Attributes[FCaretY - 1].LineState := lsModified;
 
@@ -11730,8 +11770,13 @@ begin
 end;
 
 procedure TBCBaseEditor.GotoLineAndCenter(ALine: Integer);
+var
+  LLine: Integer;
 begin
-  SetCaretPosition(False, GetTextPosition(1, ALine));
+  LLine := ALine;
+  if FCodeFolding.Visible then
+    Dec(LLine, GetUncollapsedLineNumberDifference(ALine));
+  SetCaretPosition(False, GetTextPosition(1, LLine));
   if SelectionAvailable then
     InvalidateSelection;
   FSelectionBeginPosition.Char := FCaretX;
@@ -12296,8 +12341,12 @@ begin
   { Delete all uncollapsed folds, if not in redo list }
   for i := FAllCodeFoldingRanges.AllCount - 1 downto 0 do
     with FAllCodeFoldingRanges[i] do
-      if (not Collapsed) and (not ParentCollapsed) and not FoundFromUndoOrRedoList(FAllCodeFoldingRanges[i]) then
+      if not Collapsed and not ParentCollapsed and not FoundFromUndoOrRedoList(FAllCodeFoldingRanges[i]) then
+      begin
+        TBCEditorCodeFoldingRanges(FAllCodeFoldingRanges[i]).Free;
+        FAllCodeFoldingRanges[i] := nil;
         FAllCodeFoldingRanges.AllRanges.Delete(i);
+      end;
 
   SetLength(LFoldRangeLookup, Lines.Count + 1);
   LCount := FAllCodeFoldingRanges.AllCount - 1;
@@ -12372,7 +12421,9 @@ begin
     end;
   finally
     Finalize(LFoldRangeLookup);
+    LFoldRangeLookup := nil;
     Finalize(LUncollapsedLinenumbersLookup);
+    LUncollapsedLinenumbersLookup := nil;
     LTemporaryLines.Free;
   end;
   Invalidate;
