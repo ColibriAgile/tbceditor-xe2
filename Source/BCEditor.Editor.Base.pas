@@ -4512,8 +4512,13 @@ begin
           InvalidateLines(LCurrentLine, FSelectionEndPosition.Line);
       end;
     end;
-    if soHighlightSimilarTerms in FSelection.Options then
-      FindAll(SelectedText);
+    if soHighlightSimilarTerms in FSelection.Options then begin
+      if (SelectionBeginPosition.Line = SelectionEndPosition.Line) and (SelectionBeginPosition.Char <> SelectionEndPosition.Char) then begin
+         if Length(GetWordAtRowColumn(SelectionBeginPosition)) = Abs(SelectionBeginPosition.Char - SelectionEndPosition.Char) then begin
+            FindAll(GetWordAtRowColumn(SelectionBeginPosition));
+         end;
+      end;
+    end;
     if Assigned(FOnSelectionChanged) then
       FOnSelectionChanged(Self);
   end;
