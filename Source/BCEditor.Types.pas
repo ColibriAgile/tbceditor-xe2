@@ -21,6 +21,8 @@ type
 
   TBCEditorScrollEvent = procedure(Sender: TObject; ScrollBar: TScrollBarKind) of object;
 
+  TBCEditorCaretChangedEvent = procedure(Sender: TObject; X, Y: Integer) of object;
+
   TBCEditorBookmarkPanelPaintEvent = procedure(Sender: TObject; ACanvas: TCanvas; ARect: TRect; AFirstLine: Integer; ALastLine: Integer) of object;
   TBCEditorBookmarkPanelLinePaintEvent = procedure(Sender: TObject; ACanvas: TCanvas; ARect: TRect; ALineNumber: Integer) of object;
 
@@ -28,7 +30,7 @@ type
     var AForeground: TColor; var ABackground: TColor) of object;
 
   TBCEditorStateFlag = (sfCaretChanged, sfScrollBarChanged, sfLinesChanging, sfIgnoreNextChar, sfCaretVisible, sfDblClicked,
-    sfPossibleLeftMarginClick, sfWaitForDragging, sfCodeFoldingInfoClicked, sfInSelection);
+    sfWaitForDragging, sfCodeFoldingInfoClicked, sfInSelection);
   TBCEditorStateFlags = set of TBCEditorStateFlag;
 
   TBCEditorOption = (
@@ -65,6 +67,7 @@ type
 
   TBCEditorSelectionOption = (
     soALTSetsColumnMode,
+    soHighlightSimilarTerms,
     soTripleClickRowSelect
   );
   TBCEditorSelectionOptions = set of TBCEditorSelectionOption;

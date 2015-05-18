@@ -93,6 +93,7 @@ type
     FMouseWheelAccumulator: Integer;
     FNeedToRescanCodeFolding: Boolean;
     FOldMouseMovePoint: TPoint;
+    FOnCaretChanged: TBCEditorCaretChangedEvent;
     FOnChange: TNotifyEvent;
     FOnClearMark: TBCEditorBookmarkEvent;
     FOnCommandProcessed: TBCEditorProcessCommandEvent;
@@ -111,6 +112,7 @@ type
     FOnReplaceText: TBCEditorReplaceTextEvent;
     FOnRightMarginMouseUp: TNotifyEvent;
     FOnScroll: TBCEditorScrollEvent;
+    FOnSelectionChanged: TNotifyEvent;
     FOptions: TBCEditorOptions;
     FOriginalLines: TBCEditorLines;
     FOriginalRedoList: TBCEditorUndoList;
@@ -166,7 +168,6 @@ type
     function GetCaretPosition: TBCEditorTextPosition;
     function GetClipboardText: string;
     function GetCodeFoldingCollapseMarkRect(AFoldRange: TBCEditorCodeFoldingRange; ARow: Integer): TRect;
-    function GetCodeFoldingUncollapsedStrings: TBCEditorLines;
     function GetCollapsedLineNumber(ALine: Integer): Integer;
     function GetDisplayLineCount: Integer;
     function GetDisplayPosition: TBCEditorDisplayPosition; overload;
@@ -236,7 +237,7 @@ type
     procedure DoShiftTabKey;
     procedure DoTabKey;
     procedure DrawCursor(ACanvas: TCanvas);
-    procedure FindAll;
+    procedure FindAll(ASearchText: string = '');
     procedure FontChanged(Sender: TObject);
     procedure LinesChanging(Sender: TObject);
     procedure MinimapChanged(Sender: TObject);
@@ -424,6 +425,7 @@ type
 
     function CaretInView: Boolean;
     function CreateFileStream(AFileName: string): TStream; virtual;
+    function CreateUncollapsedLines: TBCEditorLines;
     function DisplayToTextPosition(const ADisplayPosition: TBCEditorDisplayPosition): TBCEditorTextPosition;
     function GetColorsFileName(AFileName: string): string;
     function GetHighlighterFileName(AFileName: string): string;
@@ -508,7 +510,7 @@ type
     procedure RescanCodeFoldingRanges;
     procedure SaveToFile(const AFileName: String);
     procedure SelectAll;
-    procedure SetBookmark(Index: Integer; X: Integer; Y: Integer);
+    procedure SetBookmark(AIndex: Integer; X: Integer; Y: Integer);
     procedure SetCaretAndSelection(const CaretPosition, BlockBeginPosition, BlockEndPosition: TBCEditorTextPosition; ACaret: Integer = -1);
     procedure SetFocus; override;
     procedure SetLineColor(ALine: Integer; AForegroundColor, ABackgroundColor: TColor);
@@ -562,6 +564,7 @@ type
     property OnBookmarkPanelAfterPaint: TBCEditorBookmarkPanelPaintEvent read FBookmarkPanelAfterPaint write FBookmarkPanelAfterPaint;
     property OnBookmarkPanelBeforePaint: TBCEditorBookmarkPanelPaintEvent read FBookmarkPanelBeforePaint write FBookmarkPanelBeforePaint;
     property OnBookmarkPanelLinePaint: TBCEditorBookmarkPanelLinePaintEvent read FBookmarkPanelLinePaint write FBookmarkPanelLinePaint;
+    property OnCaretChanged: TBCEditorCaretChangedEvent read FOnCaretChanged write FOnCaretChanged;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnClearBookmark: TBCEditorBookmarkEvent read FOnClearMark write FOnClearMark;
     property OnCommandProcessed: TBCEditorProcessCommandEvent read FOnCommandProcessed write FOnCommandProcessed;
@@ -579,6 +582,7 @@ type
     property OnProcessUserCommand: TBCEditorProcessCommandEvent read FOnProcessUserCommand write FOnProcessUserCommand;
     property OnReplaceText: TBCEditorReplaceTextEvent read FOnReplaceText write FOnReplaceText;
     property OnRightMarginMouseUp: TNotifyEvent read FOnRightMarginMouseUp write FOnRightMarginMouseUp;
+    property OnSelectionChanged: TNotifyEvent read FOnSelectionChanged write FOnSelectionChanged;
     property OnScroll: TBCEditorScrollEvent read FOnScroll write FOnScroll;
     property Options: TBCEditorOptions read FOptions write SetOptions default BCEDITOR_DEFAULT_OPTIONS;
     property PaintLock: Integer read FPaintLock;
@@ -1129,7 +1133,7 @@ begin
   Result.Right := Result.Left + CharWidth * 4 - 2;
 end;
 
-function TBCBaseEditor.GetCodeFoldingUncollapsedStrings: TBCEditorLines;
+function TBCBaseEditor.CreateUncollapsedLines: TBCEditorLines;
 var
   i, j, k: Integer;
 begin
@@ -1660,7 +1664,7 @@ function TBCBaseEditor.GetSelectedText: string;
     LDisplayPosition: TBCEditorDisplayPosition;
     LTrimCount: Integer;
     LLineCount: Integer;
-    LUncollapsedStrings: TStrings;
+    LUncollapsedLines: TStrings;
   begin
     LColumnFrom := SelectionBeginPosition.Char;
     LFirst := SelectionBeginPosition.Line - 1;
@@ -1671,17 +1675,17 @@ function TBCBaseEditor.GetSelectedText: string;
       smNormal:
         if LFirst = Last then
         begin
-          LUncollapsedStrings := GetCodeFoldingUncollapsedStrings;
+          LUncollapsedLines := CreateUncollapsedLines;
           { calculate total length of result string }
           Inc(LTotalLength, LColumnTo - LColumnFrom);
-          if (Length(LUncollapsedStrings[GetUncollapsedLineNumber(LFirst + 1) - 1]) < LColumnTo) and
+          if (Length(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]) < LColumnTo) and
             Assigned(CodeFoldingRangeForLine(LFirst)) and CodeFoldingRangeForLine(LFirst).Collapsed then
           begin
             { Selection until line end -> Also get text from foldrange }
             LLineCount := 1;
             for i := GetUncollapsedLineNumber(LFirst + 1) to GetUncollapsedLineNumber(Last + 2) - 2 do
             begin
-              Inc(LTotalLength, Length(TrimRight(LUncollapsedStrings[i])));
+              Inc(LTotalLength, Length(TrimRight(LUncollapsedLines[i])));
               Inc(LLineCount);
             end;
             Inc(LTotalLength, Length(sLineBreak) * LLineCount);
@@ -1689,33 +1693,33 @@ function TBCBaseEditor.GetSelectedText: string;
           { build up result string }
           SetLength(Result, LTotalLength);
           P := PChar(Result);
-          CopyAndForward(TrimRight(LUncollapsedStrings[GetUncollapsedLineNumber(LFirst + 1) - 1]), LColumnFrom,
+          CopyAndForward(TrimRight(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]), LColumnFrom,
             LColumnTo - LColumnFrom, P);
-          if (Length(LUncollapsedStrings[GetUncollapsedLineNumber(LFirst + 1) - 1]) < LColumnTo) and
+          if (Length(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]) < LColumnTo) and
             Assigned(CodeFoldingRangeForLine(LFirst)) and CodeFoldingRangeForLine(LFirst).Collapsed then
           begin
             { Selection until line end -> Also get text from foldrange }
             CopyAndForward(sLineBreak, 1, MaxInt, P);
             for i := GetUncollapsedLineNumber(LFirst + 1) to GetUncollapsedLineNumber(Last + 2) - 2 do
             begin
-              CopyAndForward(TrimRight(LUncollapsedStrings[i]), 1, MaxInt, P);
+              CopyAndForward(TrimRight(LUncollapsedLines[i]), 1, MaxInt, P);
               CopyAndForward(sLineBreak, 1, MaxInt, P);
             end;
           end;
-          LUncollapsedStrings.Free;
+          LUncollapsedLines.Free;
         end
         else
         begin
-          LUncollapsedStrings := GetCodeFoldingUncollapsedStrings;
+          LUncollapsedLines := CreateUncollapsedLines;
           { calculate total length of result string }
           LLineCount := 0;
           { first line }
-          Inc(LTotalLength, Length(TrimRight(LUncollapsedStrings[GetUncollapsedLineNumber(LFirst + 1) - 1])));
+          Inc(LTotalLength, Length(TrimRight(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1])));
           Inc(LLineCount);
           { middle lines }
           for i := GetUncollapsedLineNumber(LFirst + 1) to GetUncollapsedLineNumber(Last + 1) - 2 do
           begin
-            Inc(LTotalLength, Length(TrimRight(LUncollapsedStrings[i])));
+            Inc(LTotalLength, Length(TrimRight(LUncollapsedLines[i])));
             Inc(LLineCount);
           end;
           { last line }
@@ -1725,17 +1729,17 @@ function TBCBaseEditor.GetSelectedText: string;
           SetLength(Result, LTotalLength);
           P := PChar(Result);
           { first line }
-          CopyAndForward(TrimRight(LUncollapsedStrings[GetUncollapsedLineNumber(LFirst + 1) - 1]), LColumnFrom, MaxInt, P);
+          CopyAndForward(TrimRight(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]), LColumnFrom, MaxInt, P);
           CopyAndForward(sLineBreak, 1, MaxInt, P);
           { middle lines }
           for i := GetUncollapsedLineNumber(LFirst + 1) to GetUncollapsedLineNumber(Last + 1) - 2 do
           begin
-            CopyAndForward(TrimRight(LUncollapsedStrings[i]), 1, MaxInt, P);
+            CopyAndForward(TrimRight(LUncollapsedLines[i]), 1, MaxInt, P);
             CopyAndForward(sLineBreak, 1, MaxInt, P);
           end;
           { last line }
-          CopyAndForward(TrimRight(LUncollapsedStrings[GetUncollapsedLineNumber(Last + 1) - 1]), 1, LColumnTo - 1, P);
-          LUncollapsedStrings.Free;
+          CopyAndForward(TrimRight(LUncollapsedLines[GetUncollapsedLineNumber(Last + 1) - 1]), 1, LColumnTo - 1, P);
+          LUncollapsedLines.Free;
         end;
       smColumn:
         begin
@@ -1778,10 +1782,10 @@ function TBCBaseEditor.GetSelectedText: string;
         end;
       smLine:
         begin
-          LUncollapsedStrings := GetCodeFoldingUncollapsedStrings;
+          LUncollapsedLines := CreateUncollapsedLines;
           for i := GetUncollapsedLineNumber(LFirst + 1) - 1 to GetUncollapsedLineNumber(Last + 2) - 2 do
           begin
-            Inc(LTotalLength, Length(TrimRight(LUncollapsedStrings[i])) + Length(sLineBreak));
+            Inc(LTotalLength, Length(TrimRight(LUncollapsedLines[i])) + Length(sLineBreak));
           end;
           if Last = Lines.Count then
             Dec(LTotalLength, Length(sLineBreak));
@@ -1790,10 +1794,10 @@ function TBCBaseEditor.GetSelectedText: string;
           P := PChar(Result);
           for i := GetUncollapsedLineNumber(LFirst + 1) - 1 to GetUncollapsedLineNumber(Last + 2) - 2 do
           begin
-            CopyAndForward(TrimRight(LUncollapsedStrings[i]), 1, MaxInt, P);
+            CopyAndForward(TrimRight(LUncollapsedLines[i]), 1, MaxInt, P);
             CopyAndForward(sLineBreak, 1, MaxInt, P);
           end;
-          LUncollapsedStrings.Free;
+          LUncollapsedLines.Free;
         end;
     end;
   end;
@@ -2573,9 +2577,14 @@ begin
     Lines.DeleteLines(FromLine, CollapsedLines.Count - 1);
 
     LLineState := Lines.Attributes[FromLine - 1].LineState;
-    Lines[FromLine - 1] := Copy(Lines[FromLine - 1], 1,
-      Length(AFoldRange.FoldRegion.OpenToken) + Pos(AFoldRange.FoldRegion.OpenToken,
-      UpperCase(Lines[FromLine - 1])) - 1) + '..' + Trim(LTextLine);
+    if FoldRegion.OpenTokenEnd <> '' then
+      Lines[FromLine - 1] := Copy(Lines[FromLine - 1], 1, Pos(FoldRegion.OpenTokenEnd,
+         UpperCase(Lines[FromLine - 1])))
+    else
+      Lines[FromLine - 1] := Copy(Lines[FromLine - 1], 1,
+        Length(AFoldRange.FoldRegion.OpenToken) + Pos(AFoldRange.FoldRegion.OpenToken,
+        UpperCase(Lines[FromLine - 1])) - 1);
+    Lines[FromLine - 1] := Lines[FromLine - 1] + '..' + Trim(LTextLine);
     Lines.Attributes[FromLine - 1].LineState := LLineState;
     Collapsed := True;
     SetParentCollapsedOfSubFoldRanges(True, FoldRangeLevel);
@@ -3174,7 +3183,7 @@ begin
   FSearchLines.Clear;
 end;
 
-procedure TBCBaseEditor.FindAll;
+procedure TBCBaseEditor.FindAll(ASearchText: string = '');
 var
   i: Integer;
   LLine, LKeyword: string;
@@ -3182,7 +3191,10 @@ var
   LPTextPosition: PBCEditorTextPosition;
 begin
   ClearSearchLines;
-  LKeyword := FSearch.SearchText;
+  if ASearchText = '' then
+    LKeyword := FSearch.SearchText
+  else
+    LKeyword := ASearchText;
   if LKeyword = '' then
     Exit;
   if not (soCaseSensitive in FSearch.Options) then
@@ -4006,14 +4018,18 @@ var
   LLine, LKeyword: string;
   LTextPtr, LKeyWordPtr, LBookmarkTextPtr: PChar;
 begin
-  if not (Visible and (soHighlightResults in FSearch.Options)) then
-    Exit;
-  if FSearch.SearchText = '' then
+  if not Visible then
     Exit;
   if not Assigned(FSearchEngine) then
     Exit;
-
-  LKeyword := FSearch.SearchText;
+  LKeyword := '';
+  if FSearch.Enabled and (soHighlightResults in FSearch.Options) then
+    LKeyword := FSearch.SearchText
+  else
+  if soHighlightSimilarTerms in FSelection.Options then
+    LKeyword := SelectedText;
+  if LKeyword = '' then
+    Exit;
   if not (soCaseSensitive in FSearch.Options) then
     LKeyword := UpperCase(LKeyword);
 
@@ -4368,11 +4384,13 @@ begin
       FUndoList.AddChange(crDelete, FSelectionBeginPosition, FSelectionEndPosition, SelectedText, FSelection.ActiveMode)
     else
       FSelection.ActiveMode := FSelection.Mode;
+
     LBlockStartPosition := SelectionBeginPosition;
     LBlockEndPosition := SelectionEndPosition;
     FSelectionBeginPosition := LBlockStartPosition;
     FSelectionEndPosition := LBlockEndPosition;
     SetSelectedTextPrimitive(Value);
+
     if (Value <> '') and (FSelection.ActiveMode <> smColumn) then
       FUndoList.AddChange(crInsert, LBlockStartPosition, LBlockEndPosition, '', FSelection.ActiveMode);
   finally
@@ -4466,6 +4484,10 @@ begin
           InvalidateLines(LCurrentLine, FSelectionEndPosition.Line);
       end;
     end;
+    if soHighlightSimilarTerms in FSelection.Options then
+      FindAll(SelectedText);
+    if Assigned(FOnSelectionChanged) then
+      FOnSelectionChanged(Self);
   end;
 end;
 
@@ -6058,6 +6080,13 @@ var
   LFoldRange: TBCEditorCodeFoldingRange;
   LCodeFoldingRegion: Boolean;
 begin
+  CaretY := DisplayToTextPosition(PixelsToRowColumn(X, Y)).Line;
+  CaretX := 0;
+  if (X < LeftMargin.Bookmarks.Panel.Width) and (Y div LineHeight <= CaretY - TopLine) and
+     LeftMargin.Bookmarks.Visible and
+    (bpoToggleBookmarkByClick in LeftMargin.Bookmarks.Panel.Options) then
+    ToggleBookmark;
+
   LCodeFoldingRegion := (X >= FLeftMargin.GetWidth) and (X <= FLeftMargin.GetWidth + FCodeFolding.GetWidth);
 
   if FCodeFolding.Visible and LCodeFoldingRegion and (Lines.Count > 0) then
@@ -6656,22 +6685,12 @@ begin
   end;
 
   if X <= FLeftMargin.GetWidth + FCodeFolding.GetWidth then
-  begin
-    CaretX := 0;
-    CaretY := DisplayToTextPosition(PixelsToRowColumn(X, Y)).Line;
-    if (X < LeftMargin.Bookmarks.Panel.Width) and LeftMargin.Bookmarks.Visible and
-      (bpoToggleBookmarkByClick in LeftMargin.Bookmarks.Panel.Options) then
-      ToggleBookmark;
-    Include(FStateFlags, sfPossibleLeftMarginClick);
-  end;
-
-  if FMatchingPair.Enabled then
-    ScanMatchingPair;
-
-  if (sfPossibleLeftMarginClick in FStateFlags) and (Button = mbRight) then
     DoOnLeftMarginClick(Button, X, Y)
   else
     RepaintGuides;
+
+  if FMatchingPair.Enabled then
+    ScanMatchingPair;
 
   if CanFocus then
   begin
@@ -6843,6 +6862,7 @@ var
 begin
   FMinimap.Clicked := False;
   FMinimap.Dragging := False;
+
   Exclude(FStateFlags, sfInSelection);
 
   inherited MouseUp(Button, Shift, X, Y);
@@ -6880,10 +6900,7 @@ begin
   if (Button = mbRight) and (Shift = [ssRight]) and Assigned(PopupMenu) then
     Exit;
   MouseCapture := False;
-  if (sfPossibleLeftMarginClick in FStateFlags) and (X < FLeftMargin.GetWidth + FCodeFolding.GetWidth) and
-    (Button <> mbRight) then
-    DoOnLeftMarginClick(Button, X, Y)
-  else
+
   if FStateFlags * [sfDblClicked, sfWaitForDragging] = [sfWaitForDragging] then
   begin
     ComputeCaret(X, Y);
@@ -6895,7 +6912,6 @@ begin
     Exclude(FStateFlags, sfWaitForDragging);
   end;
   Exclude(FStateFlags, sfDblClicked);
-  Exclude(FStateFlags, sfPossibleLeftMarginClick);
 end;
 
 procedure TBCBaseEditor.NotifyHookedCommandHandlers(AfterProcessing: Boolean; var ACommand: TBCEditorCommand;
@@ -7586,7 +7602,7 @@ begin
     Exit;
   if not Assigned(FSearchEngine) then
     Exit;
-  if FSearchEngine.ResultCount = 0 then
+  if (FSearchEngine.ResultCount = 0) and not (soHighlightSimilarTerms in FSelection.Options) then
     Exit;
   { draw lines }
   if FSearch.Map.Colors.Foreground <> clNone then
@@ -9689,7 +9705,7 @@ begin
   Result := False;
   if Assigned(Marks) then
     for i := 0 to Marks.Count - 1 do
-      if Marks[i].IsBookmark and (Marks[i].BookmarkNumber = ABookmark) then
+      if Marks[i].IsBookmark and (Marks[i].Index = ABookmark) then
       begin
         X := Marks[i].Char;
         Y := Marks[i].Line;
@@ -10380,7 +10396,7 @@ var
 begin
   for i := FAllCodeFoldingRanges.AllCount - 1 downto 0 do
     with FAllCodeFoldingRanges[i] do
-      if (FoldRangeLevel = ALevel) and (Collapsed) and (not ParentCollapsed) then
+      if (FoldRangeLevel = ALevel) and Collapsed and not ParentCollapsed then
         CodeFoldingUncollapse(FAllCodeFoldingRanges[i]);
 
   if NeedInvalidate then
@@ -11771,12 +11787,19 @@ end;
 
 procedure TBCBaseEditor.GotoLineAndCenter(ALine: Integer);
 var
-  LLine: Integer;
+  i: Integer;
 begin
-  LLine := ALine;
   if FCodeFolding.Visible then
-    Dec(LLine, GetUncollapsedLineNumberDifference(ALine));
-  SetCaretPosition(False, GetTextPosition(1, LLine));
+  begin
+    for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
+    with FAllCodeFoldingRanges[i] do
+    if FromLine > ALine then
+      Break
+    else
+    if (FromLine <= ALine) and Collapsed then
+      CodeFoldingUncollapse(FAllCodeFoldingRanges[i]);
+  end;
+  SetCaretPosition(False, GetTextPosition(1, ALine));
   if SelectionAvailable then
     InvalidateSelection;
   FSelectionBeginPosition.Char := FCaretX;
@@ -12431,17 +12454,17 @@ end;
 
 procedure TBCBaseEditor.SaveToFile(const AFileName: String);
 var
-  LUncollapsedStrings: TStrings;
+  LUncollapsedLines: TStrings;
 var
   LFileStream: TFileStream;
 begin
   LFileStream := TFileStream.Create(AFileName, fmCreate);
   try
-    LUncollapsedStrings := GetCodeFoldingUncollapsedStrings;
+    LUncollapsedLines := CreateUncollapsedLines;
     try
-      LUncollapsedStrings.SaveToStream(LFileStream, FEncoding);
+      LUncollapsedLines.SaveToStream(LFileStream, FEncoding);
     finally
-      LUncollapsedStrings.Free;
+      LUncollapsedLines.Free;
     end;
     FModified := False;
   finally
@@ -12464,29 +12487,29 @@ begin
   Invalidate;
 end;
 
-procedure TBCBaseEditor.SetBookmark(Index: Integer; X: Integer; Y: Integer);
+procedure TBCBaseEditor.SetBookmark(AIndex: Integer; X: Integer; Y: Integer);
 var
   LBookmark: TBCEditorBookmark;
 begin
-  if (Index in [0 .. 8]) and (Y >= 1) and (Y <= Max(1, FLines.Count)) then
+  if (AIndex in [0 .. 8]) and (Y >= 1) and (Y <= Max(1, FLines.Count)) then
   begin
     LBookmark := TBCEditorBookmark.Create(Self);
     with LBookmark do
     begin
       Line := Y;
       Char := X;
-      ImageIndex := Index;
-      BookmarkNumber := Index;
+      ImageIndex := AIndex;
+      Index := AIndex;
       Visible := True;
       InternalImage := not Assigned(FLeftMargin.Bookmarks.Images);
     end;
     DoOnPlaceBookmark(LBookmark);
     if Assigned(LBookmark) then
     begin
-      if Assigned(FBookmarks[Index]) then
-        ClearBookmark(Index);
-      FBookmarks[Index] := LBookmark;
-      FMarkList.Add(FBookmarks[Index]);
+      if Assigned(FBookmarks[AIndex]) then
+        ClearBookmark(AIndex);
+      FBookmarks[AIndex] := LBookmark;
+      FMarkList.Add(FBookmarks[AIndex]);
     end;
   end;
 end;
@@ -12547,13 +12570,13 @@ begin
   for i := 0 to Marks.Count - 1 do
     if CaretY = Marks[i].Line then
     begin
-      ClearBookmark(Marks[i].BookmarkNumber);
+      ClearBookmark(Marks[i].Index);
       Exit;
     end;
   X := CaretX;
   Y := CaretY;
   for i := 0 to 8 do
-    if not GetBookmark(i, X, Y) then
+    if not GetBookmark(i, X, Y) then { variables used because X and Y are var parameters }
     begin
       SetBookmark(i, CaretX, CaretY);
       Exit;
@@ -12652,13 +12675,11 @@ begin
     LCompositionForm.dwStyle := CFS_POINT;
     LCompositionForm.ptCurrentPos := Point(X, Y);
     ImmSetCompositionWindow(ImmGetContext(Handle), @LCompositionForm);
+
+    if Assigned(FOnCaretChanged) then
+      FOnCaretChanged(Self, CaretX, CaretY);
   end;
 end;
-
-(*procedure TBCBaseEditor.UpdateLongestLine;
-begin
-  FLines.GetLengthOfLongestLine{(RowToLine(FTopLine), RowToLine(FTopLine + FVisibleLines))};
-end; *)
 
 function IsTextMessage(Msg: Cardinal): Boolean;
 begin

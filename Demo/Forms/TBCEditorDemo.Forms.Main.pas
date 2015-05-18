@@ -9,7 +9,8 @@ uses
   BCCommon.Images, BCComponents.SkinProvider, BCComponents.SkinManager, BCControls.Panel, BCControls.StatusBar,
   BCComponents.TitleBar, Vcl.Menus, ToolCtrlsEh, DBGridEhToolCtrls, EhLibVCL, DBAxisGridsEh, ObjectInspectorEh,
   BCControls.Splitter, GridsEh, BCCommon.Frames.Base, sPanel, BCComponents.MultiStringHolder, sSkinManager, sStatusBar,
-  sSplitter, acTitleBar, sSkinProvider, System.Win.TaskbarCore, Vcl.Taskbar, sDialogs;
+  sSplitter, acTitleBar, sSkinProvider, System.Win.TaskbarCore, Vcl.Taskbar, sDialogs, Vcl.StdCtrls, sButton,
+  BCControls.Button;
 
 const
   BCEDITORDEMO_CAPTION = 'TBCEditor Control Demo v1.0b';
@@ -33,9 +34,9 @@ type
     PopupMenuFile: TPopupMenu;
     PopupMenuHighlighters: TPopupMenu;
     PopupMenuSkins: TPopupMenu;
-    SearchFrame: TBCSearchFrame;
     Splitter: TBCSplitter;
     OpenDialog: TsOpenDialog;
+    SearchFrame: TBCSearchFrame;
     procedure ActionFileOpenExecute(Sender: TObject);
     procedure ActionPreviewExecute(Sender: TObject);
     procedure ActionSearchExecute(Sender: TObject);
@@ -45,6 +46,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure SkinManagerGetMenuExtraLineData(FirstItem: TMenuItem; var SkinSection, Caption: string; var Glyph: TBitmap; var LineVisible: Boolean);
+    procedure EditorCaretChanged(Sender: TObject; X, Y: Integer);
   private
     procedure InitializeEditorPrint(EditorPrint: TBCEditorPrint);
     procedure PrintPreview;
@@ -66,7 +68,7 @@ procedure TMainForm.ActionSelectHighlighterExecute(Sender: TObject);
 begin
   with Editor do
   begin
-    Highlighter.LoadFromFile(Format('%sHighlighters\%s.json', [ExtractFilePath(Application.ExeName), TAction(Sender).Caption]));
+    Highlighter.LoadFromFile(Format('%s.json', [TAction(Sender).Caption]));
     ClearCodeFolding;
     Lines.Text := Highlighter.Info.General.Sample;
     InitCodeFolding;
@@ -80,8 +82,7 @@ end;
 
 procedure TMainForm.ActionSelectHighlighterColorExecute(Sender: TObject);
 begin
-  Editor.Highlighter.LoadColorsFromFile(Format('%sColors\%s.json', [ExtractFilePath(Application.ExeName),
-    TAction(Sender).Caption]));
+  Editor.Highlighter.Colors.LoadFromFile(Format('%s.json', [TAction(Sender).Caption]));
   TitleBar.Items[6].Caption := TAction(Sender).Caption;
   Editor.SetFocus;
 end;
@@ -96,9 +97,6 @@ begin
     Editor.Margins.Bottom := 0
   else
     Editor.Margins.Bottom := 5;
-  InfoText := Format('%d: %d', [Editor.CaretY, Editor.CaretX]);
-  if StatusBar.Panels[0].Text <> InfoText then
-    StatusBar.Panels[0].Text := InfoText;
   if Editor.Modified then
     InfoText := LanguageDataModule.GetConstant('Modified')
   else
@@ -113,6 +111,16 @@ begin
     if StatusBar.Panels[1].Text <> LanguageDataModule.GetConstant('Overwrite')
     then
       StatusBar.Panels[1].Text := LanguageDataModule.GetConstant('Overwrite');
+end;
+
+procedure TMainForm.EditorCaretChanged(Sender: TObject; X, Y: Integer);
+var
+  InfoText: string;
+begin
+  inherited;
+  InfoText := Format('%d: %d', [Y, X]);
+  if StatusBar.Panels[0].Text <> InfoText then
+    StatusBar.Panels[0].Text := InfoText;
 end;
 
 procedure TMainForm.InitializeEditorPrint(EditorPrint: TBCEditorPrint);
