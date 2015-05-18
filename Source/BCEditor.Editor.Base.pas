@@ -152,6 +152,10 @@ type
     FWindowProducedMessage: Boolean;
     FWordWrap: TBCEditorWordWrap;
     FWordWrapHelper: TBCEditorWordWrapHelper;
+
+    FCodeFoldingRangeForLine : array of TBCEditorCodeFoldingRange;
+    procedure PrepareCodeFoldingRangeForLine;
+
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer; AFoldCount: PInteger = nil): TBCEditorCodeFoldingRange;
     function CodeFoldingFoldRangeForLineTo(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
@@ -898,18 +902,42 @@ begin
   end;
 end;
 
-function TBCBaseEditor.CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
+procedure TBCBaseEditor.PrepareCodeFoldingRangeForLine;
 var
-  i: Integer;
+   i : Integer;
+   range : TBCEditorCodeFoldingRange;
 begin
-  Result := nil;
-  for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
-  with FAllCodeFoldingRanges[i] do
-  if not ParentCollapsed and (FromLine = ALine) then
-  begin
-    Result := FAllCodeFoldingRanges[i];
-    Break;
-  end;
+   // extending dynamically  because I'm not sure which lines those are
+   // so this is strictly a dumb cache
+   SetLength(FCodeFoldingRangeForLine, 0);
+   // reverse order because non-cached code takes first match
+   // not sure if multiple folded ranges for the same line are legit
+   for i := FAllCodeFoldingRanges.AllCount - 1 downto 0 do begin
+      range := FAllCodeFoldingRanges[i];
+      if not range.ParentCollapsed then begin
+         if range.FromLine >= Length(FCodeFoldingRangeForLine) then
+            SetLength(FCodeFoldingRangeForLine, range.FromLine+1);
+         FCodeFoldingRangeForLine[range.FromLine] := range;
+      end;
+   end;
+end;
+
+function TBCBaseEditor.CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
+begin
+   if ALine < Length(FCodeFoldingRangeForLine) then
+      Result := FCodeFoldingRangeForLine[ALine]
+   else Result := nil;
+//var
+//  i: Integer;
+//begin
+//  Result := nil;
+//  for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
+//  with FAllCodeFoldingRanges[i] do
+//  if not ParentCollapsed and (FromLine = ALine) then
+//  begin
+//    Result := FAllCodeFoldingRanges[i];
+//    Break;
+//  end;
 end;
 
 function TBCBaseEditor.CodeFoldingTreeEndForLine(ALine: Integer): Boolean;
@@ -6938,6 +6966,10 @@ var
   LLineCount, i: Integer;
   LHandle: HDC;
 begin
+  // should it be conditionned to CodeFolding.Visible?
+  // or can lines be folded even if the folding is not visible?
+  PrepareCodeFoldingRangeForLine;
+
   LClipRect := Canvas.ClipRect;
 
   LColumn1 := FLeftChar;
