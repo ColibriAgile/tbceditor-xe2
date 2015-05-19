@@ -366,6 +366,10 @@ type
     procedure DoOnPlaceBookmark(var ABookmark: TBCEditorBookmark);
     procedure DoOnProcessCommand(var ACommand: TBCEditorCommand; var AChar: Char; AData: pointer); virtual;
     procedure DoTripleClick;
+
+    procedure DoSearchStringNotFoundDialog; virtual;
+    function  DoSearchMatchNotFoundWraparoundDialog : Boolean; virtual;
+
     procedure DragCanceled; override;
     procedure DragOver(Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean); override;
     procedure FreeHintForm(var AForm: TBCEditorCompletionProposalForm);
@@ -6176,6 +6180,13 @@ begin
   end;
 end;
 
+// DoMessageDialog
+//
+function TBCBaseEditor.DoMessageDialog(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): Integer;
+begin
+   Result:=BCEditor.Utils.MessageDialog(Msg, DlgType, Buttons);
+end;
+
 procedure TBCBaseEditor.DoOnMinimapClick(Button: TMouseButton; X, Y: Integer);
 var
   LNewLine, LPreviousLine, LStep: Integer;
@@ -6250,6 +6261,20 @@ begin
   SelectionBeginPosition := GetTextPosition(0, CaretY);
   SelectionEndPosition := GetTextPosition(0, CaretY + 1);
   FLastDblClick := 0;
+end;
+
+// DoSearchStringNotFoundDialog
+//
+procedure TBCBaseEditor.DoSearchStringNotFoundDialog;
+begin
+   MessageDialog(Format(SBCEditorSearchStringNotFound, [FSearch.SearchText]), mtInformation, [mbOK]);
+end;
+
+// DoSearchMatchNotFoundWraparoundDialog
+//
+function TBCBaseEditor.DoSearchMatchNotFoundWraparoundDialog : Boolean;
+begin
+   Result := (MessageDialog(SBCEditorSearchMatchNotFound, mtConfirmation, [mbYes, mbNo]) = MrYes);
 end;
 
 procedure TBCBaseEditor.DragCanceled;
@@ -9737,10 +9762,10 @@ begin
     if (CaretX = 1) and (CaretY = 1) then
     begin
       if soShowStringNotFound in FSearch.Options then
-        MessageDialog(Format(SBCEditorSearchStringNotFound, [FSearch.SearchText]), mtInformation, [mbOK]);
+        DoSearchStringNotFoundDialog;
     end
     else
-    if MessageDialog(SBCEditorSearchMatchNotFound, mtConfirmation, [mbYes, mbNo]) = MrYes then
+    if DoSearchMatchNotFoundWraparoundDialog then
     begin
       CaretZero;
       Result := FindNext;
