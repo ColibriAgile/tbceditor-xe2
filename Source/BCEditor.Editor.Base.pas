@@ -49,6 +49,7 @@ type
     FCharsInWindow: Integer;
     FCharWidth: Integer;
     FCodeFolding: TBCEditorCodeFolding;
+    FCodeFoldingRangeForLine: array of TBCEditorCodeFoldingRange;
     FCodeFoldingHintForm: TBCEditorCompletionProposalForm;
     FCommandDrop: Boolean;
     FCompletionProposal: TBCEditorCompletionProposal;
@@ -153,7 +154,6 @@ type
     FWordWrap: TBCEditorWordWrap;
     FWordWrapHelper: TBCEditorWordWrapHelper;
 
-    FCodeFoldingRangeForLine : array of TBCEditorCodeFoldingRange;
     procedure PrepareCodeFoldingRangeForLine;
 
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer; AFoldCount: PInteger = nil): TBCEditorCodeFoldingRange;
@@ -227,6 +227,7 @@ type
     procedure CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange);
     procedure CodeFoldingExpandCollapsedLine(const ALine: Integer);
     procedure CodeFoldingExpandCollapsedLines(const AFirst, ALast: Integer);
+    procedure CodeFoldingPrepareRangeForLine;
     procedure CodeFoldingOnChange(AEvent: TBCEditorCodeFoldingChanges);
     procedure CodeFoldingUncollapse(AFoldRange: TBCEditorCodeFoldingRange);
     procedure CompletionProposalTimerHandler(Sender: TObject);
@@ -927,17 +928,6 @@ begin
    if ALine < Length(FCodeFoldingRangeForLine) then
       Result := FCodeFoldingRangeForLine[ALine]
    else Result := nil;
-//var
-//  i: Integer;
-//begin
-//  Result := nil;
-//  for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
-//  with FAllCodeFoldingRanges[i] do
-//  if not ParentCollapsed and (FromLine = ALine) then
-//  begin
-//    Result := FAllCodeFoldingRanges[i];
-//    Break;
-//  end;
 end;
 
 function TBCBaseEditor.CodeFoldingTreeEndForLine(ALine: Integer): Boolean;
@@ -975,6 +965,9 @@ begin
   Result := False;
   AForeground := clNone;
   ABackground := clNone;
+  ALine := RowToLine(ALine);
+  if FCodeFolding.Visible then
+    ALine := GetUncollapsedLineNumber(ALine);
   if Assigned(FOnCustomLineColors) then
     FOnCustomLineColors(Self, ALine, Result, AForeground, ABackground);
 end;
@@ -1208,7 +1201,7 @@ end;
 function TBCBaseEditor.GetDisplayLineCount: Integer;
 begin
   if not Assigned(FWordWrapHelper) then
-    Result := Lines.Count
+    Result := FLines.Count
   else
     Result := FWordWrapHelper.GetRowCount;
 end;
@@ -2656,6 +2649,28 @@ begin
   UpdateWordWrapHiddenOffsets;
 end;
 
+procedure TBCBaseEditor.CodeFoldingPrepareRangeForLine;
+var
+  i: Integer;
+  LMaxFromLine: Integer;
+  LCodeFoldingRange: TBCEditorCodeFoldingRange;
+begin
+  LMaxFromLine := 0;
+  SetLength(FCodeFoldingRangeForLine, 0); { empty }
+  SetLength(FCodeFoldingRangeForLine, FLines.Count + 1); { max }
+  for i := FAllCodeFoldingRanges.AllCount - 1 downto 0 do
+  begin
+    LCodeFoldingRange := FAllCodeFoldingRanges[i];
+    if not LCodeFoldingRange.ParentCollapsed then
+    begin
+      if LCodeFoldingRange.FromLine >= LMaxFromLine then
+        LMaxFromLine := LCodeFoldingRange.FromLine;
+      FCodeFoldingRangeForLine[LCodeFoldingRange.FromLine] := LCodeFoldingRange;
+    end;
+  end;
+  SetLength(FCodeFoldingRangeForLine, LMaxFromLine + 1); { actual size }
+end;
+
 {
 TODO: Needed?
 procedure TBCBaseEditor.CodeFoldingLinesDeleted(AFirstLine: Integer; ACount: Integer);
@@ -3938,6 +3953,7 @@ begin
         end;
       end;
     end;
+    CodeFoldingPrepareRangeForLine;
   finally
     LOpenTokenSkipFoldRangeList.Free;
     LOpenTokenFoldRangeList.Free;
@@ -4510,13 +4526,6 @@ begin
         FSelectionEndPosition := Value;
         if (FSelection.ActiveMode <> smColumn) or (FSelectionBeginPosition.Char <> FSelectionEndPosition.Char) then
           InvalidateLines(LCurrentLine, FSelectionEndPosition.Line);
-      end;
-    end;
-    if soHighlightSimilarTerms in FSelection.Options then begin
-      if (SelectionBeginPosition.Line = SelectionEndPosition.Line) and (SelectionBeginPosition.Char <> SelectionEndPosition.Char) then begin
-         if Length(GetWordAtRowColumn(SelectionBeginPosition)) = Abs(SelectionBeginPosition.Char - SelectionEndPosition.Char) then begin
-            FindAll(GetWordAtRowColumn(SelectionBeginPosition));
-         end;
       end;
     end;
     if Assigned(FOnSelectionChanged) then
@@ -6090,6 +6099,12 @@ begin
     ecString, ecLineBreak, ecDeleteChar, ecDeleteWord, ecDeleteLastWord, ecDeleteBeginningOfLine, ecDeleteEndOfLine,
     ecDeleteLine, ecClear:
       ScanMatchingPair;
+  end;
+
+  if not FNeedToRescanCodeFolding then
+  case ACommand of
+    ecPaste, ecUndo, ecRedo, ecInsertLine, ecLineBreak, ecDeleteLine, ecClear:
+      CodeFoldingPrepareRangeForLine;
   end;
 
   if cfoShowIndentGuides in CodeFolding.Options then
