@@ -154,8 +154,6 @@ type
     FWordWrap: TBCEditorWordWrap;
     FWordWrapHelper: TBCEditorWordWrapHelper;
 
-    procedure PrepareCodeFoldingRangeForLine;
-
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer; AFoldCount: PInteger = nil): TBCEditorCodeFoldingRange;
     function CodeFoldingFoldRangeForLineTo(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
@@ -335,6 +333,7 @@ type
   protected
     function DoMouseWheel(AShift: TShiftState; AWheelDelta: Integer; AMousePos: TPoint): Boolean; override;
     function DoOnReplaceText(const ASearch, AReplace: string; ALine, AColumn: Integer; DeleteLine: Boolean): TBCEditorReplaceAction;
+    function DoSearchMatchNotFoundWraparoundDialog: Boolean; virtual;
     function GetReadOnly: Boolean; virtual;
     function GetSelectedLength: Integer;
     function PixelsToNearestRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
@@ -365,11 +364,8 @@ type
     procedure DoOnPaint;
     procedure DoOnPlaceBookmark(var ABookmark: TBCEditorBookmark);
     procedure DoOnProcessCommand(var ACommand: TBCEditorCommand; var AChar: Char; AData: pointer); virtual;
-    procedure DoTripleClick;
-
     procedure DoSearchStringNotFoundDialog; virtual;
-    function  DoSearchMatchNotFoundWraparoundDialog : Boolean; virtual;
-
+    procedure DoTripleClick;
     procedure DragCanceled; override;
     procedure DragOver(Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean); override;
     procedure FreeHintForm(var AForm: TBCEditorCompletionProposalForm);
@@ -905,26 +901,6 @@ begin
     Result := FAllCodeFoldingRanges[i];
     Break;
   end;
-end;
-
-procedure TBCBaseEditor.PrepareCodeFoldingRangeForLine;
-var
-   i : Integer;
-   range : TBCEditorCodeFoldingRange;
-begin
-   // extending dynamically  because I'm not sure which lines those are
-   // so this is strictly a dumb cache
-   SetLength(FCodeFoldingRangeForLine, 0);
-   // reverse order because non-cached code takes first match
-   // not sure if multiple folded ranges for the same line are legit
-   for i := FAllCodeFoldingRanges.AllCount - 1 downto 0 do begin
-      range := FAllCodeFoldingRanges[i];
-      if not range.ParentCollapsed then begin
-         if range.FromLine >= Length(FCodeFoldingRangeForLine) then
-            SetLength(FCodeFoldingRangeForLine, range.FromLine+1);
-         FCodeFoldingRangeForLine[range.FromLine] := range;
-      end;
-   end;
 end;
 
 function TBCBaseEditor.CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
@@ -1690,6 +1666,7 @@ function TBCBaseEditor.GetSelectedText: string;
     LTrimCount: Integer;
     LLineCount: Integer;
     LUncollapsedLines: TStrings;
+    LCodeFoldingRange: TBCEditorCodeFoldingRange;
   begin
     LColumnFrom := SelectionBeginPosition.Char;
     LFirst := SelectionBeginPosition.Line - 1;
@@ -1703,8 +1680,9 @@ function TBCBaseEditor.GetSelectedText: string;
           LUncollapsedLines := CreateUncollapsedLines;
           { calculate total length of result string }
           Inc(LTotalLength, LColumnTo - LColumnFrom);
+          LCodeFoldingRange := CodeFoldingRangeForLine(LFirst);
           if (Length(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]) < LColumnTo) and
-            Assigned(CodeFoldingRangeForLine(LFirst)) and CodeFoldingRangeForLine(LFirst).Collapsed then
+            Assigned(LCodeFoldingRange) and LCodeFoldingRange.Collapsed then
           begin
             { Selection until line end -> Also get text from foldrange }
             LLineCount := 1;
@@ -1720,8 +1698,9 @@ function TBCBaseEditor.GetSelectedText: string;
           P := PChar(Result);
           CopyAndForward(TrimRight(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]), LColumnFrom,
             LColumnTo - LColumnFrom, P);
+          //LCodeFoldingRange := CodeFoldingRangeForLine(LFirst);
           if (Length(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]) < LColumnTo) and
-            Assigned(CodeFoldingRangeForLine(LFirst)) and CodeFoldingRangeForLine(LFirst).Collapsed then
+            Assigned(LCodeFoldingRange) and LCodeFoldingRange.Collapsed then
           begin
             { Selection until line end -> Also get text from foldrange }
             CopyAndForward(sLineBreak, 1, MaxInt, P);
@@ -3503,7 +3482,7 @@ end;
 
 procedure TBCBaseEditor.ScanCodeFoldingRanges(var ATopFoldRanges: TBCEditorAllCodeFoldingRanges; AStrings: TStrings);
 const
-  VALID_CHARACTERS = ['\', '@'] + BCEDITOR_UNDERSCORE + BCEDITOR_STRING_UPPER_CHARACTERS + BCEDITOR_NUMBERS;
+  CODE_FOLDING_VALID_CHARACTERS = ['\', '@'] + BCEDITOR_UNDERSCORE + BCEDITOR_STRING_UPPER_CHARACTERS + BCEDITOR_NUMBERS;
 var
   LLine, LFold, LFoldCount, LCount: Integer;
   LTextPtr: PChar;
@@ -3517,7 +3496,7 @@ var
 
   function IsValidChar(Character: PChar): Boolean;
   begin
-    Result := CharInSet(Character^, VALID_CHARACTERS);
+    Result := CharInSet(Character^, CODE_FOLDING_VALID_CHARACTERS);
   end;
 
   function IsWholeWord(FirstChar, LastChar: PChar): Boolean;
@@ -3957,7 +3936,6 @@ begin
         end;
       end;
     end;
-    CodeFoldingPrepareRangeForLine;
   finally
     LOpenTokenSkipFoldRangeList.Free;
     LOpenTokenFoldRangeList.Free;
@@ -4060,6 +4038,16 @@ procedure TBCBaseEditor.SearchHighlighterAfterPaint(ACanvas: TCanvas; AFirstLine
     end;
   end;
 
+  function IsValidChar(Character: PChar): Boolean;
+  begin
+    Result := CharInSet(Character^, BCEDITOR_WORD_BREAK_CHARACTERS);
+  end;
+
+  function IsWholeWord(FirstChar, LastChar: PChar): Boolean;
+  begin
+    Result := not (IsValidChar(FirstChar) and IsValidChar(LastChar));
+  end;
+
 var
   i: integer;
   LStartPosition, LEndPosition: TBCEditorTextPosition;
@@ -4071,11 +4059,15 @@ begin
   if not Assigned(FSearchEngine) then
     Exit;
   LKeyword := '';
-  if FSearch.Enabled and (soHighlightResults in FSearch.Options) then
+  if FSearch.Enabled and (FSearch.SearchText <> '') and (soHighlightResults in FSearch.Options) then
     LKeyword := FSearch.SearchText
   else
   if soHighlightSimilarTerms in FSelection.Options then
+  begin
     LKeyword := SelectedText;
+    if LKeyword <> GetWordAtRowColumn(GetTextPosition(CaretX - 1, CaretY)) then
+      Exit;
+  end;
   if LKeyword = '' then
     Exit;
   if not (soCaseSensitive in FSearch.Options) then
@@ -4567,7 +4559,9 @@ begin
   if LDisplayLineCount = 0 then
     LDisplayLineCount := 1;
 
-  if (soPastEndOfFileMarker in FScroll.Options) and not (sfInSelection in FStateFlags) then
+  if (soPastEndOfFileMarker in FScroll.Options) and not (sfInSelection in FStateFlags) or
+    (soPastEndOfFileMarker in FScroll.Options) and (sfInSelection in FStateFlags) and
+    (Value = FTopLine) then
     Value := Min(Value, LDisplayLineCount)
   else
     Value := Min(Value, LDisplayLineCount - FVisibleLines + 1);
@@ -5462,6 +5456,11 @@ begin
     FOnReplaceText(Self, ASearch, AReplace, ALine, AColumn, DeleteLine, Result);
 end;
 
+function TBCBaseEditor.DoSearchMatchNotFoundWraparoundDialog: Boolean;
+begin
+  Result := MessageDialog(SBCEditorSearchMatchNotFound, mtConfirmation, [mbYes, mbNo]) = MrYes;
+end;
+
 function TBCBaseEditor.GetReadOnly: Boolean;
 begin
   Result := FReadOnly;
@@ -6180,13 +6179,6 @@ begin
   end;
 end;
 
-// DoMessageDialog
-//
-function TBCBaseEditor.DoMessageDialog(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): Integer;
-begin
-   Result:=BCEditor.Utils.MessageDialog(Msg, DlgType, Buttons);
-end;
-
 procedure TBCBaseEditor.DoOnMinimapClick(Button: TMouseButton; X, Y: Integer);
 var
   LNewLine, LPreviousLine, LStep: Integer;
@@ -6256,25 +6248,16 @@ begin
   end;
 end;
 
+procedure TBCBaseEditor.DoSearchStringNotFoundDialog;
+begin
+  MessageDialog(Format(SBCEditorSearchStringNotFound, [FSearch.SearchText]), mtInformation, [mbOK]);
+end;
+
 procedure TBCBaseEditor.DoTripleClick;
 begin
   SelectionBeginPosition := GetTextPosition(0, CaretY);
   SelectionEndPosition := GetTextPosition(0, CaretY + 1);
   FLastDblClick := 0;
-end;
-
-// DoSearchStringNotFoundDialog
-//
-procedure TBCBaseEditor.DoSearchStringNotFoundDialog;
-begin
-   MessageDialog(Format(SBCEditorSearchStringNotFound, [FSearch.SearchText]), mtInformation, [mbOK]);
-end;
-
-// DoSearchMatchNotFoundWraparoundDialog
-//
-function TBCBaseEditor.DoSearchMatchNotFoundWraparoundDialog : Boolean;
-begin
-   Result := (MessageDialog(SBCEditorSearchMatchNotFound, mtConfirmation, [mbYes, mbNo]) = MrYes);
 end;
 
 procedure TBCBaseEditor.DragCanceled;
@@ -7011,10 +6994,6 @@ var
   LLineCount, i: Integer;
   LHandle: HDC;
 begin
-  // should it be conditionned to CodeFolding.Visible?
-  // or can lines be folded even if the folding is not visible?
-  PrepareCodeFoldingRangeForLine;
-
   LClipRect := Canvas.ClipRect;
 
   LColumn1 := FLeftChar;
@@ -8380,10 +8359,7 @@ var
     for i := LFirstLine to LLastLine do
     begin
       LCurrentLine := i;
-      if FCodeFolding.Visible then
-        LFoldRange := CodeFoldingRangeForLine(LCurrentLine)
-      else
-        LFoldRange := nil;
+
       { Get line with tabs converted to spaces. Trust me, you don't want to mess around with tabs when painting. }
       LCurrentLineText := FLines.ExpandedStrings[LCurrentLine - 1];
       LIsCurrentLine := CaretY = LCurrentLine;
@@ -8520,10 +8496,18 @@ var
           FHighlighter.Next;
         end;
         PaintHighlightToken(True);
-        PaintCodeFoldingCollapseMark(LFoldRange, LTokenPosition, LTokenLength, LCurrentLine, LScrolledXBy);
+
+        if FCodeFolding.Visible then
+          LFoldRange := CodeFoldingRangeForLine(LCurrentLine)
+        else
+          LFoldRange := nil;
+
+        if Assigned(LFoldRange) then
+          PaintCodeFoldingCollapseMark(LFoldRange, LTokenPosition, LTokenLength, LCurrentLine, LScrolledXBy);
         PaintSpecialChars(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
         PaintGuides(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
-        PaintCodeFoldingCollapsedLine(LFoldRange, LLineRect);
+        if Assigned(LFoldRange) then
+          PaintCodeFoldingCollapsedLine(LFoldRange, LLineRect);
 
         if not AMinimap and LPaintRightMargin then
         begin
@@ -9685,7 +9669,7 @@ begin
   else
     Result := TBCEditorTextPosition(ADisplayPosition);
 
-  if Result.Line <= lines.Count then
+  if Result.Line <= FLines.Count then
   begin
     s := Lines[Result.Line - 1];
     l := Length(s);
@@ -12115,7 +12099,7 @@ begin
       if LWithBOM then
         FEncoding := TEncoding.UTF8
       else
-        FEncoding := TEncoding.UTF8WithoutBOM;
+        FEncoding := BCEditor.Encoding.TEncoding.UTF8WithoutBOM;
     end
     else
     { Read file into buffer }
@@ -12520,6 +12504,7 @@ begin
       UpdateFoldRangeParents;
     end;
   finally
+    CodeFoldingPrepareRangeForLine;
     Finalize(LFoldRangeLookup);
     LFoldRangeLookup := nil;
     Finalize(LUncollapsedLinenumbersLookup);
