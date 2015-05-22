@@ -29,6 +29,7 @@ type
     FPrepared: Boolean;
     FPreviousEol: Boolean;
     FRunPosition: LongInt;
+    FTemporaryCurrentTokens: TList;
     FTokenPosition: Integer;
     FWordBreakChars: TBCEditorCharSet;
     procedure AddAllAttributes(ARange: TBCEditorRange);
@@ -111,6 +112,8 @@ begin
 
   FColors := TBCEditorHighlighterColors.Create(Self);
   FMatchingPairs := TList.Create;
+
+  FTemporaryCurrentTokens := TList.Create;
 end;
 
 destructor TBCEditorHighlighter.Destroy;
@@ -131,6 +134,7 @@ begin
   FMatchingPairs := nil;
   FColors.Free;
   FColors := nil;
+  FTemporaryCurrentTokens.Free;
 
   inherited;
 end;
@@ -159,9 +163,6 @@ begin
   FTokenPosition := 0;
   FEol := False;
   FPreviousEol := False;
-  if Assigned(FCurrentToken) then
-    if FCurrentToken.Temporary then
-      FCurrentToken.Free;
   FCurrentToken := nil;
   Next;
 end;
@@ -173,12 +174,13 @@ var
   Keyword: PChar;
   LCloseParent: Boolean;
 begin
-  if Assigned(FCurrentToken) then
-    if FCurrentToken.Temporary then
-    begin
-      FCurrentToken.Free;
-      FCurrentToken := nil;
-    end;
+  while FTemporaryCurrentTokens.Count > 0 do
+  begin
+    FCurrentToken := TBCEditorToken(FTemporaryCurrentTokens[0]);
+    FCurrentToken.Free;
+    FCurrentToken := nil;
+    FTemporaryCurrentTokens.Delete(0);
+  end;
 
   if FPreviousEol then
   begin
@@ -242,6 +244,9 @@ begin
         FCurrentRange := TBCEditorRange(FCurrentToken.OpenRule);
         FCurrentRange.ClosingToken := FCurrentToken.ClosingToken;
       end;
+    if Assigned(FCurrentToken) then
+      if FCurrentToken.Temporary then
+        FTemporaryCurrentTokens.Add(FCurrentToken);
   end;
 
   if FCurrentLine[FRunPosition] = BCEDITOR_NONE_CHAR then
