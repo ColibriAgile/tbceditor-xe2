@@ -107,6 +107,7 @@ type
     FCaseSensitive: Boolean;
     FCloseOnEol: Boolean;
     FCloseOnTerm: Boolean;
+    FCloseParent: Boolean;
     FCloseToken: TBCEditorMultiToken;
     FClosingToken: TBCEditorToken;
     FDefaultSymbols: TBCEditorDefaultParser;
@@ -171,6 +172,7 @@ type
     property CaseSensitive: Boolean read FCaseSensitive write SetCaseSensitive;
     property CloseOnEol: Boolean read FCloseOnEol write FCloseOnEol;
     property CloseOnTerm: Boolean read FCloseOnTerm write FCloseOnTerm;
+    property CloseParent: Boolean read FCloseParent write FCloseParent;
     property CloseToken: TBCEditorMultiToken read FCloseToken write FCloseToken;
     property ClosingToken: TBCEditorToken read FClosingToken write FClosingToken;
     property DefaultToken: TBCEditorToken read FDefaultToken;
@@ -410,8 +412,8 @@ begin
     if CharInSet(APLine[ARun], AllowedDelimiters) then
     begin
       Result := True;
-      //AToken := TBCEditorToken.Create(TBCEditorSet(Sets[i]).Attribute);
-      //AToken.Temporary := True;
+      AToken := TBCEditorToken.Create(TBCEditorSet(Sets[i]).Attribute);
+      AToken.Temporary := True;
       Exit;
     end;
   end;
@@ -1052,6 +1054,7 @@ begin
   AddTokenRange('', '');
   CloseOnTerm := False;
   CloseOnEol := False;
+  CloseParent := False;
   Reset;
   for i := 0 to FRanges.Count - 1 do
     TBCEditorRange(FRanges[i]).Clear;

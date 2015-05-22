@@ -159,6 +159,9 @@ begin
   FTokenPosition := 0;
   FEol := False;
   FPreviousEol := False;
+  if Assigned(FCurrentToken) then
+    if FCurrentToken.Temporary then
+      FCurrentToken.Free;
   FCurrentToken := nil;
   Next;
 end;
@@ -168,6 +171,7 @@ var
   i: Integer;
   Parser: TBCEditorAbstractParser;
   Keyword: PChar;
+  LCloseParent: Boolean;
 begin
   if Assigned(FCurrentToken) then
     if FCurrentToken.Temporary then
@@ -203,8 +207,16 @@ begin
 
   FTokenPosition := FRunPosition;
   if Assigned(FCurrentRange) then
+  begin
+    LCloseParent := FCurrentRange.CloseParent;
     if FCurrentRange.CloseOnTerm and CharInSet(FCurrentLine[FRunPosition], FCurrentRange.Delimiters) then
+    begin
       FCurrentRange := FCurrentRange.Parent;
+      if Assigned(FCurrentRange) then
+        if LCloseParent then
+          FCurrentRange := FCurrentRange.Parent;
+    end;
+  end;
 
   if Assigned(FCurrentRange) then
   begin

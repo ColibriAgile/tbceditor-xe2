@@ -1,4 +1,4 @@
-unit BCEditor.Editor.Base;
+ï»¿unit BCEditor.Editor.Base;
 
 interface
 
@@ -4064,9 +4064,14 @@ begin
   else
   if soHighlightSimilarTerms in FSelection.Options then
   begin
-    LKeyword := SelectedText;
-    if LKeyword <> GetWordAtRowColumn(GetTextPosition(CaretX - 1, CaretY)) then
-      Exit;
+    if (FSelectionBeginPosition.Line = FSelectionEndPosition.Line) and
+      (FSelectionBeginPosition.Char <> FSelectionEndPosition.Char) then
+    begin
+      LKeyWord := Copy(FLines[FSelectionBeginPosition.Line - 1], FSelectionBeginPosition.Char, FSelectionEndPosition.Char -
+        FSelectionBeginPosition.Char);
+      if LKeyword <> GetWordAtRowColumn(GetTextPosition(CaretX - 1, CaretY)) then
+        Exit;
+    end;
   end;
   if LKeyword = '' then
     Exit;
@@ -6090,10 +6095,17 @@ end;
 procedure TBCBaseEditor.DoOnCommandProcessed(ACommand: TBCEditorCommand; AChar: Char; AData: pointer);
 begin
   if FCodeFolding.Visible then
+  begin
     if FNeedToRescanCodeFolding or
       IsKeywordAtCurrentLine and ((ACommand = ecLineBreak) or (ACommand = ecChar) or (ACommand = ecDeleteLastChar) or (ACommand = ecDeleteChar)) or
       (ACommand = ecPaste) or (ACommand = ecUndo) or (ACommand = ecRedo) then
-    RescanCodeFoldingRanges;
+      RescanCodeFoldingRanges
+    else
+    case ACommand of
+      ecPaste, ecUndo, ecRedo, ecInsertLine, ecLineBreak, ecDeleteLine, ecClear:
+        CodeFoldingPrepareRangeForLine;
+    end;
+  end;
 
   if FMatchingPair.Enabled then
   case ACommand of
@@ -6102,12 +6114,6 @@ begin
     ecString, ecLineBreak, ecDeleteChar, ecDeleteWord, ecDeleteLastWord, ecDeleteBeginningOfLine, ecDeleteEndOfLine,
     ecDeleteLine, ecClear:
       ScanMatchingPair;
-  end;
-
-  if not FNeedToRescanCodeFolding then
-  case ACommand of
-    ecPaste, ecUndo, ecRedo, ecInsertLine, ecLineBreak, ecDeleteLine, ecClear:
-      CodeFoldingPrepareRangeForLine;
   end;
 
   if cfoShowIndentGuides in CodeFolding.Options then
@@ -7938,7 +7944,10 @@ var
       { Selection colors }
       if ASelected then
       begin
-        SetForegroundColor(LSelectionForegroundColor);
+        if LSelectionForegroundColor <> clNone then
+          SetForegroundColor(LSelectionForegroundColor)
+        else
+          SetForegroundColor(LForegroundColor);
         LColor := LSelectionBackgroundColor;
       end
       { Normal colors }
@@ -9844,8 +9853,8 @@ end;
 
 function TBCBaseEditor.IsWordBreakChar(AChar: Char): Boolean;
 begin
-  Result := CharInSet(AChar, [BCEDITOR_NONE_CHAR .. BCEDITOR_SPACE_CHAR, '.', ',', ';', ':', '"', '''', '´', '`', '°',
-    '^', '!', '?', '&', '$', '@', '§', '%', '#', '~', '[', ']', '(', ')', '{', '}', '<', '>', '-', '=', '+', '*', '/',
+  Result := CharInSet(AChar, [BCEDITOR_NONE_CHAR .. BCEDITOR_SPACE_CHAR, '.', ',', ';', ':', '"', '''', 'Â´', '`', 'Â°',
+    '^', '!', '?', '&', '$', '@', 'Â§', '%', '#', '~', '[', ']', '(', ')', '{', '}', '<', '>', '-', '=', '+', '*', '/',
     '\', '|']);
 end;
 
@@ -10472,8 +10481,8 @@ begin
   begin
     { notify hooked command handlers before the command is executed inside of the class }
     NotifyHookedCommandHandlers(False, ACommand, AChar, AData);
-    if (ACommand = ecCut) or (ACommand = ecDeleteLine) or
-      IsKeywordAtCursorPosition and ((ACommand = ecChar) or (ACommand = ecTab) or (ACommand = ecDeleteLastChar) or
+    if (ACommand = ecCut) or (ACommand = ecDeleteLine) or (ACommand = ecDeleteLastChar) or
+      IsKeywordAtCursorPosition and ((ACommand = ecChar) or (ACommand = ecTab) or
       (ACommand = ecDeleteChar)) then
       FNeedToRescanCodeFolding := True;
 
@@ -12789,5 +12798,3 @@ finalization
   {$ENDIF}
 
 end.
-
-
