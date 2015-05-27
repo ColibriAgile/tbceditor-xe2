@@ -3,7 +3,7 @@
         "Info": {
             "General": {
                 "Version": "1.0",
-                "Date": "21.5.2015",
+                "Date": "24.5.2015",
                 "Sample": [
                     "// Hello World in Pascal\r\n",
                     "\r\n",
@@ -88,9 +88,6 @@
                         "Attributes": {
                             "Element": "Method"
                         },
-                        "Properties": {
-                            "CloseOnEol": true
-                        },
                         "TokenRange": {
                             "Open": "function"
                         },
@@ -101,11 +98,11 @@
                                 "Attributes": {
                                     "Element": "MethodName"
                                 },
-                                "Delimiters": "(;",
+                                "Delimiters": ":(;",
                                 "Properties": {
                                     "CloseParent": true,
                                     "CloseOnTerm": true,
-                                    "CloseOnEol": true
+                                    "SkipWhitespace": true
                                 },
                                  "TokenRange": {
                                     "Open": " "
@@ -118,9 +115,6 @@
                         "Type": "Method",
                         "Attributes": {
                             "Element": "Method"
-                        },
-                        "Properties": {
-                            "CloseOnEol": true
                         },
                         "TokenRange": {
                             "Open": "procedure"
@@ -136,7 +130,7 @@
                                 "Properties": {
                                     "CloseParent": true,
                                     "CloseOnTerm": true,
-                                    "CloseOnEol": true
+                                    "SkipWhitespace": true
                                 },
                                  "TokenRange": {
                                     "Open": " "
@@ -329,6 +323,7 @@
                             "platform",
                             "private",
                             "program",
+                            "property",
                             "protected",
                             "public",
                             "published",
@@ -371,7 +366,7 @@
                     },
                     {
                         "Type": "Method",
-                        "Words": ["function", "procedure", "property"],
+                        "Words": ["function", "procedure"],
                         "Attributes": {
                             "Element": "Method"
                         }
@@ -468,7 +463,7 @@
                 "OpenToken": "TRY",
                 "CloseToken": "END",
                 "Properties": {
-                    "BeginningOfLine": true
+                    "OpenTokenBeginningOfLine": true
                 }
             },
             {
@@ -479,7 +474,7 @@
                 "OpenToken": "ASM",
                 "CloseToken": "END",
                 "Properties": {
-                    "BeginningOfLine": true
+                    "OpenTokenBeginningOfLine": true
                 }
             },
             {
@@ -501,7 +496,7 @@
                 "OpenToken": "INTERFACE",
                 "CloseToken": "IMPLEMENTATION",
                 "Properties": {
-                    "BeginningOfLine": true
+                    "OpenTokenBeginningOfLine": true
                 }
             },
             {
@@ -516,7 +511,7 @@
                 "OpenToken": "IMPLEMENTATION",
                 "CloseToken": "END.",
                 "Properties": {
-                    "BeginningOfLine": true,
+                    "OpenTokenBeginningOfLine": true,
                     "OpenIsClose": true,
                     "SharedClose": true
                 }
@@ -525,7 +520,7 @@
                 "OpenToken": "UNIT",
                 "CloseToken": "END.",
                 "Properties": {
-                    "BeginningOfLine": true,
+                    "OpenTokenBeginningOfLine": true,
                     "SharedClose": true
                 }
             },
@@ -533,7 +528,7 @@
                 "OpenToken": "PROGRAM",
                 "CloseToken": "END",
                 "Properties": {
-                    "BeginningOfLine": true,
+                    "OpenTokenBeginningOfLine": true,
                     "SharedClose": true
                 }
             },

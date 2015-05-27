@@ -260,6 +260,7 @@ begin
       LEditor.CodeFolding.Colors.Background := StringToColorDef(LColorsObject['CodeFoldingBackground'].Value, LEditor.CodeFolding.Colors.Background);
       LEditor.CodeFolding.Colors.CollapsedLine := StringToColorDef(LColorsObject['CodeFoldingCollapsedLine'].Value, LEditor.CodeFolding.Colors.CollapsedLine);
       LEditor.CodeFolding.Colors.FoldingLine := StringToColorDef(LColorsObject['CodeFoldingFoldingLine'].Value, LEditor.CodeFolding.Colors.FoldingLine);
+      LEditor.CodeFolding.Colors.Indent := StringToColorDef(LColorsObject['CodeFoldingIndent'].Value, LEditor.CodeFolding.Colors.Indent);
       LEditor.CodeFolding.Colors.IndentHighlight := StringToColorDef(LColorsObject['CodeFoldingIndentHighlight'].Value, LEditor.CodeFolding.Colors.IndentHighlight);
       LEditor.CodeFolding.Hint.Colors.Background := StringToColorDef(LColorsObject['CodeFoldingHintBackground'].Value, LEditor.CodeFolding.Hint.Colors.Background);
       LEditor.CodeFolding.Hint.Colors.Border := StringToColorDef(LColorsObject['CodeFoldingHintBorder'].Value, LEditor.CodeFolding.Hint.Colors.Border);
@@ -274,6 +275,7 @@ begin
       LEditor.LeftMargin.Bookmarks.Panel.Color := StringToColorDef(LColorsObject['LeftMarginBookmarkPanel'].Value, LEditor.LeftMargin.Bookmarks.Panel.Color);
       LEditor.LeftMargin.LineState.Colors.Modified := StringToColorDef(LColorsObject['LeftMarginLineStateModified'].Value, LEditor.LeftMargin.LineState.Colors.Modified);
       LEditor.LeftMargin.LineState.Colors.Normal := StringToColorDef(LColorsObject['LeftMarginLineStateNormal'].Value, LEditor.LeftMargin.LineState.Colors.Normal);
+      LEditor.Minimap.Colors.VisibleLines := StringToColorDef(LColorsObject['MinimapVisibleLines'].Value, LEditor.Minimap.Colors.VisibleLines);
       LEditor.MatchingPair.Colors.Matched := StringToColorDef(LColorsObject['MatchingPairMatched'].Value, LEditor.MatchingPair.Colors.Matched);
       LEditor.MatchingPair.Colors.Unmatched := StringToColorDef(LColorsObject['MatchingPairUnmatched'].Value, LEditor.MatchingPair.Colors.Unmatched);
       LEditor.RightMargin.Colors.Edge := StringToColorDef(LColorsObject['RightEdge'].Value, LEditor.RightMargin.Colors.Edge);
@@ -405,8 +407,10 @@ begin
         begin
           ARange.CloseOnEol := PropertiesObject.B['CloseOnEol'];
           ARange.CloseOnTerm := PropertiesObject.B['CloseOnTerm'];
+          ARange.SkipWhitespace := PropertiesObject.B['SkipWhitespace'];
           ARange.CloseParent := PropertiesObject.B['CloseParent'];
           ARange.AlternativeClose := PropertiesObject['AlternativeClose'].Value;
+          ARange.OpenBeginningOfLine := PropertiesObject.B['OpenBeginningOfLine'];
         end;
 
         ARange.OpenToken.Clear;
@@ -484,10 +488,20 @@ begin
 
   if not Assigned(ACodeFoldingObject) then
     Exit;
+
+  LFoldRegions.StringEscapeChar := #0;
+  TBCBaseEditor(FHighlighter.Editor).CodeFolding.Options := TBCBaseEditor(FHighlighter.Editor).CodeFolding.Options +
+    [cfoHighlightMatchingPair];
   if ACodeFoldingObject.Contains('Options') then
-    LFoldRegions.StringEscapeChar := ACodeFoldingObject['Options'].ObjectValue['StringEscapeChar'].Value[1]
-  else
-    LFoldRegions.StringEscapeChar := #0;
+  begin
+    if ACodeFoldingObject['Options'].ObjectValue.Contains('StringEscapeChar') then
+      LFoldRegions.StringEscapeChar := ACodeFoldingObject['Options'].ObjectValue['StringEscapeChar'].Value[1];
+
+    if ACodeFoldingObject['Options'].ObjectValue.Contains('NoMatchingPairHighlight') then
+      if ACodeFoldingObject['Options'].ObjectValue.B['NoMatchingPairHighlight'] then
+        TBCBaseEditor(FHighlighter.Editor).CodeFolding.Options := TBCBaseEditor(FHighlighter.Editor).CodeFolding.Options -
+          [cfoHighlightMatchingPair]
+  end;
   { Skip regions }
   if ACodeFoldingObject.Contains('SkipRegion') then
   for i := 0 to ACodeFoldingObject['SkipRegion'].ArrayValue.Count - 1 do
@@ -518,9 +532,11 @@ begin
     if Assigned(MemberObject) then
     begin
       { Options }
-      FoldRegionItem.BeginningOfLine := MemberObject.B['BeginningOfLine'];
+      FoldRegionItem.OpenTokenBeginningOfLine := MemberObject.B['OpenTokenBeginningOfLine'];
+      FoldRegionItem.CloseTokenBeginningOfLine := MemberObject.B['CloseTokenBeginningOfLine'];
       FoldRegionItem.SharedClose := MemberObject.B['SharedClose'];
       FoldRegionItem.OpenIsClose := MemberObject.B['OpenIsClose'];
+      FoldRegionItem.TokenEndIsPreviousLine := MemberObject.B['TokenEndIsPreviousLine'];
       FoldRegionItem.NoSubs := MemberObject.B['NoSubs'];
       FoldRegionItem.SkipIfFoundAfterOpenToken := MemberObject['SkipIfFoundAfterOpenToken'].Value;
       FoldRegionItem.BreakIfNotFoundBeforeNextRegion := MemberObject['BreakIfNotFoundBeforeNextRegion'].Value;

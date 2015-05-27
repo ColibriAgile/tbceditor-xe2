@@ -3,12 +3,11 @@
       "Info":{
          "General":{
             "Version":"1.0",
-            "Date":"21.5.2015"
+            "Date":"25.5.2015"
          },
          "Author":{
             "Name":"Lasse Rautiainen",
-            "Mail":"lasse@bonecode.com",
-            "Email":""
+            "Mail":"lasse@bonecode.com"
          }
       },
       "Editor":{
@@ -17,8 +16,9 @@
             "ActiveLine":"$00222827",
             "CodeFoldingBackground":"$00222827",
             "CodeFoldingCollapsedLine":"$009F9F9F",
-            "CodeFoldingFoldingLine":"$00414746",
-            "CodeFoldingIndentHighlight":"$009F9F9F",
+            "CodeFoldingFoldingLine":"$009F9F9F",
+            "CodeFoldingIndent":"$00414746",
+            "CodeFoldingIndentHighlight":"$00414746",
             "CodeFoldingHintBackground":"00222827",
             "CodeFoldingHintBorder":"$00414746",
             "CodeFoldingHintText":"clNone",
@@ -34,9 +34,10 @@
             "LeftMarginBookmarkPanel":"$00222827",
             "MatchingPairMatched":"$007226F9",
             "MatchingPairUnmatched":"clYellow",
+            "MinimapVisibleLines":"$003E4849",
             "RightMargin":"clSilver",
             "RightMovingEdge":"clSilver",
-            "SearchHighlighterBackground":"$003E4849",
+            "SearchHighlighterBackground":"$0092E7FF",
             "SearchHighlighterForeground":"clNone",
             "SearchMapActiveLine":"$00F0F0F0",
             "SearchMapBackground":"$00F4F4F4",
@@ -82,7 +83,7 @@
          },
          {
             "Name":"Character",
-            "Foreground":"clPurple",
+            "Foreground":"$00F8F8F2",
             "Background":"$00222827"
          },
          {

@@ -68,6 +68,7 @@ type
   TBCEditorSelectionOption = (
     soALTSetsColumnMode,
     soHighlightSimilarTerms,
+    soToEndOfLine,
     soTripleClickRowSelect
   );
   TBCEditorSelectionOptions = set of TBCEditorSelectionOption;
@@ -217,6 +218,8 @@ type
 
   TBCEditorUndoOption = (uoGroupUndo);
   TBCEditorUndoOptions = set of TBCEditorUndoOption;
+
+  TBCEditorCase = (cNone=-1, cUpper=0, cLower=1, cAlternating=2, cSentence=3, cTitle=4, cOriginal=5);
 
 implementation
 
