@@ -40,7 +40,7 @@ type
     property OnChange: TBCEditorCodeFoldingChangeEvent read FOnChange write SetOnChange;
     property Options: TBCEditorCodeFoldingOptions read FOptions write SetOptions default [cfoShowCollapsedCodeHint, cfoHighlightIndentGuides, cfoHighlightMatchingPair, cfoShowIndentGuides, cfoUncollapseByHintClick];
     property Padding: Integer read FPadding write SetPadding default 2;
-    property Width: Integer read FWidth write SetWidth default 16;
+    property Width: Integer read FWidth write SetWidth default 14;
     property Visible: Boolean read FVisible write SetVisible default False;
   end;
 
@@ -61,7 +61,7 @@ begin
   FColors := TBCEditorCodeFoldingColors.Create;
   FHint := TBCEditorCodeFoldingHint.Create;
   FPadding := 2;
-  FWidth := 16;
+  FWidth := 14;
 
   FMouseOverHint := False;
 end;

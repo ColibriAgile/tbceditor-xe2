@@ -51,6 +51,7 @@ type
     FCodeFolding: TBCEditorCodeFolding;
     FCodeFoldingHintForm: TBCEditorCompletionProposalForm;
     FCodeFoldingRangeForLine: array of TBCEditorCodeFoldingRange;
+    FColumnWidths: PIntegerArray;
     FCommandDrop: Boolean;
     FCompletionProposal: TBCEditorCompletionProposal;
     FCompletionProposalTimer: TTimer;
@@ -160,6 +161,7 @@ type
 
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer; AFoldCount: PInteger = nil): TBCEditorCodeFoldingRange;
     function CodeFoldingFoldRangeForLineTo(ALine: Integer): TBCEditorCodeFoldingRange;
+    function CodeFoldingLineInsideRange(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingTreeEndForLine(ALine: Integer): Boolean;
     function CodeFoldingTreeLineForLine(ALine: Integer): Boolean;
@@ -401,7 +403,8 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure NotifyHookedCommandHandlers(AfterProcessing: Boolean; var ACommand: TBCEditorCommand; var AChar: Char; AData: pointer);
     procedure Paint; override;
-    procedure PaintCodeFolding(AClipRect: TRect; ALine: Integer);
+    procedure PaintCodeFolding(AClipRect: TRect; ALineCount: Integer);
+    procedure PaintCodeFoldingLine(AClipRect: TRect; ALine: Integer);
     procedure PaintCodeFoldingCollapsedLine(AFoldRange: TBCEditorCodeFoldingRange; ALineRect: TRect);
     procedure PaintCodeFoldingCollapseMark(AFoldRange: TBCEditorCodeFoldingRange; ATokenPosition, ATokenLength, ALine, AScrolledXBy: Integer);
     procedure PaintGuides(ALine, AScrolledXBy: Integer; ALineRect: TRect; AMinimap: Boolean);
@@ -450,13 +453,13 @@ type
     function GetPositionOfMouse(out ATextPosition: TBCEditorTextPosition): Boolean;
     function GetWordAtPixels(X, Y: Integer): string;
     function IsBookmark(ABookmark: Integer): Boolean;
-    function IsIdentChar(AChar: Char): Boolean;
     function IsPointInSelection(const ATextPosition: TBCEditorTextPosition): Boolean;
     function IsWordBreakChar(AChar: Char): Boolean;
     function LineToRow(ALine: Integer): Integer;
     function ReplaceText(const ASearchText: string; const AReplaceText: string): Integer;
     function SplitTextIntoWords(AStringList: TStrings; CaseSensitive: Boolean): string;
-    function TextToDisplayPosition(const ATextPosition: TBCEditorTextPosition; ACollapsedLineNumber: Boolean = True): TBCEditorDisplayPosition;
+    function TextToDisplayPosition(const ATextPosition: TBCEditorTextPosition; ACollapsedLineNumber: Boolean = True;
+      ARealWidth: Boolean = True): TBCEditorDisplayPosition;
     function TranslateKeyCode(ACode: Word; AShift: TShiftState; var AData: pointer): TBCEditorCommand;
     function WordEnd: TBCEditorTextPosition; overload;
     function WordEnd(const ATextPosition: TBCEditorTextPosition): TBCEditorTextPosition; overload;
@@ -563,7 +566,7 @@ type
     property DisplayY: Integer read GetDisplayY;
     property Encoding: TEncoding read FEncoding write FEncoding;
     property Font;
-    property Highlighter: TBCEditorHighlighter read FHighlighter; // write SetHighlighter;
+    property Highlighter: TBCEditorHighlighter read FHighlighter;
     property InsertMode: Boolean read FInserting write SetInsertMode default True;
     property IsScrolling: Boolean read FIsScrolling;
     property KeyCommands: TBCEditorKeyCommands read FKeyCommands write SetKeyCommands stored False;
@@ -862,6 +865,16 @@ begin
   FCaret.Free;
   FMatchingPair.Free;
   FCompletionProposal.Free;
+  if Assigned(FColumnWidths) then
+  begin
+    FreeMem(FColumnWidths);
+    FColumnWidths := nil;
+  end;
+  if Assigned(FWordWrapHelper) then
+  begin
+    FWordWrapHelper.Free;
+    FWordWrapHelper := nil;
+  end;
   if Assigned(FSearchEngine) then
   begin
     FSearchEngine.Free;
@@ -917,11 +930,23 @@ begin
   end;
 end;
 
+function TBCBaseEditor.CodeFoldingLineInsideRange(ALine: Integer): TBCEditorCodeFoldingRange;
+var
+  LLength: Integer;
+begin
+  LLength := Length(FCodeFoldingRangeForLine) - 1;
+  if ALine > LLength then
+    ALine := LLength;
+  while (ALine > 0) and not Assigned(FCodeFoldingRangeForLine[ALine]) do
+    Dec(ALine);
+  Result := FCodeFoldingRangeForLine[ALine]
+end;
+
 function TBCBaseEditor.CodeFoldingRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
 begin
-   if ALine < Length(FCodeFoldingRangeForLine) then
-      Result := FCodeFoldingRangeForLine[ALine]
-   else Result := nil;
+  Result := nil;
+  if ALine < Length(FCodeFoldingRangeForLine) then
+    Result := FCodeFoldingRangeForLine[ALine]
 end;
 
 function TBCBaseEditor.CodeFoldingTreeEndForLine(ALine: Integer): Boolean;
@@ -947,7 +972,7 @@ begin
 
   for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
   with FAllCodeFoldingRanges[i] do
-  if not ParentCollapsed and not Collapsed and Collapsable and ((FromLine + 1) <= ALine) and (ToLine > ALine) then
+  if not ParentCollapsed and not Collapsed and Collapsable and (FromLine < ALine) and (ToLine > ALine) then
   begin
     Result := True;
     Break;
@@ -1712,7 +1737,6 @@ function TBCBaseEditor.GetSelectedText: string;
           P := PChar(Result);
           CopyAndForward(TrimRight(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]), LColumnFrom,
             LColumnTo - LColumnFrom, P);
-          //LCodeFoldingRange := CodeFoldingRangeForLine(LFirst);
           if (Length(LUncollapsedLines[GetUncollapsedLineNumber(LFirst + 1) - 1]) < LColumnTo) and
             Assigned(LCodeFoldingRange) and LCodeFoldingRange.Collapsed then
           begin
@@ -1905,12 +1929,12 @@ begin
     LLength := Length(LTextLine);
     if LLength = 0 then
       Exit;
-    if (ATextPosition.Char >= 1) and (ATextPosition.Char <= LLength + 1) and IsIdentChar(LTextLine[ATextPosition.Char]) then
+    if (ATextPosition.Char >= 1) and (ATextPosition.Char <= LLength + 1) and not IsWordBreakChar(LTextLine[ATextPosition.Char]) then
     begin
       LStop := ATextPosition.Char;
-      while (LStop <= LLength) and IsIdentChar(LTextLine[LStop]) do
+      while (LStop <= LLength) and not IsWordBreakChar(LTextLine[LStop]) do
         Inc(LStop);
-      while (ATextPosition.Char > 1) and IsIdentChar(LTextLine[ATextPosition.Char - 1]) do
+      while (ATextPosition.Char > 1) and not IsWordBreakChar(LTextLine[ATextPosition.Char - 1]) do
         Dec(ATextPosition.Char);
       if LStop > ATextPosition.Char then
         Result := Copy(LTextLine, ATextPosition.Char, LStop - ATextPosition.Char);
@@ -2072,23 +2096,21 @@ begin
         LBookmarkTextPtr := LTextPtr;
         { check if the open keyword found }
         LKeyWordPtr := PChar(LFoldRegions[i].OpenToken);
-        //if not IsValidChar(TextPtr - 1) and (TextPtr^ = KeyWordPtr^) then
+        while (LTextPtr^ <> BCEDITOR_NONE_CHAR) and (LKeyWordPtr^ <> BCEDITOR_NONE_CHAR) and (LTextPtr^ = LKeyWordPtr^) do
         begin
-          while (LTextPtr^ <> BCEDITOR_NONE_CHAR) and (LKeyWordPtr^ <> BCEDITOR_NONE_CHAR) and (LTextPtr^ = LKeyWordPtr^) do
-          begin
-            Inc(LTextPtr);
-            Inc(LKeyWordPtr);
-          end;
-          if LKeyWordPtr^ = BCEDITOR_NONE_CHAR then { if found, pop skip region from the stack }
-          begin
-            if IsWholeWord(LBookmarkTextPtr - 1, LTextPtr) then { not interested in partial hits }
-              Exit(True)
-            else
-              LTextPtr := LBookmarkTextPtr; { skip region close not found, return pointer back }
-          end
+          Inc(LTextPtr);
+          Inc(LKeyWordPtr);
+        end;
+        if LKeyWordPtr^ = BCEDITOR_NONE_CHAR then { if found, pop skip region from the stack }
+        begin
+          if IsWholeWord(LBookmarkTextPtr - 1, LTextPtr) then { not interested in partial hits }
+            Exit(True)
           else
             LTextPtr := LBookmarkTextPtr; { skip region close not found, return pointer back }
-        end;
+        end
+        else
+          LTextPtr := LBookmarkTextPtr; { skip region close not found, return pointer back }
+
         { check if the close keyword found }
         LKeyWordPtr := PChar(LFoldRegions[i].CloseToken);
 
@@ -2182,17 +2204,15 @@ begin
       begin
         LLine := Lines[Y];
         Inc(Y);
-        X := StringScan(LLine, 1, IsIdentChar);
+        X := StringScan(LLine, 1, IsWordBreakChar);
         if X = 0 then
           Inc(X);
       end;
     end
     else
     begin
-      if IsIdentChar(LLine[X]) then
-        X := StringScan(LLine, X, IsWordBreakChar);
       if X > 0 then
-        X := StringScan(LLine, X, IsIdentChar);
+        X := StringScan(LLine, X, IsWordBreakChar);
       if X = 0 then
         X := LineLength + 1;
     end;
@@ -2246,8 +2266,6 @@ begin
     end
     else
     begin
-      if IsWordBreakChar(LLine[X - 1]) then
-        X := StringReverseScan(LLine, X - 1, IsIdentChar);
       if X > 0 then
         X := StringReverseScan(LLine, X - 1, IsWordBreakChar) + 1;
       if X = 0 then
@@ -3630,7 +3648,6 @@ var
         for i := 0 to j do
         if (LTextPtr^ = PChar(Highlighter.CodeFoldingRegions.SkipRegions[i].OpenToken)^) and
           not OddCountOfStringEscapeChars(LTextPtr) then
-          //not IsPreviousCharStringEscape(LTextPtr) and not IsNextCharStringEscape(LTextPtr) then { if the first character is a match and previous is not a string escape char }
         begin
           LKeyWordPtr := PChar(Highlighter.CodeFoldingRegions.SkipRegions[i].OpenToken);
           LBookmarkTextPtr := LTextPtr;
@@ -3702,10 +3719,7 @@ var
             { Check if any shared close }
             if LOpenTokenFoldRangeList.Count > 0 then
             begin
-              //i := 0;
-              //while i < LOpenTokenFoldRangeList.Count do
-              //begin
-              LCodeFoldingRange := LOpenTokenFoldRangeList.Last; // LOpenTokenFoldRangeList.Items[i];
+              LCodeFoldingRange := LOpenTokenFoldRangeList.Last;
               if Assigned(LCodeFoldingRange.FoldRegion) then
                 if LCodeFoldingRange.FoldRegion.SharedClose and
                   (LFoldRange.FoldRegion.OpenToken <> LCodeFoldingRange.FoldRegion.OpenToken) and
@@ -3717,10 +3731,7 @@ var
                     LCodeFoldingRange.ToLine := LLine + 1; { +1 for not 0-based }
                   LOpenTokenFoldRangeList.Remove(LCodeFoldingRange);
                   Dec(LFoldCount);
-                  //Continue;
                 end;
-                //Inc(i);
-              //end;
             end;
             { Check if the close token is one of the open tokens }
             LBookmarkTextPtr2 := LBookmarkTextPtr; { save Bookmark }
@@ -3763,7 +3774,6 @@ var
                   LTextPtr := LBookmarkTextPtr2; { skip region close not found, return pointer back }
               end;
               LTextPtr := LBookmarkTextPtr; { go back where we were }
-              //Result := True;
             end;
             LTextPtr := LBookmarkTextPtr; { go back where we were }
             Result := True;
@@ -3875,9 +3885,6 @@ var
                   LFoldRanges := TBCEditorCodeFoldingRange(LOpenTokenFoldRangeList.Last).SubFoldRanges
                 else
                   LFoldRanges := ATopFoldRanges;
-
-                //if Assigned(LFoldRange) and (LFoldRange.FoldRegion.BreakIfNotFoundBeforeNextRegion <> '') then
-                //  LFoldRange.IsExtraTokenFound := False;
 
                 LFoldRange := LFoldRanges.Add(ATopFoldRanges, LLine + 1, GetLineIndentChars(AStrings, LLine{ + 1}), LFoldCount,
                   Highlighter.CodeFoldingRegions[i], LLine + 1);
@@ -4038,8 +4045,10 @@ procedure TBCBaseEditor.SearchHighlighterAfterPaint(ACanvas: TCanvas; AFirstLine
 
   procedure PaintHighlight(StartPosition, EndPosition: TBCEditorTextPosition);
   var
+    i: Integer;
     LPoint: TPoint;
     S: string;
+    LLength: Integer;
   begin
     FSearchHighlighterBlendFunction.SourceConstantAlpha := FSearch.Highlighter.AlphaBlending;
     if StartPosition.Char < EndPosition.Char then
@@ -4048,12 +4057,22 @@ procedure TBCBaseEditor.SearchHighlighterAfterPaint(ACanvas: TCanvas; AFirstLine
       FSearchHighlighterBitmap.Canvas.Brush.Color := FSearch.Highlighter.Colors.Background;
       FSearchHighlighterBitmap.Canvas.Brush.Style := bsSolid;
       S := Copy(Lines[StartPosition.Line - 1], StartPosition.Char, EndPosition.Char - StartPosition.Char);
-      FSearchHighlighterBitmap.Height := LineHeight;
-      FSearchHighlighterBitmap.Width := CharWidth * Length(S);
-      FSearchHighlighterBitmap.Canvas.FillRect(Rect(0, 0, FSearchHighlighterBitmap.Width, FSearchHighlighterBitmap.Height));
+
       FSearchHighlighterBitmap.Canvas.Font.Assign(Font);
       FSearchHighlighterBitmap.Canvas.Font.Color := FSearch.Highlighter.Colors.Foreground;
-      FSearchHighlighterBitmap.Canvas.TextOut(0, 0, S);
+
+      FSearchHighlighterBitmap.Height := LineHeight;
+      FSearchHighlighterBitmap.Width := 0;
+      LLength := Length(S);
+      ReallocMem(FColumnWidths, LLength * SizeOf(Integer));
+      for i := 0 to LLength - 1 do
+      begin
+        FColumnWidths[i] := FTextDrawer.GetCharCount(S[i + 1]) * FTextDrawer.CharWidth;
+        FSearchHighlighterBitmap.Width := FSearchHighlighterBitmap.Width + FColumnWidths[i];
+      end;
+      UniversalExtTextOut(FSearchHighlighterBitmap.Canvas.Handle, 0, 0, [tooOpaque],
+        FSearchHighlighterBitmap.Canvas.ClipRect, PChar(S), Length(S), FColumnWidths);
+
       Windows.AlphaBlend(ACanvas.Handle, LPoint.X, LPoint.Y, FSearchHighlighterBitmap.Width,
         FSearchHighlighterBitmap.Height, FSearchHighlighterBitmap.Canvas.Handle, 0, 0,
         FSearchHighlighterBitmap.Width, FSearchHighlighterBitmap.Height, FSearchHighlighterBlendFunction);
@@ -4627,14 +4646,14 @@ var
   begin
     LBlockEndPosition.Char := Length(LTempString);
     for i := ATextPosition.Char to Length(LTempString) do
-      if not IsIdentChar(LTempString[i]) then
+      if IsWordBreakChar(LTempString[i]) then
       begin
         LBlockEndPosition.Char := i;
         Break;
       end;
     LBlockBeginPosition.Char := 1;
     for i := ATextPosition.Char - 1 downto 1 do
-      if not IsIdentChar(LTempString[i]) then
+      if IsWordBreakChar(LTempString[i]) then
       begin
         LBlockBeginPosition.Char := i + 1;
         Break;
@@ -4672,7 +4691,7 @@ procedure TBCBaseEditor.SizeOrFontChanged(const FontChanged: Boolean);
 begin
   if HandleAllocated and (FCharWidth <> 0) then
   begin
-    FCharsInWindow := Max(ClientWidth - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 1 - FMinimap.GetWidth -
+    FCharsInWindow := Max(ClientWidth - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2 - FMinimap.GetWidth -
       FSearch.Map.GetWidth, 0) div FCharWidth;
     FVisibleLines := ClientHeight div LineHeight;
 
@@ -5913,7 +5932,7 @@ begin
   end;
   if FSelection.Mode = smColumn then
   begin
-    // Borland-IDE
+    { Borland-IDE }
     LSmType := $02;
     Clipboard.Open;
     try
@@ -5935,7 +5954,7 @@ begin
       Clipboard.Close;
     end;
 
-    // Microsoft VisualStudio
+    { Microsoft VisualStudio }
     LSmType := $02;
     Clipboard.Open;
     try
@@ -6136,7 +6155,7 @@ begin
   if FCodeFolding.Visible then
   begin
     if FNeedToRescanCodeFolding or
-      IsKeywordAtCurrentLine and ({(ACommand = ecLineBreak) or} (ACommand = ecChar) or (ACommand = ecDeleteLastChar) or (ACommand = ecDeleteChar)) or
+      IsKeywordAtCurrentLine and ((ACommand = ecLineBreak) or (ACommand = ecChar) or (ACommand = ecDeleteLastChar) or (ACommand = ecDeleteChar)) or
       (ACommand = ecPaste) or (ACommand = ecUndo) or (ACommand = ecRedo) then
       RescanCodeFoldingRanges
     else
@@ -6230,7 +6249,7 @@ var
 begin
   FMinimap.Clicked := True;
   LPreviousLine := -1;
-  LNewLine := Max(1, FMinimap.TopLine + Y div FMinimap.CharHeight); // PixelsToMinimapRowColumn(X, Y).Row;
+  LNewLine := Max(1, FMinimap.TopLine + Y div FMinimap.CharHeight);
 
   if (LNewLine >= TopLine) and (LNewLine <= TopLine + VisibleLines) then
     CaretY := LNewLine
@@ -6734,7 +6753,7 @@ begin
     FSelectionEndPosition := LEndPosition;
 
     MouseCapture := True;
-    // if mousedown occurred in selected block begin drag operation
+    { if mousedown occurred in selected block begin drag operation }
     Exclude(FStateFlags, sfWaitForDragging);
     if LWasSelected and (eoDragDropEditing in FOptions) and (X > LLeftMarginWidth) and
       (FSelection.Mode = smNormal) and IsPointInSelection(DisplayToTextPosition(PixelsToRowColumn(X, Y))) then
@@ -7036,7 +7055,6 @@ procedure TBCBaseEditor.Paint;
 var
   LClipRect, DrawRect: TRect;
   LLine1, LLine2, LLine3, LColumn1, LColumn2: Integer;
-  LLineCount, i: Integer;
   LHandle: HDC;
 begin
   LClipRect := Canvas.ClipRect;
@@ -7061,7 +7079,7 @@ begin
   FTextDrawer.BeginDrawing(LHandle);
   try
     { Paint the text area if it was (partly) invalidated }
-    if LClipRect.Right > FLeftMargin.GetWidth then
+    if LClipRect.Right > FLeftMargin.GetWidth + FCodeFolding.GetWidth then
     begin
       DrawRect := LClipRect;
       DrawRect.Left := Max(DrawRect.Left, FLeftMargin.GetWidth + FCodeFolding.GetWidth);
@@ -7086,21 +7104,15 @@ begin
       if FLeftMargin.Visible then
       begin
         DrawRect := LClipRect;
-        DrawRect.Right := FLeftMargin.GetWidth;
+        DrawRect.Right := FLeftMargin.GetWidth + 2;
         PaintLeftMargin(DrawRect, LLine1, LLine2, LLine3);
       end;
 
       if FCodeFolding.Visible and (Lines.Count > 0) then
       begin
-        LLineCount := FTopLine + FVisibleLines;
-        for i := FTopLine to LLineCount do
-        begin
-          DrawRect.Top := (i - FTopLine) * LineHeight;
-          DrawRect.Bottom := DrawRect.Top + LineHeight;
-          DrawRect.Left := FLeftMargin.GetWidth + 1;
-          DrawRect.Right := FLeftMargin.GetWidth + FCodeFolding.GetWidth;
-          PaintCodeFolding(DrawRect, i);
-        end;
+        DrawRect.Left := FLeftMargin.GetWidth + 1;
+        DrawRect.Right := FLeftMargin.GetWidth + FCodeFolding.GetWidth;
+        PaintCodeFolding(DrawRect, FTopLine + FVisibleLines);
       end;
     end;
 
@@ -7148,73 +7160,93 @@ begin
   end;
 end;
 
-procedure TBCBaseEditor.PaintCodeFolding(AClipRect: TRect; ALine: Integer);
+procedure TBCBaseEditor.PaintCodeFolding(AClipRect: TRect; ALineCount: Integer);
+var
+  i: Integer;
+  LFoldRange: TBCEditorCodeFoldingRange;
+begin
+  Canvas.Brush.Color := FCodeFolding.Colors.Background;
+  Canvas.FillRect(AClipRect); { fill code folding rect }
+  Canvas.Pen.Style := psSolid;
+  Canvas.Brush.Color := FCodeFolding.Colors.FoldingLine;
+
+  LFoldRange := nil;
+  if cfoHighlightFoldingLine in FCodeFolding.Options then
+    LFoldRange := CodeFoldingLineInsideRange(RowToLine(CaretY));
+
+  for i := FTopLine to ALineCount do
+  begin
+    if Assigned(LFoldRange) and (i >= LFoldRange.FromLine) and (i <= LFoldRange.ToLine) then
+    begin
+      Canvas.Brush.Color := CodeFolding.Colors.FoldingLineHighlight;
+      Canvas.Pen.Color := CodeFolding.Colors.FoldingLineHighlight;
+    end
+    else
+    begin
+      Canvas.Brush.Color := CodeFolding.Colors.FoldingLine;
+      Canvas.Pen.Color := CodeFolding.Colors.FoldingLine;
+    end;
+    AClipRect.Top := (i - FTopLine) * LineHeight;
+    AClipRect.Bottom := AClipRect.Top + LineHeight;
+    PaintCodeFoldingLine(AClipRect, i);
+  end;
+end;
+
+procedure TBCBaseEditor.PaintCodeFoldingLine(AClipRect: TRect; ALine: Integer);
 var
   X, LHeight: Integer;
   LFoldRange: TBCEditorCodeFoldingRange;
 begin
   if CodeFolding.Padding > 0 then
     InflateRect(AClipRect, -CodeFolding.Padding, 0);
-  Canvas.Pen.Color := CodeFolding.Colors.FoldingLine;
-  Canvas.Pen.Style := psSolid;
-  if CodeFoldingTreeLineForLine(RowToLine(ALine)) then
-  begin
-    X := AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2);
-    Canvas.MoveTo(X, AClipRect.Top);
-    Canvas.LineTo(X, AClipRect.Bottom);
-  end;
-  if CodeFoldingTreeEndForLine(RowToLine(ALine)) then
-  begin
-    X := AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2);
-    Canvas.MoveTo(X, AClipRect.Top);
-    Canvas.LineTo(X, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) div 2));
-    Canvas.LineTo(AClipRect.Right, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) div 2));
-  end;
 
-  if (ALine = 1) or (RowToLine(ALine) <> RowToLine(ALine - 1)) then
-  begin
-    LFoldRange := CodeFoldingCollapsableFoldRangeForLine(RowToLine(ALine));
+  LFoldRange := CodeFoldingCollapsableFoldRangeForLine(RowToLine(ALine));
 
-    if Assigned(LFoldRange) and LFoldRange.Collapsable then
+  if not Assigned(LFoldRange) then
+  begin
+    if CodeFoldingTreeLineForLine(RowToLine(ALine)) then
     begin
-      if not LFoldRange.Collapsed then
+      X := AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2);
+      Canvas.MoveTo(X, AClipRect.Top);
+      Canvas.LineTo(X, AClipRect.Bottom);
+    end;
+    if CodeFoldingTreeEndForLine(RowToLine(ALine)) then
+    begin
+      X := AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2);
+      Canvas.MoveTo(X, AClipRect.Top);
+      Canvas.LineTo(X, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) - 4));
+      Canvas.LineTo(AClipRect.Right, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) - 4));
+    end
+  end
+  else
+  begin
+    if (ALine = 1) or (RowToLine(ALine) <> RowToLine(ALine - 1)) then
+    begin
+      if LFoldRange.Collapsable then
       begin
-        X := AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2);
-        Canvas.MoveTo(X, AClipRect.Top + (LineHeight div 2));
-        Canvas.LineTo(X, AClipRect.Bottom);
-      end;
+        LHeight := AClipRect.Right - AClipRect.Left;
+        AClipRect.Top := AClipRect.Top + ((LineHeight - LHeight) div 2);
+        AClipRect.Bottom := AClipRect.Top + LHeight;
 
-      LHeight := AClipRect.Right - AClipRect.Left;
-      AClipRect.Top := AClipRect.Top + ((LineHeight - LHeight) div 2);
-      AClipRect.Bottom := AClipRect.Top + LHeight;
+        if CodeFolding.MarkStyle = msSquare then
+          Canvas.FrameRect(AClipRect)
+        else
+        if CodeFolding.MarkStyle = msCircle then
+        begin
+          Canvas.Brush.Color := FCodeFolding.Colors.Background;
+          Canvas.Ellipse(AClipRect);
+        end;
 
-      Canvas.Brush.Color := FCodeFolding.Colors.Background;
-      InflateRect(AClipRect, 0, 2);
-      Canvas.FillRect(AClipRect);
-      InflateRect(AClipRect, 0, -2);
+        { minus }
+        Canvas.MoveTo(AClipRect.Left + 2, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) div 2));
+        Canvas.LineTo(AClipRect.Right - 2, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) div 2));
 
-      Canvas.Pen.Color := CodeFolding.Colors.FoldingLine;
-      Canvas.Brush.Color := FCodeFolding.Colors.FoldingLine;
-
-      if CodeFolding.MarkStyle = msSquare then
-        Canvas.FrameRect(AClipRect)
-      else
-      if CodeFolding.MarkStyle = msCircle then
-      begin
-        Canvas.Brush.Color := FCodeFolding.Colors.Background;
-        Canvas.Ellipse(AClipRect);
-      end;
-
-      { minus }
-      Canvas.Pen.Color := CodeFolding.Colors.FoldingLine;
-      Canvas.MoveTo(AClipRect.Left + 2, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) div 2));
-      Canvas.LineTo(AClipRect.Right - 2, AClipRect.Top + ((AClipRect.Bottom - AClipRect.Top) div 2));
-
-      if LFoldRange.Collapsed then
-      begin
-        { plus }
-        Canvas.MoveTo(AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2), AClipRect.Top + 2);
-        Canvas.LineTo(AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2), AClipRect.Bottom - 2);
+        if LFoldRange.Collapsed then
+        begin
+          { plus }
+          Canvas.MoveTo(AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2), AClipRect.Top + 2);
+          Canvas.LineTo(AClipRect.Left + ((AClipRect.Right - AClipRect.Left) div 2), AClipRect.Bottom - 2);
+        end;
       end;
     end;
   end;
@@ -7395,13 +7427,14 @@ var
   LLineStateRect: TRect;
   LPanelRect: TRect;
   LPEditorLineAttribute: PBCEditorLineAttribute;
-  LCodeFoldingRect: TRect;
 begin
   LFirstLine := RowToLine(AFirstRow);
   LLastLine := RowToLine(ALastRow);
   LLastTextLine := RowToLine(ALastTextRow);
 
   Canvas.Brush.Color := FLeftMargin.Color;
+  Canvas.FillRect(AClipRect); { fill left margin rect }
+
   { Line numbers }
   if FLeftMargin.LineNumbers.Visible then
   begin
@@ -7439,7 +7472,6 @@ begin
         if (lnoIntens in LeftMargin.LineNumbers.Options) and (LLine <> CaretY) and (LLineNumber[Length(LLineNumber)] <> '0') and
           (LLine <> LeftMargin.LineNumbers.StartFrom) then
         begin
-          Canvas.FillRect(LLineRect);
           LLeftMarginWidth := FLeftMargin.GetWidth - FLeftMargin.LineState.Width - 1;
           LOldColor := Canvas.Pen.Color;
           Canvas.Pen.Color := LeftMargin.Font.Color;
@@ -7474,9 +7506,7 @@ begin
     finally
       FTextDrawer.SetBaseFont(Self.Font);
     end;
-  end
-  else
-    Canvas.FillRect(AClipRect);
+  end;
   { Bookmark panel }
   if FLeftMargin.Bookmarks.Panel.Visible then
   begin
@@ -7484,23 +7514,10 @@ begin
     if FLeftMargin.Bookmarks.Panel.Color <> clNone then
     begin
       Canvas.Brush.Color := FLeftMargin.Bookmarks.Panel.Color;
-      Canvas.FillRect(LPanelRect);
+      Canvas.FillRect(LPanelRect); { fill bookmark panel rect }
     end;
     if Assigned(FBookmarkPanelBeforePaint) then
       FBookmarkPanelBeforePaint(Self, Canvas, LPanelRect, LFirstLine, LLastLine);
-  end;
-  { Code folding }
-  if FCodeFolding.Visible then
-  begin
-    LCodeFoldingRect := AClipRect;
-    if FCodeFolding.Visible then
-      LCodeFoldingRect.Left := FLeftMargin.GetWidth
-    else
-      LCodeFoldingRect.Left := 0;
-    LCodeFoldingRect.Right := FLeftMargin.GetWidth + FCodeFolding.GetWidth;
-    Canvas.Brush.Color := CodeFolding.Colors.Background;
-    Canvas.FillRect(LCodeFoldingRect);
-    Canvas.Brush.Color := FLeftMargin.Color;
   end;
   Canvas.Brush.Style := bsClear;
   { Word wrap }
@@ -7584,7 +7601,7 @@ begin
           Canvas.Brush.Color := FLeftMargin.LineState.Colors.Normal
         else
           Canvas.Brush.Color := FLeftMargin.LineState.Colors.Modified;
-        Canvas.FillRect(LLineStateRect);
+        Canvas.FillRect(LLineStateRect); { fill line state rect }
       end;
     end;
   end;
@@ -7691,13 +7708,13 @@ begin
   else
   {$ENDIF}
     Canvas.Brush.Color := FBackgroundColor;
-  Canvas.FillRect(AClipRect);
+  Canvas.FillRect(AClipRect); { fill search map rect }
   { Lines in window }
   LHeight := (ClientRect.Bottom-ClientRect.Top) / Max(Lines.Count, 1);
   AClipRect.Top := RoundCorrect((TopLine - 1) * LHeight);
   AClipRect.Bottom := RoundCorrect((TopLine - 1 + VisibleLines) * LHeight);
   Canvas.Brush.Color := FBackgroundColor;
-  Canvas.FillRect(AClipRect);
+  Canvas.FillRect(AClipRect); { fill lines in window rect }
 
   if not Assigned(FSearchLines) then
     Exit;
@@ -7757,7 +7774,7 @@ begin
     else
       Canvas.Pen.Color := FSpecialChars.Color;
 
-    LCharWidth := FCharWidth; //shr 1;
+    LCharWidth := FCharWidth;
     LTextHeight := Max(FTextHeight - 8, 0) shr 4;
     with ALineRect do
       X := Top + (Bottom - Top) shr 1;
@@ -7896,7 +7913,6 @@ var
   LPaintRightMargin: Boolean;
   LRightMarginPosition: Integer;
   LSelectionEndPosition: TBCEditorDisplayPosition;
-  //LSelectionForegroundColor, LSelectionBackgroundColor: TColor;
   LSelectionStartPosition: TBCEditorDisplayPosition;
   LTokenHelper: TBCEditorTokenHelper;
   LCustomLineColors: Boolean;
@@ -7965,8 +7981,8 @@ var
         LAnySelection := (LEndPosition.Line >= LFirstLine) and (LStartPosition.Line <= LLastLine);
         if LAnySelection then
         begin
-          LSelectionStartPosition := TextToDisplayPosition(LStartPosition);
-          LSelectionEndPosition := TextToDisplayPosition(LEndPosition);
+          LSelectionStartPosition := TextToDisplayPosition(LStartPosition, True, False);
+          LSelectionEndPosition := TextToDisplayPosition(LEndPosition, True, False);
           if (FSelection.ActiveMode = smColumn) and (LSelectionStartPosition.Column > LSelectionEndPosition.Column) then
             SwapInt(LSelectionStartPosition.Column, LSelectionEndPosition.Column);
         end;
@@ -8000,7 +8016,9 @@ var
     end;
   end;
 
-  function ColumnToXValue(AColumn: Integer; AMinimap: Boolean = False): Integer;
+  function ColumnToWidth(AColumn: Integer; AMinimap: Boolean = False; ARealWidth: Boolean = True): Integer;
+  var
+    LCharWidth: Integer;
   begin
     if AMinimap then
       Result := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth
@@ -8008,9 +8026,14 @@ var
       Result := FTextOffset;
 
     if AMinimap then
-      Result := Result + Pred(AColumn) * FMinimap.CharWidth
+      LCharWidth := FMinimap.CharWidth
     else
-      Result := Result + Pred(AColumn) * FTextDrawer.CharWidth;
+      LCharWidth := FTextDrawer.CharWidth;
+
+    if ARealWidth then
+      Result := Result + FColumnWidths[Pred(AColumn)]
+    else
+      Result := Result + LCharWidth * Pred(AColumn);
   end;
 
   procedure PaintToken(AToken: string; ATokenLength, ACharsBefore, AFirst, ALast: Integer);
@@ -8018,8 +8041,6 @@ var
     LText: string;
     X: Integer;
     LCharsToPaint: Integer;
-    LCountOfAvgGlyphs, LVisibleGlyphPart, LFillerCount, LNonFillerPosition: Integer;
-    LCharWidth: Integer;
   const
     ETOOptions = [tooOpaque, tooClipped];
 
@@ -8045,14 +8066,9 @@ var
     end;
 
   begin
-    if AMinimap then
-      LCharWidth := FMinimap.CharWidth
-    else
-      LCharWidth := FCharWidth;
-
     if (ALast >= AFirst) and (LTokenRect.Right > LTokenRect.Left) then
     begin
-      X := ColumnToXValue(AFirst, AMinimap);
+      X := ColumnToWidth(AFirst, AMinimap);
 
       Dec(AFirst, ACharsBefore);
       Dec(ALast, ACharsBefore);
@@ -8064,23 +8080,10 @@ var
       end
       else
       begin
-        LFillerCount := 0;
-        LNonFillerPosition := AFirst;
-        while AToken[LNonFillerPosition] = BCEDITOR_FILLER_CHAR do
-        begin
-          inc(LFillerCount);
-          inc(LNonFillerPosition);
-        end;
-
-        LCountOfAvgGlyphs := CeilOfIntDiv(fTextDrawer.TextWidth(AToken[LNonFillerPosition]), LCharWidth);
-        LVisibleGlyphPart := LCountOfAvgGlyphs - LFillerCount;
-
-        X := X - LCharWidth * (LVisibleGlyphPart - 1);
-
         LCharsToPaint := Min(ALast - AFirst + 1, ATokenLength - AFirst + 1);
 
         if GetWordWrap then
-        while X + LCharWidth * LCharsToPaint > ClientWidth do
+        while X + FTextDrawer.CharWidth * LCharsToPaint > ClientWidth do
         begin
           Dec(LCharsToPaint);
           while (LCharsToPaint > 0) and (AToken[AFirst + LCharsToPaint - 1] = BCEDITOR_FILLER_CHAR) do
@@ -8091,7 +8094,6 @@ var
       end;
 
       FTextDrawer.ExtTextOut(X, LTokenRect.Top, ETOOptions, LTokenRect, PChar(LText), LCharsToPaint);
-
       LTokenRect.Left := LTokenRect.Right;
     end;
   end;
@@ -8105,40 +8107,20 @@ var
     LTextMetric: TTextMetricA;
   begin
     LLastChar := Ord(LTokenHelper.Text[LTokenHelper.Length]);
-    LNormalCharWidth := fTextDrawer.TextWidth(WideChar(LLastChar));
+    LNormalCharWidth := FTextDrawer.TextWidth(WideChar(LLastChar));
     LRealCharWidth := LNormalCharWidth;
-    if Win32Platform = VER_PLATFORM_WIN32_NT then
+    if GetCharABCWidthsW(Canvas.Handle, LLastChar, LLastChar, LCharInfo) then
     begin
-      if GetCharABCWidthsW(Canvas.Handle, LLastChar, LLastChar, LCharInfo) then
-      begin
-        LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
-        if LCharInfo.abcC >= 0 then
-          Inc(LRealCharWidth, LCharInfo.abcC);
-      end
-      else
-      if LLastChar < Ord(High(AnsiChar)) then
-      begin
-        GetTextMetricsA(Canvas.Handle, LTextMetric);
-        LRealCharWidth := LTextMetric.tmAveCharWidth + LTextMetric.tmOverhang;
-      end;
+      LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
+      if LCharInfo.abcC >= 0 then
+        Inc(LRealCharWidth, LCharInfo.abcC);
     end
     else
-    if WideChar(LLastChar) <= High(AnsiChar) then
+    if LLastChar < Ord(High(AnsiChar)) then
     begin
-      if GetCharABCWidths(Canvas.Handle, LLastChar, LLastChar, LCharInfo) then
-      begin
-        LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
-        if LCharInfo.abcC >= 0 then
-          Inc(LRealCharWidth, LCharInfo.abcC);
-      end
-      else
-      if LLastChar < Ord(High(AnsiChar)) then
-      begin
-        GetTextMetricsA(Canvas.Handle, LTextMetric);
-        LRealCharWidth := LTextMetric.tmAveCharWidth + LTextMetric.tmOverhang;
-      end;
+      GetTextMetricsA(Canvas.Handle, LTextMetric);
+      LRealCharWidth := LTextMetric.tmAveCharWidth + LTextMetric.tmOverhang;
     end;
-
     if LRealCharWidth > LNormalCharWidth then
       Inc(LTokenRect.Left, LRealCharWidth - LNormalCharWidth);
   end;
@@ -8150,7 +8132,7 @@ var
     LFirstUnselectedPartOfToken, LSelected, LSecondUnselectedPartOfToken: Boolean;
     X1, X2: Integer;
   begin
-    // Compute some helper variables.
+    { Compute some helper variables. }
     LFirstColumn := Max(AFirstColumn, LTokenHelper.CharsBefore + 1);
     LLastColumn := Min(ALastColumn, LTokenHelper.CharsBefore + LTokenHelper.Length + 1);
     if LIsComplexLine then
@@ -8167,7 +8149,7 @@ var
       LSecondUnselectedPartOfToken := False;
       LIsTokenSelected := False;
     end;
-    // Any token chars accumulated?
+    { Any token chars accumulated? }
     if LTokenHelper.Length > 0 then
     begin
       LBackgroundColor := LTokenHelper.Background;
@@ -8189,22 +8171,22 @@ var
         if LFirstUnselectedPartOfToken then
         begin
           SetDrawingColors(False);
-          LTokenRect.Right := ColumnToXValue(LLineSelectionStart, AMinimap);
+          LTokenRect.Right := ColumnToWidth(LLineSelectionStart, AMinimap);
           with LTokenHelper do
             PaintToken(Text, Length, CharsBefore, LFirstColumn, LLineSelectionStart);
         end;
-        // selected part of the token
+        { selected part of the token }
         SetDrawingColors(True);
         LSelectionStart := Max(LLineSelectionStart, LFirstColumn);
         LSelectionEnd := Min(LLineSelectionEnd, LLastColumn);
-        LTokenRect.Right := ColumnToXValue(LSelectionEnd, AMinimap);
+        LTokenRect.Right := ColumnToWidth(LSelectionEnd, AMinimap);
         with LTokenHelper do
           PaintToken(Text, Length, CharsBefore, LSelectionStart, LSelectionEnd);
-        // second unselected part of the token
+        { second unselected part of the token }
         if LSecondUnselectedPartOfToken then
         begin
           SetDrawingColors(False);
-          LTokenRect.Right := ColumnToXValue(LLastColumn, AMinimap);
+          LTokenRect.Right := ColumnToWidth(LLastColumn, AMinimap);
           with LTokenHelper do
             PaintToken(Text, Length, CharsBefore, LLineSelectionEnd, LLastColumn);
         end;
@@ -8212,7 +8194,7 @@ var
       else
       begin
         SetDrawingColors(LSelected);
-        LTokenRect.Right := ColumnToXValue(LLastColumn, AMinimap);
+        LTokenRect.Right := ColumnToWidth(LLastColumn, AMinimap);
         with LTokenHelper do
           PaintToken(Text, Length, CharsBefore, LFirstColumn, LLastColumn);
       end;
@@ -8232,15 +8214,15 @@ var
 
       if LIsComplexLine then
       begin
-        X1 := ColumnToXValue(LLineSelectionStart, AMinimap);
-        X2 := ColumnToXValue(LLineSelectionEnd, AMinimap);
+        X1 := ColumnToWidth(LLineSelectionStart, AMinimap, False);
+        X2 := ColumnToWidth(LLineSelectionEnd, AMinimap, False);
         if LTokenRect.Left < X1 then
         begin
           SetDrawingColors(False);
           LTokenRect.Right := X1;
           if (LTokenHelper.Length > 0) and (LTokenHelper.FontStyle <> []) then
             AdjustEndRect;
-          Canvas.FillRect(LTokenRect);
+          Canvas.FillRect(LTokenRect); { fill end of line rect }
           LTokenRect.Left := X1;
         end;
         if LTokenRect.Left < X2 then
@@ -8249,7 +8231,7 @@ var
           LTokenRect.Right := X2;
           if (LTokenHelper.Length > 0) and (LTokenHelper.FontStyle <> []) then
             AdjustEndRect;
-          Canvas.FillRect(LTokenRect);
+          Canvas.FillRect(LTokenRect); { fill end of line rect }
           LTokenRect.Left := X2;
         end;
         if LTokenRect.Left < LLineRect.Right then
@@ -8258,7 +8240,7 @@ var
           LTokenRect.Right := LLineRect.Right;
           if (LTokenHelper.Length > 0) and (LTokenHelper.FontStyle <> []) then
             AdjustEndRect;
-          Canvas.FillRect(LTokenRect);
+          Canvas.FillRect(LTokenRect); { fill end of line rect }
         end;
       end
       else
@@ -8267,7 +8249,7 @@ var
         LTokenRect.Right := LLineRect.Right;
         if (LTokenHelper.Length > 0) and (LTokenHelper.FontStyle <> []) then
           AdjustEndRect;
-        Canvas.FillRect(LTokenRect);
+        Canvas.FillRect(LTokenRect); { fill end of line rect }
       end;
     end;
   end;
@@ -8309,7 +8291,6 @@ var
     begin
       LCanAppend := ((LTokenHelper.FontStyle = AFontStyle) or
         (not (fsUnderline in AFontStyle) and not (fsUnderline in LTokenHelper.FontStyle) and TokenIsSpaces)) and
-        //LIsLineSelected or
         ((LTokenHelper.Background = ABackground) and ((LTokenHelper.Foreground = AForeground) or TokenIsSpaces));
       if not LCanAppend then
         PaintHighlightToken(False);
@@ -8342,6 +8323,20 @@ var
     end;
   end;
 
+  procedure InitColumnWidths(AText: PChar; ACharWidth: Integer; ALength: Integer);
+  var
+    i, LWidthSum: Integer;
+  begin
+    LIsCurrentLine := False;
+    ReallocMem(FColumnWidths, (ALength + 1) * SizeOf(Integer));
+    LWidthSum := 0;
+    for i := 0 to ALength do
+    begin
+      FColumnWidths[i] := LWidthSum;
+      LWidthSum := LWidthSum + FTextDrawer.GetCharCount(AText[i]) * ACharWidth;
+    end;
+  end;
+
   procedure PaintLines;
   var
     i: Integer;
@@ -8366,7 +8361,7 @@ var
     begin
       Result := S;
       j := 0;
-      SetLength(Result, Length(S) * 2); // speed improvement
+      SetLength(Result, Length(S) * 2); { speed improvement }
       for I := 1 to Length(S) do
       begin
         Inc(j);
@@ -8375,7 +8370,7 @@ var
         if j + CountOfAvgGlyphs > Length(Result) then
           SetLength(Result, Length(Result) + 128);
 
-        // insert CountOfAvgGlyphs filling chars
+        { insert CountOfAvgGlyphs filling chars }
         while CountOfAvgGlyphs > 1 do
         begin
           Result[j] := BCEDITOR_FILLER_CHAR;
@@ -8410,12 +8405,8 @@ var
 
       { Get line with tabs converted to spaces. Trust me, you don't want to mess around with tabs when painting. }
       LCurrentLineText := FLines.ExpandedStrings[LCurrentLine - 1];
+      InitColumnWidths(PChar(LCurrentLineText), FTextDrawer.CharWidth, Length(LCurrentLineText));
       LIsCurrentLine := CaretY = LCurrentLine;
- //     LForegroundColor := Font.Color;
- //     LBackgroundColor := GetBackgroundColor;
-      //LSelectionForegroundColor := FSelection.Colors.Foreground;
-      //LSelectionBackgroundColor := FSelection.Colors.Background;
-
       LStartRow := Max(LineToRow(LCurrentLine), AFirstRow);
       LEndRow := Min(LineToRow(LCurrentLine + 1) - 1, ALastRow);
       LTokenPosition := 0;
@@ -8566,8 +8557,8 @@ var
           Canvas.LineTo(LRightMarginPosition, LLineRect.Bottom + 1);
         end;
       end;
-      LIsCurrentLine := False;
     end;
+    LIsCurrentLine := False;
   end;
 
 begin
@@ -9712,7 +9703,6 @@ function TBCBaseEditor.DisplayToTextPosition(const ADisplayPosition: TBCEditorDi
 var
   s: string;
   i, L, X: Integer;
-  LCountOfAvgGlyphs: Integer;
 begin
   if GetWordWrap then
     Result := FWordWrapHelper.DisplayToTextPosition(ADisplayPosition)
@@ -9733,10 +9723,7 @@ begin
         Inc(X, FTabs.Width)
       else
       if i <= l then
-      begin
-        LCountOfAvgGlyphs := CeilOfIntDiv(fTextDrawer.TextWidth(s[i]) , fCharWidth);
-        Inc(X, LCountOfAvgGlyphs);
-      end
+        Inc(X, FTextDrawer.GetCharCount(s[i]))
       else
         Inc(X);
     end;
@@ -9850,16 +9837,6 @@ var
   X, Y: Integer;
 begin
   Result := GetBookmark(ABookmark, X, Y);
-end;
-
-function TBCBaseEditor.IsIdentChar(AChar: Char): Boolean;
-begin
-  if Assigned(Highlighter) then
-    Result := Highlighter.IsIdentChar(AChar)
-  else
-    Result := AChar >= BCEDITOR_EXCLAMATION_MARK;
-
-  Result := Result and not IsWordBreakChar(AChar);
 end;
 
 function TBCBaseEditor.IsPointInSelection(const ATextPosition: TBCEditorTextPosition): Boolean;
@@ -10234,12 +10211,12 @@ begin
   end;
 end;
 
-function TBCBaseEditor.TextToDisplayPosition(const ATextPosition: TBCEditorTextPosition; ACollapsedLineNumber: Boolean = True): TBCEditorDisplayPosition;
+function TBCBaseEditor.TextToDisplayPosition(const ATextPosition: TBCEditorTextPosition; ACollapsedLineNumber: Boolean = True;
+  ARealWidth: Boolean = True): TBCEditorDisplayPosition;
 var
   i: Integer;
   s: string;
   L, X: Integer;
-  LCountOfAvgGlyphs: Integer;
 begin
   Result := TBCEditorDisplayPosition(ATextPosition);
 
@@ -10256,15 +10233,13 @@ begin
     s := Lines[ATextPosition.Line - 1];
     l := Length(s);
     X := 0;
-    for i := 1 to ATextPosition.Char - 1 do begin
-      if (i <= l) and (s[i] = #9) then
-        Inc(x, FTabs.Width {- (x mod FTabs.Width)})
+    for i := 1 to ATextPosition.Char - 1 do
+    begin
+      if (i <= l) and (s[i] = BCEDITOR_TAB_CHAR) then
+        Inc(X, FTabs.Width)
       else
-      if i <= l then
-      begin
-        LCountOfAvgGlyphs := CeilOfIntDiv(fTextDrawer.TextWidth(s[i]), fCharWidth);
-        Inc(X, LCountOfAvgGlyphs);
-      end
+      if ARealWidth and (i <= l) then
+        Inc(X, FTextDrawer.GetCharCount(s[i]))
       else
         Inc(X);
     end;
@@ -10523,9 +10498,9 @@ begin
   begin
     { notify hooked command handlers before the command is executed inside of the class }
     NotifyHookedCommandHandlers(False, ACommand, AChar, AData);
-    if (ACommand = ecCut) or (ACommand = ecDeleteLine) or (ACommand = ecDeleteLastChar) or (ACommand = ecLineBreak) or
-      IsKeywordAtCursorPosition and ((ACommand = ecChar) or (ACommand = ecTab) or
-      (ACommand = ecDeleteChar)) then
+    if (ACommand = ecCut) or (ACommand = ecDeleteLine) or (ACommand = ecDeleteLastChar) or
+      IsKeywordAtCursorPosition and ((ACommand = ecChar) or (ACommand = ecTab) or (ACommand = ecDeleteChar)) or
+      SelectionAvailable and (ACommand = ecLineBreak) then
       FNeedToRescanCodeFolding := True;
 
     { internal command handler }
@@ -10807,7 +10782,7 @@ var
   LCaretNewPosition: TBCEditorTextPosition;
   LOldSelectionMode: TBCEditorSelectionMode;
   LCounter: Integer;
-  InsertDelta: Integer;
+  LInsertCount, LInsertDelta: Integer;
   LUndoBeginPosition, LUndoEndPosition: TBCEditorTextPosition;
   LCaretRow: Integer;
   S: string;
@@ -10858,7 +10833,6 @@ begin
           if ACommand in [ecPageUp, ecSelectionPageUp] then
             LCounter := -LCounter;
           TopLine := TopLine + LCounter;
-         // if Command in [ecSelectionPageUp, ecSelectionPageDown] then
           MoveCaretVertically(LCounter, ACommand in [ecSelectionPageUp, ecSelectionPageDown]);
           Update;
         end;
@@ -11048,7 +11022,7 @@ begin
                 begin
                   { Unindent, count visual whitespace on current previous lines }
                   LVisualSpaceCount1 := GetLeadingExpandedLength(LLineText, FTabs.Width);
-                  LVisualSpaceCount2 := 0; // Shut up Delphi compiler
+                  LVisualSpaceCount2 := 0;
                   LBackCounter := FCaretY - 2;
                   while LBackCounter >= 0 do
                   begin
@@ -11381,10 +11355,14 @@ begin
         begin
           UndoList.BeginBlock;
           try
+            LInsertCount := 1;
             if SelectionAvailable then
+            begin
+              LInsertCount := 0;
               SetSelectedTextEmpty;
+            end;
             LLineText := LineText;
-            InsertDelta := Ord(CaretX = 1);
+            LInsertDelta := Ord(CaretX = 1);
             LLength := Length(LLineText);
 
             LCaretPosition := CaretPosition;
@@ -11609,7 +11587,7 @@ begin
             end;
             DoTrimTrailingSpaces(LCaretPosition.Line);
 
-            DoLinesInserted(CaretY - InsertDelta, 1);
+            DoLinesInserted(CaretY - LInsertDelta, LInsertCount);
             SelectionBeginPosition := CaretPosition;
             SelectionEndPosition := CaretPosition;
             EnsureCursorPositionVisible;
@@ -11972,6 +11950,7 @@ procedure TBCBaseEditor.InitCodeFolding;
 begin
   ClearCodeFolding;
   ScanCodeFoldingRanges(FAllCodeFoldingRanges, FLines);
+  CodeFoldingPrepareRangeForLine;
 end;
 
 procedure TBCBaseEditor.InsertBlock(const BlockBeginPosition, BlockEndPosition: TBCEditorTextPosition; AChangeStr: PChar; AddToUndoList: Boolean);
@@ -12116,7 +12095,7 @@ procedure TBCBaseEditor.LeftMarginChanged(Sender: TObject);
 var
   LWidth: Integer;
 begin
-  if not (csLoading in ComponentState) then
+  if not (csLoading in ComponentState) and Assigned(FHighlighter) and not FHighlighter.Loading then
   begin
     if FLeftMargin.LineNumbers.Visible and FLeftMargin.Autosize then
       FLeftMargin.AutosizeDigitCount(Lines.Count);
@@ -12312,6 +12291,7 @@ begin
 
   EnsureCursorPositionVisible;
   RescanCodeFoldingRanges;
+  Invalidate;
 end;
 
 procedure TBCBaseEditor.DoRedo;

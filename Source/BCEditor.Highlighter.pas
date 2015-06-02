@@ -22,8 +22,8 @@ type
     FEditor: TWinControl;
     FEndOfLine: Boolean;
     FFileName: string;
-    FIdentChars: TBCEditorCharSet;
     FInfo: TBCEditorHighlighterInfo;
+    FLoading: Boolean;
     FMatchingPairs: TList;
     FMainRules: TBCEditorRange;
     FName: string;
@@ -37,7 +37,6 @@ type
     procedure UpdateAttributes(ARange: TBCEditorRange; AParentRange: TBCEditorRange);
   protected
     function GetAttribute(Index: Integer): TBCEditorHighlighterAttribute;
-    function GetIdentChars: TBCEditorCharSet;
     procedure AddAttribute(AHighlighterAttribute: TBCEditorHighlighterAttribute);
     procedure Prepare;
     procedure Reset;
@@ -55,7 +54,6 @@ type
     function GetTokenKind: Integer;
     function GetTokenLength: Integer;
     function GetTokenPosition: Integer;
-    function IsIdentChar(AChar: Char): Boolean;
     procedure AddKeywords(var StringList: TStrings);
     procedure Clear;
     procedure LoadFromFile(AFileName: string);
@@ -73,6 +71,7 @@ type
     property Editor: TWinControl read FEditor;
     property FileName: string read FFileName write FFileName;
     property Info: TBCEditorHighlighterInfo read FInfo write FInfo;
+    property Loading: Boolean read FLoading write FLoading;
     property MainRules: TBCEditorRange read FMainRules;
     property MatchingPairs: TList read FMatchingPairs write FMatchingPairs;
     property Name: string read FName write FName;
@@ -116,6 +115,8 @@ begin
   FMatchingPairs := TList.Create;
 
   FTemporaryCurrentTokens := TList.Create;
+
+  FLoading := False;
 end;
 
 destructor TBCEditorHighlighter.Destroy;
@@ -173,8 +174,8 @@ end;
 procedure TBCEditorHighlighter.Next;
 var
   i: Integer;
-  Parser: TBCEditorAbstractParser;
-  Keyword: PChar;
+  LParser: TBCEditorAbstractParser;
+  LKeyword: PChar;
   LCloseParent: Boolean;
 begin
   while FTemporaryCurrentTokens.Count > 0 do
@@ -198,14 +199,14 @@ begin
   begin
     if FCurrentRange.AlternativeClose <> '' then
     begin
-      Keyword := PChar(FCurrentRange.AlternativeClose);
+      LKeyword := PChar(FCurrentRange.AlternativeClose);
       i := FRunPosition;
-      while (FCurrentLine[i] <> BCEDITOR_NONE_CHAR) and (FCurrentLine[i] = Keyword^) do
+      while (FCurrentLine[i] <> BCEDITOR_NONE_CHAR) and (FCurrentLine[i] = LKeyword^) do
       begin
-        Inc(Keyword);
+        Inc(LKeyword);
         Inc(i);
       end;
-      if Keyword^ = BCEDITOR_NONE_CHAR then
+      if LKeyword^ = BCEDITOR_NONE_CHAR then
         FCurrentRange := FCurrentRange.Parent;
     end;
   end;
@@ -226,11 +227,11 @@ begin
 
   if Assigned(FCurrentRange) then
   begin
-    Parser := FCurrentRange.SymbolList[FCurrentRange.CaseFunct(FCurrentLine[FRunPosition])];
-    if not Assigned(Parser) then
+    LParser := FCurrentRange.SymbolList[FCurrentRange.CaseFunct(FCurrentLine[FRunPosition])];
+    if not Assigned(LParser) then
       Inc(FRunPosition)
     else
-    if not Parser.GetToken(FCurrentRange, FCurrentLine, FRunPosition, FCurrentToken) then
+    if not LParser.GetToken(FCurrentRange, FCurrentLine, FRunPosition, FCurrentToken) then
     begin
       FCurrentToken := FCurrentRange.DefaultToken;
 
@@ -285,10 +286,10 @@ end;
 
 function TBCEditorHighlighter.GetToken: string;
 var
-  Len: LongInt;
+  LLength: LongInt;
 begin
-  Len := FRunPosition - FTokenPosition;
-  SetString(Result, (FCurrentLine + FTokenPosition), Len);
+  LLength := FRunPosition - FTokenPosition;
+  SetString(Result, FCurrentLine + FTokenPosition, LLength);
 end;
 
 function TBCEditorHighlighter.GetTokenAttribute: TBCEditorHighlighterAttribute;
@@ -330,27 +331,22 @@ begin
   MainRules.Reset;
 end;
 
-function TBCEditorHighlighter.GetIdentChars: TBCEditorCharSet;
-begin
-  Result := [BCEDITOR_SPACE_CHAR .. BCEDITOR_NON_BREAKING_SPACE] - FCurrentRange.Delimiters;
-end;
-
 function TBCEditorHighlighter.GetTokenKind: Integer;
 var
   i, j: Integer;
-  Token: string;
-  TokenType: TBCEditorRangeType;
+  LToken: string;
+  LTokenType: TBCEditorRangeType;
 begin
-  TokenType := FCurrentRange.TokenType;
-  if TokenType <> ttUnspecified then
-    Result := Integer(TokenType)
+  LTokenType := FCurrentRange.TokenType;
+  if LTokenType <> ttUnspecified then
+    Result := Integer(LTokenType)
   else
   { keyword token type }
   begin
-    Token := GetToken;
+    LToken := GetToken;
     for i := 0 to FCurrentRange.KeyListCount - 1 do
       for j := 0 to FCurrentRange.KeyList[i].KeyList.Count - 1 do
-      if FCurrentRange.KeyList[i].KeyList[j]=Token then
+      if FCurrentRange.KeyList[i].KeyList[j] = LToken then
       begin
         Result := Integer(FCurrentRange.KeyList[i].TokenType);
         Exit;
@@ -380,7 +376,6 @@ begin
   FAttributes.Clear;
   AddAllAttributes(MainRules);
   FMainRules.Prepare(FMainRules);
-  FIdentChars := GetIdentChars;
 end;
 
 procedure TBCEditorHighlighter.UpdateAttributes(ARange: TBCEditorRange; AParentRange: TBCEditorRange);
@@ -429,6 +424,7 @@ var
   LStream: TStream;
   LEditor: TBCBaseEditor;
 begin
+  FLoading := True;
   FFileName := AFileName;
   FName := ExtractFileName(AFileName);
   FName := Copy(FName, 1, Pos('.', FName) - 1);
@@ -448,6 +444,7 @@ begin
     end;
     UpdateColors;
   end;
+  FLoading := False;
 end;
 
 function TBCEditorHighlighter.GetAttribute(Index: Integer): TBCEditorHighlighterAttribute;
@@ -460,11 +457,6 @@ end;
 procedure TBCEditorHighlighter.AddAttribute(AHighlighterAttribute: TBCEditorHighlighterAttribute);
 begin
   FAttributes.AddObject(AHighlighterAttribute.Name, AHighlighterAttribute);
-end;
-
-function TBCEditorHighlighter.IsIdentChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, FIdentChars);
 end;
 
 procedure TBCEditorHighlighter.SetWordBreakChars(AChars: TBCEditorCharSet);
@@ -481,15 +473,15 @@ end;
 procedure TBCEditorHighlighter.SetAttributesOnChange(AEvent: TNotifyEvent);
 var
   i: Integer;
-  Attri: TBCEditorHighlighterAttribute;
+  LHighlighterAttribute: TBCEditorHighlighterAttribute;
 begin
   for i := FAttributes.Count - 1 downto 0 do
   begin
-    Attri := TBCEditorHighlighterAttribute(FAttributes.Objects[i]);
-    if Assigned(Attri) then
+    LHighlighterAttribute := TBCEditorHighlighterAttribute(FAttributes.Objects[i]);
+    if Assigned(LHighlighterAttribute) then
     begin
-      Attri.OnChange := AEvent;
-      Attri.InternalSaveDefaultValues;
+      LHighlighterAttribute.OnChange := AEvent;
+      LHighlighterAttribute.InternalSaveDefaultValues;
     end;
   end;
 end;
