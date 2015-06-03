@@ -127,31 +127,33 @@ type
   public
     constructor Create(CalcExtentBaseStyle: TFontStyles; BaseFont: TFont); virtual;
     destructor Destroy; override;
+
     function GetCharCount(AChar: Char): Integer;
-    function GetCharWidth: Integer; virtual;
     function GetCharHeight: Integer; virtual;
-    procedure BeginDrawing(AHandle: HDC); virtual;
-    procedure EndDrawing; virtual;
-    procedure TextOut(X, Y: Integer; Text: PChar; Length: Integer); virtual;
-    procedure ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextOutOptions; ARect: TRect; AText: PChar; ALength: Integer); virtual;
+    function GetCharWidth: Integer; virtual;
     function TextExtent(const Text: string): TSize; overload;
     function TextExtent(Text: PChar; Count: Integer): TSize; overload;
     function TextWidth(const Text: string): Integer; overload;
     function TextWidth(Text: PChar; Count: Integer): Integer; overload;
+    procedure AdjustLastCharWidthAndRect(var ARect: TRect; AText: PChar; ALength: Integer);
+    procedure BeginDrawing(AHandle: HDC); virtual;
+    procedure EndDrawing; virtual;
+    procedure ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextOutOptions; var ARect: TRect; AText: PChar; ALength: Integer); virtual;
+    procedure SetBackgroundColor(Value: TColor); virtual;
     procedure SetBaseFont(Value: TFont); virtual;
     procedure SetBaseStyle(const Value: TFontStyles); virtual;
-    procedure SetStyle(Value: TFontStyles); virtual;
-    procedure SetForegroundColor(Value: TColor); virtual;
-    procedure SetBackgroundColor(Value: TColor); virtual;
     procedure SetCharExtra(Value: Integer); virtual;
-    property CharWidth: Integer read GetCharWidth;
-    property CharHeight: Integer read GetCharHeight;
+    procedure SetForegroundColor(Value: TColor); virtual;
+    procedure SetStyle(Value: TFontStyles); virtual;
+    procedure TextOut(X, Y: Integer; Text: PChar; Length: Integer); virtual;
+    property BackgroundColor: TColor read FBackgroundColor write SetBackgroundColor;
     property BaseFont: TFont write SetBaseFont;
     property BaseStyle: TFontStyles write SetBaseStyle;
-    property ForegroundColor: TColor write SetForegroundColor;
-    property BackgroundColor: TColor read FBackgroundColor write SetBackgroundColor;
-    property Style: TFontStyles write SetStyle;
     property CharExtra: Integer read FCharExtra write SetCharExtra;
+    property CharHeight: Integer read GetCharHeight;
+    property CharWidth: Integer read GetCharWidth;
+    property ForegroundColor: TColor write SetForegroundColor;
+    property Style: TFontStyles write SetStyle;
   end;
 
 function GetFontsInfoManager: TBCEditorFontsInfoManager;
@@ -718,14 +720,45 @@ begin
 end;
 
 function TBCEditorTextDrawer.GetCharCount(AChar: Char): Integer;
-var
-  Size: TSize;
 begin
-  Size := TextExtent(PChar(@AChar), 1);
-  Result := Ceil(Size.cx / CharWidth);
+  Result := CeilOfIntDiv(TextWidth(AChar), CharWidth);
 end;
 
-procedure TBCEditorTextDrawer.ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextOutOptions; ARect: TRect; AText: PChar;
+{ avoid clipping the last pixels of text in italic }
+procedure TBCEditorTextDrawer.AdjustLastCharWidthAndRect(var ARect: TRect; AText: PChar; ALength: Integer);
+var
+  LLastChar: Cardinal;
+  LRealCharWidth, LNormalCharWidth: Integer;
+  LCharInfo: TABC;
+  LTextMetricA: TTextMetricA;
+begin
+  if ALength <= 0 then
+    Exit;
+  LLastChar := Ord(AText[ALength]);
+  if LLastChar = 32 then
+    Exit;
+  LNormalCharWidth := FExtTextOutDistance[ALength];
+  LRealCharWidth := LNormalCharWidth;
+
+  if GetCachedABCWidth(LLastChar, LCharInfo) then
+  begin
+    LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
+    if LCharInfo.abcC >= 0 then
+      Inc(LRealCharWidth, LCharInfo.abcC);
+  end
+  else
+  if LLastChar < Ord(High(AnsiChar)) then
+  begin
+    GetTextMetricsA(FHandle, LTextMetricA);
+    LRealCharWidth := LTextMetricA.tmAveCharWidth + LTextMetricA.tmOverhang;
+  end;
+
+  if LRealCharWidth > LNormalCharWidth then
+    Inc(ARect.Right, LRealCharWidth - LNormalCharWidth);
+  FExtTextOutDistance[ALength] := Max(LRealCharWidth, LNormalCharWidth);
+end;
+
+procedure TBCEditorTextDrawer.ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextOutOptions; var ARect: TRect; AText: PChar;
   ALength: Integer);
 
   procedure InitExtTextOutDistance(ACharWidth: Integer);
@@ -737,39 +770,9 @@ procedure TBCEditorTextDrawer.ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextO
       FExtTextOutDistance[i] := GetCharCount(AText[i]) * ACharWidth;
   end;
 
-  procedure AdjustLastCharWidthAndRect;
-  var
-    LLastChar: Cardinal;
-    LRealCharWidth, LCharWidth: Integer;
-    LCharInfo: TABC;
-    LTextMetricA: TTextMetricA;
-  begin
-    if ALength <= 0 then
-      Exit;
-    LLastChar := Ord(AText[ALength - 1]);
-    LCharWidth := FExtTextOutDistance[ALength - 1];
-    LRealCharWidth := LCharWidth;
-
-    if GetCachedABCWidth(LLastChar, LCharInfo) then
-    begin
-      LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
-      if LCharInfo.abcC >= 0 then
-        Inc(LRealCharWidth, LCharInfo.abcC);
-    end
-    else if LLastChar < Ord(High(AnsiChar)) then
-    begin
-      GetTextMetricsA(FHandle, LTextMetricA);
-      LRealCharWidth := LTextMetricA.tmAveCharWidth + LTextMetricA.tmOverhang;
-    end;
-
-    if LRealCharWidth > LCharWidth then
-      Inc(ARect.Right, LRealCharWidth - LCharWidth);
-    FExtTextOutDistance[ALength - 1] := Max(LRealCharWidth, LCharWidth);
-  end;
-
 begin
   InitExtTextOutDistance(GetCharWidth);
-  AdjustLastCharWidthAndRect;
+  AdjustLastCharWidthAndRect(ARect, AText, ALength - 1);
   UniversalExtTextOut(FHandle, X, Y, AOptions, ARect, AText, ALength, FExtTextOutDistance);
 end;
 
