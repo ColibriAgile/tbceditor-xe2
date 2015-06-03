@@ -193,6 +193,34 @@
                         }
                     },
                     {
+                        "Type": "Method",
+                        "Attributes": {
+                            "Element": "Method"
+                        },
+                        "TokenRange": {
+                            "Open": "method"
+                        },
+                        "SubRules": {
+                           "Range": [
+                              {
+                                "Type": "MethodName",
+                                "Attributes": {
+                                    "Element": "MethodName"
+                                },
+                                "Delimiters": "(;",
+                                "Properties": {
+                                    "CloseParent": true,
+                                    "CloseOnTerm": true,
+                                    "SkipWhitespace": true
+                                },
+                                 "TokenRange": {
+                                    "Open": " "
+                                 }
+                              }
+                           ]
+                        }
+                    },
+                    {
                         "Type": "ReservedWord",
                         "Attributes": {
                             "Element": "HighlightedBlock"
@@ -357,7 +385,6 @@
 							"lazy",
 							"library",
 							"message",
-							"method",
 							"mod",
 							"new",
 							"nil",
@@ -402,6 +429,7 @@
 							"var",
 							"virtual",
 							"while",
+							"with",
 							"xor"
                         ],
                         "Attributes": {
