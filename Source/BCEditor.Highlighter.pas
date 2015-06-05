@@ -60,7 +60,7 @@ type
     procedure Next;
     procedure NextToEol;
     procedure ResetCurrentRange;
-    procedure SetCurrentLine(NewValue: string; LineNumber: Integer);
+    procedure SetCurrentLine(NewValue: string);
     procedure SetCurrentRange(Value: Pointer);
     procedure UpdateColors;
 
@@ -155,7 +155,7 @@ begin
     AddAllAttributes(ARange.Ranges[i]);
 end;
 
-procedure TBCEditorHighlighter.SetCurrentLine(NewValue: string; LineNumber: Integer);
+procedure TBCEditorHighlighter.SetCurrentLine(NewValue: string);
 begin
   if Assigned(FCurrentRange) then
     if not FCurrentRange.Prepared then
@@ -423,6 +423,8 @@ procedure TBCEditorHighlighter.LoadFromFile(AFileName: string);
 var
   LStream: TStream;
   LEditor: TBCBaseEditor;
+  LTempLines: TStrings;
+  LTopLine: Integer;
 begin
   FLoading := True;
   FFileName := AFileName;
@@ -431,16 +433,25 @@ begin
   LEditor := FEditor as TBCBaseEditor;
   if Assigned(LEditor) then
   begin
+    LTempLines := TStringList.Create;
     LStream := LEditor.CreateFileStream(LEditor.GetHighlighterFileName(AFileName));
     try
+      LTopLine := LEditor.TopLine;
+      LTempLines.Assign(LEditor.Lines);
+      LEditor.Lines.Clear;
+      LEditor.ClearCodeFolding;
       with TBCEditorHighlighterJSONImporter.Create(Self) do
       try
         ImportFromStream(LStream);
       finally
         Free;
       end;
+      LEditor.Lines.Assign(LTempLines);
+      LEditor.TopLine := LTopLine;
+      LEditor.InitCodeFolding;
     finally
       LStream.Free;
+      LTempLines.Free;
     end;
     UpdateColors;
   end;

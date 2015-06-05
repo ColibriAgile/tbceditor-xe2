@@ -409,7 +409,7 @@ type
     procedure PaintLeftMargin(const AClipRect: TRect; AFirstRow, ALastTextRow, ALastRow: Integer);
     procedure PaintRightMarginMove;
     procedure PaintSearchMap(AClipRect: TRect);
-    procedure PaintSpecialChars(ALine, AScrolledXBy: Integer; ALineRect: TRect; AMinimap: Boolean);
+    procedure PaintSpecialChars(ALine, AScrolledXBy: Integer; ALineRect: TRect);
     procedure PaintTextLines(AClipRect: TRect; AFirstRow, ALastRow, AFirstColumn, ALastColumn: Integer; AMinimap: Boolean);
     procedure RecalculateCharExtent;
     procedure RedoItem;
@@ -1302,7 +1302,7 @@ begin
       Highlighter.ResetCurrentRange
     else
       Highlighter.SetCurrentRange(FLines.Ranges[LPositionY - 1]);
-    Highlighter.SetCurrentLine(LLine, LPositionY);
+    Highlighter.SetCurrentLine(LLine);
     LPositionX := ATextPosition.Char;
     if (LPositionX > 0) and (LPositionX <= Length(LLine)) then
     while not Highlighter.GetEol do
@@ -1495,7 +1495,7 @@ begin
       ResetCurrentRange
     else
       SetCurrentRange(Lines.Ranges[APoint.Line]);
-    SetCurrentLine(Lines[APoint.Line], APoint.Line);
+    SetCurrentLine(Lines[APoint.Line]);
 
     while not GetEol and (APoint.Char >= GetTokenPosition + Length(GetToken)) do
       Next;
@@ -1574,7 +1574,7 @@ begin
         Inc(APoint.Line);
         if APoint.Line >= FLines.Count then
           Break;
-        SetCurrentLine(Lines[APoint.Line], APoint.Line);
+        SetCurrentLine(Lines[APoint.Line]);
       end;
     end
     else
@@ -1587,7 +1587,7 @@ begin
         ResetCurrentRange
       else
         SetCurrentRange(FLines.Ranges[APoint.Line - 1]);
-      SetCurrentLine(Lines[APoint.Line], APoint.Line);
+      SetCurrentLine(Lines[APoint.Line]);
       while not GetEol and (GetTokenPosition < AMatch.CloseTokenPos.Char -1) do
         CheckTokenBack;
       if LMatchStackID > -1 then
@@ -1605,7 +1605,7 @@ begin
           ResetCurrentRange
         else
           SetCurrentRange(FLines.Ranges[APoint.Line - 1]);
-        SetCurrentLine(Lines[APoint.Line], APoint.Line);
+        SetCurrentLine(Lines[APoint.Line]);
         LMatchStackID := -1;
         while not GetEol do
           CheckTokenBack;
@@ -2315,7 +2315,7 @@ begin
     FHighlighter.SetCurrentRange(FLines.Ranges[Result - 1]);
 
   repeat
-    FHighlighter.SetCurrentLine(Lines[Result], Result);
+    FHighlighter.SetCurrentLine(Lines[Result]);
     FHighlighter.NextToEol;
     LCurrentRange := FHighlighter.GetCurrentRange;
     if FLines.Ranges[Result] = LCurrentRange then
@@ -7038,7 +7038,11 @@ procedure TBCBaseEditor.PaintCodeFolding(AClipRect: TRect; ALineCount: Integer);
 var
   i: Integer;
   LFoldRange: TBCEditorCodeFoldingRange;
+  LOldBrushColor, LOldPenColor: TColor;
 begin
+  LOldBrushColor := Canvas.Brush.Color;
+  LOldPenColor := Canvas.Pen.Color;
+
   Canvas.Brush.Color := FCodeFolding.Colors.Background;
   Canvas.FillRect(AClipRect); { fill code folding rect }
   Canvas.Pen.Style := psSolid;
@@ -7064,6 +7068,9 @@ begin
     AClipRect.Bottom := AClipRect.Top + LineHeight;
     PaintCodeFoldingLine(AClipRect, i);
   end;
+
+  Canvas.Brush.Color := LOldBrushColor;
+  Canvas.Pen.Color := LOldPenColor;
 end;
 
 procedure TBCBaseEditor.PaintCodeFoldingLine(AClipRect: TRect; ALine: Integer);
@@ -7601,7 +7608,7 @@ begin
   end;
 end;
 
-procedure TBCBaseEditor.PaintSpecialChars(ALine, AScrolledXBy: Integer; ALineRect: TRect; AMinimap: Boolean);
+procedure TBCBaseEditor.PaintSpecialChars(ALine, AScrolledXBy: Integer; ALineRect: TRect);
 var
   i: Integer;
   LPLine: PChar;
@@ -7609,7 +7616,7 @@ var
   LCharPosition, X, Y: Integer;
   LCharRect: TRect;
 begin
-  if FSpecialChars.Visible and not AMinimap then
+  if FSpecialChars.Visible then
   begin
     LPLine := PChar(FLines.Strings[ALine - 1]);
 
@@ -8134,7 +8141,7 @@ var
     for i := 0 to ALength do
     begin
       FColumnWidths[i] := LWidthSum;
-      LWidthSum := LWidthSum + FTextDrawer.GetCharCount(AText[i]) * ACharWidth;
+      LWidthSum := LWidthSum + FTextDrawer.GetCharCount(@AText[i]) * ACharWidth;
     end;
   end;
 
@@ -8261,7 +8268,7 @@ var
           FHighlighter.ResetCurrentRange
         else
           FHighlighter.SetCurrentRange(Lines.Ranges[LCurrentLine - 2]);
-        FHighlighter.SetCurrentLine(LCurrentLineText, LCurrentLine - 1);
+        FHighlighter.SetCurrentLine(LCurrentLineText);
         LTokenHelper.Length := 0;
 
         while not FHighlighter.GetEol do
@@ -8359,15 +8366,19 @@ var
         end;
         PaintHighlightToken(True);
 
-        if FCodeFolding.Visible then
-          LFoldRange := CodeFoldingRangeForLine(GetUncollapsedLineNumber(LCurrentLine))
-        else
-          LFoldRange := nil;
+        if not AMinimap then
+        begin
+          if FCodeFolding.Visible then
+            LFoldRange := CodeFoldingCollapsableFoldRangeForLine(RowToLine(LCurrentLine))
+          else
+            LFoldRange := nil;
 
-        PaintCodeFoldingCollapseMark(LFoldRange, LTokenPosition, LTokenLength, LCurrentLine, LScrolledXBy, LLineRect);
-        PaintSpecialChars(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
+          PaintCodeFoldingCollapseMark(LFoldRange, LTokenPosition, LTokenLength, LCurrentLine, LScrolledXBy, LLineRect);
+          PaintSpecialChars(LCurrentLine, LScrolledXBy, LLineRect);
+          PaintCodeFoldingCollapsedLine(LFoldRange, LLineRect);
+        end;
+
         PaintGuides(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
-        PaintCodeFoldingCollapsedLine(LFoldRange, LLineRect);
 
         if not AMinimap and LPaintRightMargin then
         begin
@@ -8420,19 +8431,17 @@ begin
     LTokenRect.Top := (ALastRow - TopLine + 1) * LineHeight;
 
   if LTokenRect.Top < LTokenRect.Bottom then
-  with Canvas do
   begin
     LBackgroundColor := GetBackgroundColor;
     SetDrawingColors(False);
 
-    FillRect(LTokenRect);
+    Canvas.FillRect(LTokenRect);
 
-    if LPaintRightMargin then
-    with Canvas, LTokenRect do
+    if not AMinimap and LPaintRightMargin then
     begin
-      Pen.Color := FRightMargin.Colors.Edge;
-      MoveTo(LRightMarginPosition, Top);
-      LineTo(LRightMarginPosition, Bottom + 1);
+      Canvas.Pen.Color := FRightMargin.Colors.Edge;
+      Canvas.MoveTo(LRightMarginPosition, LTokenRect.Top);
+      Canvas.LineTo(LRightMarginPosition, LTokenRect.Bottom + 1);
     end;
   end;
 end;
@@ -9542,7 +9551,7 @@ begin
         Inc(X, FTabs.Width)
       else
       if i <= l then
-        Inc(X, FTextDrawer.GetCharCount(s[i]))
+        Inc(X, FTextDrawer.GetCharCount(@s[i]))
       else
         Inc(X);
     end;
@@ -10059,7 +10068,7 @@ begin
         Inc(X, FTabs.Width)
       else
       if ARealWidth and (i <= l) then
-        Inc(X, FTextDrawer.GetCharCount(s[i]))
+        Inc(X, FTextDrawer.GetCharCount(@s[i]))
       else
         Inc(X);
     end;

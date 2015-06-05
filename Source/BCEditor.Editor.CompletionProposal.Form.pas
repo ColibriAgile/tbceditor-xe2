@@ -60,7 +60,6 @@ type
     procedure DoFormShow(Sender: TObject);
     procedure EditorKeyPress(Sender: TObject; var Key: Char);
     procedure FontChange(Sender: TObject);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormDestroy(Sender: TObject);
     procedure HandleOnCancel(Sender: TObject);
     procedure HandleDblClick(Sender: TObject);
@@ -216,7 +215,6 @@ begin
   OnValidate := HandleOnValidate;
   OnCancel := HandleOnCancel;
   OnDblClick := HandleDblClick;
-  OnClose := FormClose;
   OnDestroy := FormDestroy;
   TriggerChars := '.';
   FNoNextKey := False;
@@ -1087,11 +1085,6 @@ begin
     Deactivate;
     Close;
   end;
-end;
-
-procedure TBCEditorCompletionProposalForm.FormClose(Sender: TObject; var Action: TCloseAction);
-begin
-  Action := caFree;
 end;
 
 procedure TBCEditorCompletionProposalForm.FormDestroy(Sender: TObject);
