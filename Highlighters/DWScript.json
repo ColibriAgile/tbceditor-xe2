@@ -3,7 +3,7 @@
         "Info": {
             "General": {
                 "Version": "1.0",
-                "Date": "02.6.2015",
+                "Date": "05.06.2015",
                 "Sample": [
                     "// Hello World in Pascal\r\n",
                     "\r\n",
@@ -14,8 +14,8 @@
                 ]
             },
             "Author": {
-                "Name": "Lasse Rautiainen",
-                "Mail": "lasse@bonecode.com"
+                "Name": "Eric Grange",
+                "Mail": "eric@delphitools.info"
             }
         },
         "MainRules": {
