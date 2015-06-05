@@ -19,6 +19,7 @@
             }
         },
         "MainRules": {
+			"Name": "DWScript",
             "Attributes": {
                 "Element": "Editor"
             },
