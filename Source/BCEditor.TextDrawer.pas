@@ -108,7 +108,7 @@ type
     FColor: TColor;
     FCurrentFont: HFont;
     FDrawingCount: Integer;
-    FExtTextOutDistance: PIntegerArray;
+    FExtTextOutDistance: array of Integer;
     FFontStock: TBCEditorFontStock;
     FHandle: HDC;
     FSaveHandle: Integer;
@@ -548,11 +548,7 @@ end;
 
 procedure TBCEditorTextDrawer.ReleaseExtTextOutDistance;
 begin
-  if Assigned(FExtTextOutDistance) then
-  begin
-    FreeMem(FExtTextOutDistance);
-    FExtTextOutDistance := nil;
-  end;
+   FExtTextOutDistance := nil;
 end;
 
 procedure TBCEditorTextDrawer.BeginDrawing(AHandle: HDC);
@@ -728,9 +724,11 @@ procedure TBCEditorTextDrawer.ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextO
   var
     i: Integer;
   begin
-    ReallocMem(FExtTextOutDistance, ALength * SizeOf(Integer));
+    if ALength+1 > Length(FExtTextOutDistance) then
+      SetLength(FExtTextOutDistance, ALength+1);
     for i := 0 to ALength - 1 do
       FExtTextOutDistance[i] := GetCharCount(@AText[i]) * ACharWidth;
+    FExtTextOutDistance[ALength] := ACharWidth;
   end;
 
   { avoid clipping the last pixels of text in italic }
@@ -770,7 +768,7 @@ procedure TBCEditorTextDrawer.ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextO
 begin
   InitExtTextOutDistance(GetCharWidth);
   AdjustLastCharWidthAndRect;
-  UniversalExtTextOut(FHandle, X, Y, AOptions, ARect, AText, ALength, FExtTextOutDistance);
+  UniversalExtTextOut(FHandle, X, Y, AOptions, ARect, AText, ALength, PIntegerArray(FExtTextOutDistance));
 end;
 
 function TBCEditorTextDrawer.TextExtent(const Text: string): TSize;
