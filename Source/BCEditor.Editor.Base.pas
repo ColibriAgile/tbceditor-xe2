@@ -158,7 +158,6 @@ type
     FVisibleLines: Integer;
     FWordWrap: TBCEditorWordWrap;
     FWordWrapHelper: TBCEditorWordWrapHelper;
-
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer; AFoldCount: PInteger = nil): TBCEditorCodeFoldingRange;
     function CodeFoldingFoldRangeForLineTo(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingLineInsideRange(ALine: Integer): TBCEditorCodeFoldingRange;
@@ -435,8 +434,6 @@ type
     property InternalCaretX: Integer write SetInternalCaretX;
     property InternalCaretY: Integer write SetInternalCaretY;
   public
-    RenderMSec : Integer;
-
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
@@ -641,8 +638,7 @@ implementation
 
 uses
   ShellAPI, Imm, WideStrUtils, Math, Types, Clipbrd,
-  Menus,
-  BCEditor.Editor.LeftMargin.Border, BCEditor.Editor.LeftMargin.LineNumbers, BCEditor.Editor.Scroll.Hint,
+  Menus, BCEditor.Editor.LeftMargin.Border, BCEditor.Editor.LeftMargin.LineNumbers, BCEditor.Editor.Scroll.Hint,
   BCEditor.Editor.Search.Map, BCEditor.Editor.Undo.Item, BCEditor.Editor.Utils, BCEditor.Encoding, BCEditor.Language,
   {$IFDEF USE_VCL_STYLES}Vcl.Themes, BCEditor.StyleHooks,{$ENDIF} BCEditor.Highlighter.Rules;
 
@@ -2798,7 +2794,7 @@ end;
 
 procedure TBCBaseEditor.DeflateMinimapRect(var ARect: TRect);
 begin
-  ARect.Right := ClientRect.Right-ClientRect.Left - FMinimap.GetWidth - FSearch.Map.GetWidth;
+  ARect.Right := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth;
 end;
 
 procedure TBCBaseEditor.DoToggleSelectedCase(const ACommand: TBCEditorCommand);
@@ -6930,8 +6926,6 @@ var
   LLine1, LLine2, LLine3, LColumn1, LColumn2: Integer;
   LHandle: HDC;
 begin
-   RenderMSec:=GetTickCount;
-
   LClipRect := Canvas.ClipRect;
 
   LColumn1 := FLeftChar;
@@ -6958,7 +6952,7 @@ begin
     begin
       DrawRect := LClipRect;
       DrawRect.Left := Max(DrawRect.Left, FLeftMargin.GetWidth + FCodeFolding.GetWidth);
-      DrawRect.Right := (ClientRect.Right-ClientRect.Left);
+      DrawRect.Right := ClientRect.Right-ClientRect.Left;
       DeflateMinimapRect(DrawRect);
       FTextDrawer.SetBaseFont(Font);
       FTextDrawer.Style := Font.Style;
@@ -6991,11 +6985,11 @@ begin
 
     { Paint minimap text lines }
     if FMinimap.Visible then
-      if (LClipRect.Right >= (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
+      if (LClipRect.Right >= ClientRect.Right-ClientRect.Left - FMinimap.GetWidth - FSearch.Map.GetWidth) then
       begin
         DrawRect := LClipRect;
-        DrawRect.Left := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth;
-        DrawRect.Right := (ClientRect.Right-ClientRect.Left) - FSearch.Map.GetWidth;
+        DrawRect.Left := ClientRect.Right-ClientRect.Left - FMinimap.GetWidth - FSearch.Map.GetWidth;
+        DrawRect.Right := ClientRect.Right-ClientRect.Left - FSearch.Map.GetWidth;
 
         FTextDrawer.SetBaseFont(FMinimap.Font);
         FTextDrawer.Style := FMinimap.Font.Style;
@@ -7015,10 +7009,10 @@ begin
 
     { Paint search map }
     if FSearch.Map.Visible then
-      if (LClipRect.Right >= (ClientRect.Right-ClientRect.Left) - FSearch.Map.GetWidth) then
+      if (LClipRect.Right >= ClientRect.Right-ClientRect.Left - FSearch.Map.GetWidth) then
       begin
         DrawRect := LClipRect;
-        DrawRect.Left := (ClientRect.Right-ClientRect.Left) - FSearch.Map.GetWidth;
+        DrawRect.Left := ClientRect.Right-ClientRect.Left - FSearch.Map.GetWidth;
         PaintSearchMap(DrawRect);
       end;
 
@@ -7031,7 +7025,6 @@ begin
     Canvas.Handle := LHandle;
     UpdateCaret;
   end;
-  RenderMSec:=GetTickCount-RenderMSec;
 end;
 
 procedure TBCBaseEditor.PaintCodeFolding(AClipRect: TRect; ALineCount: Integer);
@@ -7222,7 +7215,7 @@ begin
         if (X - AScrolledXBy > 0) and not AMinimap or AMinimap and (X > 0 {Offset}) then
         begin
           if AMinimap then
-            X := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth + X
+            X := ClientRect.Right-ClientRect.Left - FMinimap.GetWidth - FSearch.Map.GetWidth + X
           else
             X := FLeftMargin.GetWidth + FCodeFolding.Width + X - AScrolledXBy;
           LTempColor := Canvas.Pen.Color;
@@ -7864,7 +7857,7 @@ var
     LCharWidth: Integer;
   begin
     if AMinimap then
-      Result := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth
+      Result := ClientRect.Right-ClientRect.Left - FMinimap.GetWidth - FSearch.Map.GetWidth
     else
       Result := FTextOffset;
 
@@ -9488,7 +9481,7 @@ begin
   if LCursorPoint.X < FLeftMargin.GetWidth + FCodeFolding.GetWidth then
     SetCursor(Screen.Cursors[FLeftMargin.Cursor])
   else
-  if FMinimap.Visible and (LCursorPoint.X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
+  if FMinimap.Visible and (LCursorPoint.X > ClientRect.Right-ClientRect.Left - FMinimap.GetWidth - FSearch.Map.GetWidth) then
     SetCursor(Screen.Cursors[crArrow])  // TODO: Option?
   else
   begin
@@ -9565,8 +9558,10 @@ begin
   if Result = '' then
     Result := FDirectories.Colors;
   if Trim(ExtractFilePath(Result)) = '' then
-    Result := Format('%s%s', [IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)), Result]);
-  Result := Format('%s%s', [IncludeTrailingPathDelimiter(Result), ExtractFileName(AFileName)]);
+  {$WARN SYMBOL_PLATFORM OFF}
+    Result := Format('%s%s', [IncludeTrailingBackslash(ExtractFilePath(Application.ExeName)), Result]);
+  Result := Format('%s%s', [IncludeTrailingBackslash(Result), ExtractFileName(AFileName)]);
+  {$WARN SYMBOL_PLATFORM ON}
 end;
 
 function TBCBaseEditor.GetHighlighterFileName(AFileName: string): string;
@@ -9575,8 +9570,10 @@ begin
   if Result = '' then
     Result := FDirectories.Highlighters;
   if Trim(ExtractFilePath(Result)) = '' then
-    Result := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)) + Result;
-  Result := IncludeTrailingPathDelimiter(Result) + ExtractFileName(AFileName);
+  {$WARN SYMBOL_PLATFORM OFF}
+    Result := Format('%s%s', [IncludeTrailingBackslash(ExtractFilePath(Application.ExeName)), Result]);
+  Result := Format('%s%s', [IncludeTrailingBackslash(Result), ExtractFileName(AFileName)]);
+  {$WARN SYMBOL_PLATFORM ON}
 end;
 
 function TBCBaseEditor.FindPrevious: Boolean;

@@ -132,11 +132,8 @@ function CompletionProposalHintForm(AOwner: TComponent): TBCEditorCompletionProp
 implementation
 
 uses
-  Windows, SysUtils, Math,
-  BCEditor.Editor.Base, BCEditor.Editor.KeyCommands,
-  BCEditor.Editor.Utils, BCEditor.Consts
-  {$IFDEF USE_ALPHASKINS}, sSkinProvider, sMessages{$ENDIF}
-  ;
+  Windows, SysUtils, BCEditor.Editor.Base, BCEditor.Editor.KeyCommands,
+  BCEditor.Editor.Utils, BCEditor.Consts, Math{$IFDEF USE_ALPHASKINS}, sSkinProvider, sMessages{$ENDIF};
 
 var
   FCompletionProposalHintForm: TBCEditorCompletionProposalForm;

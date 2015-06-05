@@ -108,7 +108,7 @@ type
     FColor: TColor;
     FCurrentFont: HFont;
     FDrawingCount: Integer;
-    FExtTextOutDistance: array of Integer;
+    FExtTextOutDistance: PIntegerArray;
     FFontStock: TBCEditorFontStock;
     FHandle: HDC;
     FSaveHandle: Integer;
@@ -128,14 +128,11 @@ type
     constructor Create(CalcExtentBaseStyle: TFontStyles; BaseFont: TFont); virtual;
     destructor Destroy; override;
 
-    function GetCharCount(AChar: Char): Integer;
+    function GetCharCount(AChar: PChar): Integer;
     function GetCharHeight: Integer; virtual;
     function GetCharWidth: Integer; virtual;
-    function TextExtent(const Text: string): TSize; overload;
-    function TextExtent(Text: PChar; Count: Integer): TSize; overload;
-    function TextWidth(const Text: string): Integer; overload;
-    function TextWidth(Text: PChar; Count: Integer): Integer; overload;
-    procedure AdjustLastCharWidthAndRect(var ARect: TRect; AText: PChar; ALength: Integer);
+    function TextExtent(const Text: string): TSize;
+    function TextCharWidth(const AChar: PChar): Integer;
     procedure BeginDrawing(AHandle: HDC); virtual;
     procedure EndDrawing; virtual;
     procedure ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextOutOptions; var ARect: TRect; AText: PChar; ALength: Integer); virtual;
@@ -551,7 +548,11 @@ end;
 
 procedure TBCEditorTextDrawer.ReleaseExtTextOutDistance;
 begin
+  if Assigned(FExtTextOutDistance) then
+  begin
+    FreeMem(FExtTextOutDistance);
     FExtTextOutDistance := nil;
+  end;
 end;
 
 procedure TBCEditorTextDrawer.BeginDrawing(AHandle: HDC);
@@ -715,43 +716,9 @@ begin
   UniversalExtTextOut(FHandle, X, Y, [], TempRect, Text, Length, nil);
 end;
 
-function TBCEditorTextDrawer.GetCharCount(AChar: Char): Integer;
+function TBCEditorTextDrawer.GetCharCount(AChar: PChar): Integer;
 begin
-  Result := CeilOfIntDiv(TextWidth(AChar), CharWidth);
-end;
-
-{ avoid clipping the last pixels of text in italic }
-procedure TBCEditorTextDrawer.AdjustLastCharWidthAndRect(var ARect: TRect; AText: PChar; ALength: Integer);
-var
-  LLastChar: Cardinal;
-  LRealCharWidth, LNormalCharWidth: Integer;
-  LCharInfo: TABC;
-  LTextMetricA: TTextMetricA;
-begin
-  if ALength <= 0 then
-    Exit;
-  LLastChar := Ord(AText[ALength]);
-  if LLastChar = 32 then
-    Exit;
-  LNormalCharWidth := FExtTextOutDistance[ALength];
-  LRealCharWidth := LNormalCharWidth;
-
-  if GetCachedABCWidth(LLastChar, LCharInfo) then
-  begin
-    LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
-    if LCharInfo.abcC >= 0 then
-      Inc(LRealCharWidth, LCharInfo.abcC);
-  end
-  else
-  if LLastChar < Ord(High(AnsiChar)) then
-  begin
-    GetTextMetricsA(FHandle, LTextMetricA);
-    LRealCharWidth := LTextMetricA.tmAveCharWidth + LTextMetricA.tmOverhang;
-  end;
-
-  if LRealCharWidth > LNormalCharWidth then
-    Inc(ARect.Right, LRealCharWidth - LNormalCharWidth);
-  FExtTextOutDistance[ALength] := Max(LRealCharWidth, LNormalCharWidth);
+  Result := CeilOfIntDiv(TextCharWidth(AChar), CharWidth);
 end;
 
 procedure TBCEditorTextDrawer.ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextOutOptions; var ARect: TRect; AText: PChar;
@@ -761,17 +728,49 @@ procedure TBCEditorTextDrawer.ExtTextOut(X, Y: Integer; AOptions: TBCEditorTextO
   var
     i: Integer;
   begin
-    if ALength > Length(FExtTextOutDistance) then begin
-      SetLength(FExtTextOutDistance, ALength);
-    end;
+    ReallocMem(FExtTextOutDistance, ALength * SizeOf(Integer));
     for i := 0 to ALength - 1 do
-      FExtTextOutDistance[i] := GetCharCount(AText[i]) * ACharWidth;
+      FExtTextOutDistance[i] := GetCharCount(@AText[i]) * ACharWidth;
+  end;
+
+  { avoid clipping the last pixels of text in italic }
+  procedure AdjustLastCharWidthAndRect;
+  var
+    LLastChar: Cardinal;
+    LRealCharWidth, LNormalCharWidth: Integer;
+    LCharInfo: TABC;
+    LTextMetricA: TTextMetricA;
+  begin
+    if ALength <= 0 then
+      Exit;
+    LLastChar := Ord(AText[ALength]);
+    if LLastChar = 32 then
+      Exit;
+    LNormalCharWidth := FExtTextOutDistance[ALength];
+    LRealCharWidth := LNormalCharWidth;
+
+    if GetCachedABCWidth(LLastChar, LCharInfo) then
+    begin
+      LRealCharWidth := LCharInfo.abcA + Integer(LCharInfo.abcB);
+      if LCharInfo.abcC >= 0 then
+        Inc(LRealCharWidth, LCharInfo.abcC);
+    end
+    else
+    if LLastChar < Ord(High(AnsiChar)) then
+    begin
+      GetTextMetricsA(FHandle, LTextMetricA);
+      LRealCharWidth := LTextMetricA.tmAveCharWidth + LTextMetricA.tmOverhang;
+    end;
+
+    if LRealCharWidth > LNormalCharWidth then
+      Inc(ARect.Right, LRealCharWidth - LNormalCharWidth);
+    FExtTextOutDistance[ALength] := Max(LRealCharWidth, LNormalCharWidth);
   end;
 
 begin
   InitExtTextOutDistance(GetCharWidth);
-  AdjustLastCharWidthAndRect(ARect, AText, ALength - 1);
-  UniversalExtTextOut(FHandle, X, Y, AOptions, ARect, AText, ALength, PIntegerArray(FExtTextOutDistance));
+  AdjustLastCharWidthAndRect;
+  UniversalExtTextOut(FHandle, X, Y, AOptions, ARect, AText, ALength, FExtTextOutDistance);
 end;
 
 function TBCEditorTextDrawer.TextExtent(const Text: string): TSize;
@@ -779,34 +778,22 @@ begin
   Result := BCEditor.Utils.TextExtent(FStockBitmap.Canvas, Text);
 end;
 
-function TBCEditorTextDrawer.TextExtent(Text: PChar; Count: Integer): TSize;
-begin
-  Result := BCEditor.Utils.GetTextSize(FStockBitmap.Canvas.Handle, Text, Count);
-end;
-
-function TBCEditorTextDrawer.TextWidth(const Text: string): Integer;
+function TBCEditorTextDrawer.TextCharWidth(const AChar: PChar): Integer;
 var
   LCharCode: Cardinal;
 begin
-  if Length(Text) = 1 then
+  LCharCode := Ord(AChar^);
+  if LCharCode <= High(FCharWidthCache) then
   begin
-    LCharCode := Ord(Text[1]);
-    if LCharCode <= High(FCharWidthCache) then begin
-       Result := FCharWidthCache[LCharCode];
-       if Result=0 then
-       begin
-          Result := BCEditor.Utils.TextExtent(FStockBitmap.Canvas, Text).cX;
-          FCharWidthCache[LCharCode] := Result;
-       end;
-       Exit;
-    end;
+     Result := FCharWidthCache[LCharCode];
+     if Result = 0 then
+     begin
+        Result := BCEditor.Utils.TextExtent(FStockBitmap.Canvas, AChar^).cX;
+        FCharWidthCache[LCharCode] := Result;
+     end;
+     Exit;
   end;
-  Result := BCEditor.Utils.TextExtent(FStockBitmap.Canvas, Text).cX;
-end;
-
-function TBCEditorTextDrawer.TextWidth(Text: PChar; Count: Integer): Integer;
-begin
-  Result := BCEditor.Utils.GetTextSize(FStockBitmap.Canvas.Handle, Text, Count).cX;
+  Result := BCEditor.Utils.TextExtent(FStockBitmap.Canvas, AChar^).cX;
 end;
 
 initialization
