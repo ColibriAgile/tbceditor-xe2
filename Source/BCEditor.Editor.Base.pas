@@ -7779,7 +7779,7 @@ var
   LCustomLineColors: Boolean;
   LCustomForegroundColor: TColor;
   LCustomBackgroundColor: TColor;
-  LMatchingPair: Boolean;
+  LIsCustomBackgroundColor: Boolean;
 
   function GetBackgroundColor: TColor;
   var
@@ -8108,7 +8108,7 @@ var
     end;
 
   begin
-    if (ABackground = clNone) or ((FActiveLine.Color <> clNone) and LIsCurrentLine and not LMatchingPair) then
+    if (ABackground = clNone) or ((FActiveLine.Color <> clNone) and LIsCurrentLine and not LIsCustomBackgroundColor) then
       ABackground := GetBackgroundColor;
     if AForeground = clNone then
       AForeground := Font.Color;
@@ -8183,6 +8183,7 @@ var
     LStyle: TFontStyles;
     LKeyWord, LWord: string;
     LSelectionBeginChar, LSelectionEndChar: Integer;
+    LTempTextPosition: TBCEditorTextPosition;
   begin
     LLineRect := AClipRect;
     if AMinimap then
@@ -8328,22 +8329,24 @@ var
                   end;
               end;
 
-              LMatchingPair := False;
+              LIsCustomBackgroundColor := False;
               if FMatchingPair.Enabled then
                 if FCurrentMatchingPair <> trNotFound then
                   if (LTokenText = FCurrentMatchingPairMatch.OpenToken) or (LTokenText = FCurrentMatchingPairMatch.CloseToken) then
+                  begin
                     if (LTokenPosition = FCurrentMatchingPairMatch.OpenTokenPos.Char - 1) and
                        (LCurrentLine = FCurrentMatchingPairMatch.OpenTokenPos.Line) or
                        (LTokenPosition = FCurrentMatchingPairMatch.CloseTokenPos.Char - 1) and
                        (LCurrentLine = FCurrentMatchingPairMatch.CloseTokenPos.Line) then
                     begin
-                      LMatchingPair := True;
+                      LIsCustomBackgroundColor := True;
                       if (FCurrentMatchingPair = trOpenAndCloseTokenFound) or (FCurrentMatchingPair = trCloseAndOpenTokenFound) then
                         LBackgroundColor := FMatchingPair.Colors.Matched
                       else
                       if mpoHighlightUnmatched in FMatchingPair.Options then
                         LBackgroundColor := FMatchingPair.Colors.Unmatched
                     end;
+                  end;
 
               LKeyword := '';
               LWord := LTokenText;
@@ -8357,21 +8360,21 @@ var
                 end;
               end
               else
-              if soHighlightSimilarTerms in FSelection.Options then
+              if SelectionAvailable and (soHighlightSimilarTerms in FSelection.Options) then
               begin
-                if (FSelectionBeginPosition.Line = FSelectionEndPosition.Line) and
-                  (FSelectionBeginPosition.Char <> FSelectionEndPosition.Char) then
-                begin
-                  LSelectionBeginChar := FSelectionBeginPosition.Char;
-                  LSelectionEndChar := FSelectionEndPosition.Char;
-                  if LSelectionBeginChar > LSelectionEndChar then
-                    SwapInt(LSelectionBeginChar, LSelectionEndChar);
+                LTempTextPosition := FSelectionEndPosition;
+                LSelectionBeginChar := FSelectionBeginPosition.Char;
+                LSelectionEndChar := FSelectionEndPosition.Char;
+                if LSelectionBeginChar > LSelectionEndChar then
+                  SwapInt(LSelectionBeginChar, LSelectionEndChar);
+                LTempTextPosition.Char := LSelectionEndChar - 1;
+                if LTokenText = GetWordAtRowColumn(LTempTextPosition) then
                   LKeyWord := Copy(FLines[FSelectionBeginPosition.Line - 1], LSelectionBeginChar, LSelectionEndChar -
                     LSelectionBeginChar);
-                end;
               end;
               if (LKeyword <> '') and (LKeyword = LWord) then
               begin
+                LIsCustomBackgroundColor := True;
                 LForegroundColor := FSearch.Highlighter.Colors.Foreground;
                 LBackgroundColor := FSearch.Highlighter.Colors.Background;
               end;
@@ -8391,7 +8394,6 @@ var
             LFoldRange := CodeFoldingCollapsableFoldRangeForLine(RowToLine(LCurrentLine))
           else
             LFoldRange := nil;
-
           PaintCodeFoldingCollapseMark(LFoldRange, LTokenPosition, LTokenLength, LCurrentLine, LScrolledXBy, LLineRect);
           PaintSpecialChars(LCurrentLine, LScrolledXBy, LLineRect);
           PaintCodeFoldingCollapsedLine(LFoldRange, LLineRect);
