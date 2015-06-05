@@ -7890,21 +7890,19 @@ var
       i, j: Integer;
     begin
       Result := Token;
-
       i := First;
-      j := 0;
+      j := 0;
       while i < First + CharCount do
       begin
         Inc(j);
         while Token[i] = BCEDITOR_FILLER_CHAR do
           Inc(i);
         if j <> i then
-           Result[j] := Token[i];
+          Result[j] := Token[i];
         Inc(i);
       end;
-
       if Length(Result) <> j then
-         SetLength(Result, j);
+        SetLength(Result, j);
       CharCount := j;
     end;
 
@@ -10071,7 +10069,7 @@ begin
       if (i <= l) and (s[i] = BCEDITOR_TAB_CHAR) then
         Inc(X, FTabs.Width)
       else
-      if ARealWidth and (i <= l) then
+      if ARealWidth and (i <= l) and (s[i] <> BCEDITOR_SPACE_CHAR) and (s[i] <> '') then
         Inc(X, FTextDrawer.GetCharCount(@s[i]))
       else
         Inc(X);
