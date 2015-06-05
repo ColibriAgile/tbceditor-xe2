@@ -3889,6 +3889,8 @@ var
       end;
   end;
 
+var
+   region : TBCEditorFoldRegionItem;
 begin
   LFoldCount := 0;
   AddKeyChars;
@@ -3899,11 +3901,14 @@ begin
     { Check if one char folds }
     LCount := Highlighter.CodeFoldingRegions.Count - 1;
     for LFold := 0 to LCount do
-      if (Highlighter.CodeFoldingRegions[LFold].OpenTokenLength = 1) and (Highlighter.CodeFoldingRegions[LFold].CloseTokenLength = 1) then
+    begin
+      region := Highlighter.CodeFoldingRegions[LFold];
+      if (region.OpenTokenLength = 1) and (region.CloseTokenLength = 1) then
       begin
         LIsOneCharFolds := True;
         Break;
       end;
+    end;
     { Go through the text character by character }
     LCount := AStrings.Count - 1;
     for LLine := 0 to LCount do
