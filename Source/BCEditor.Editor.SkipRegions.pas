@@ -3,7 +3,7 @@ unit BCEditor.Editor.SkipRegions;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, BCEditor.Consts;
 
 type
   TBCEditorSkipRegionItemType = (ritUnspecified, ritString, ritMultiLineComment, ritSingleLineComment);
@@ -14,11 +14,13 @@ type
     FOpenToken: string;
     FRegionType: TBCEditorSkipRegionItemType;
     FSkipEmptyChars: Boolean;
+    FSkipIfNextCharIsNot: Char;
   public
     property OpenToken: string read FOpenToken write FOpenToken;
     property CloseToken: string read FCloseToken write FCloseToken;
     property RegionType: TBCEditorSkipRegionItemType read FRegionType write FRegionType;
     property SkipEmptyChars: Boolean read FSkipEmptyChars write FSkipEmptyChars;
+    property SkipIfNextCharIsNot: Char read FSkipIfNextCharIsNot write FSkipIfNextCharIsNot default BCEDITOR_NONE_CHAR;
   end;
 
   TBCEditorSkipRegions = class(TCollection)
@@ -26,6 +28,7 @@ type
     function GetSkipRegionItem(Index: Integer): TBCEditorSkipRegionItem;
   public
     function Add(const AOpenToken, ACloseToken: string): TBCEditorSkipRegionItem;
+    function Contains(const AOpenToken, ACloseToken: string): Boolean;
     property SkipRegions[index: Integer]: TBCEditorSkipRegionItem read GetSkipRegionItem; default;
   end;
 
@@ -44,6 +47,16 @@ begin
     OpenToken := AOpenToken;
     CloseToken := ACloseToken;
   end;
+end;
+
+function TBCEditorSkipRegions.Contains(const AOpenToken, ACloseToken: string): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 0 to Count - 1 do
+    if (SkipRegions[i].OpenToken = AOpenToken) and (SkipRegions[i].CloseToken = ACloseToken) then
+      Exit(True);
 end;
 
 function TBCEditorSkipRegions.GetSkipRegionItem(Index: Integer): TBCEditorSkipRegionItem;

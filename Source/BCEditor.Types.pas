@@ -193,7 +193,7 @@ type
   end;
 
   TBCEditorCompletionType = (ctNone, ctCode, ctHint);
-  TBCEditorSpecialCharsEndOfLineStyle = (eolArrow, eolPilcrow);
+  TBCEditorSpecialCharsEndOfLineStyle = (eolArrow, eolEnter, eolPilcrow);
 
   TBCEditorSpecialCharsOption = (scoUseTextColor);
   TBCEditorSpecialCharsOptions = set of TBCEditorSpecialCharsOption;
@@ -221,6 +221,10 @@ type
   TBCEditorUndoOptions = set of TBCEditorUndoOption;
 
   TBCEditorCase = (cNone=-1, cUpper=0, cLower=1, cAlternating=2, cSentence=3, cTitle=4, cOriginal=5);
+
+  TBCEditorKeyCharType = (ctFoldOpen, ctFoldClose, ctSkipOpen, ctSkipClose);
+
+  TBCEditorSortOrder = (soToggle, soAsc, soDesc);
 
 implementation
 

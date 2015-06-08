@@ -3,7 +3,7 @@ unit BCEditor.Editor.CodeFolding.FoldRegions;
 interface
 
 uses
-  Classes, SysUtils, BCEditor.Editor.SkipRegions;
+  Classes, SysUtils, BCEditor.Editor.SkipRegions, BCEditor.Consts;
 
 type
   TBCEditorCodeFoldingRegions = class;
@@ -53,10 +53,11 @@ type
     constructor Create(ItemClass: TCollectionItemClass);
     destructor Destroy; override;
     function Add(AOpenToken: string; ACloseToken: string): TBCEditorFoldRegionItem;
+    function Contains(const AOpenToken, ACloseToken: string): Boolean;
     property Items[index: Integer]: TBCEditorFoldRegionItem read GetItem; default;
     property ReverseRegions: TBCEditorCodeFoldingRegions read FReverseRegions write FReverseRegions;
     property SkipRegions: TBCEditorSkipRegions read FSkipRegions;
-    property StringEscapeChar: Char read FStringEscapeChar write FStringEscapeChar default #0;
+    property StringEscapeChar: Char read FStringEscapeChar write FStringEscapeChar default BCEDITOR_NONE_CHAR;
   end;
 
 implementation
@@ -86,7 +87,7 @@ constructor TBCEditorCodeFoldingRegions.Create(ItemClass: TCollectionItemClass);
 begin
   inherited Create(ItemClass);
   FSkipRegions := TBCEditorSkipRegions.Create(TBCEditorSkipRegionItem);
-  FStringEscapeChar := #0;
+  FStringEscapeChar := BCEDITOR_NONE_CHAR;
 end;
 
 destructor TBCEditorCodeFoldingRegions.Destroy;
@@ -95,6 +96,16 @@ begin
   if Assigned(FReverseRegions) then
     FReverseRegions.Free;
   inherited;
+end;
+
+function TBCEditorCodeFoldingRegions.Contains(const AOpenToken, ACloseToken: string): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 0 to Count - 1 do
+    if (Items[i].OpenToken = AOpenToken) and (Items[i].CloseToken = ACloseToken) then
+      Exit(True);
 end;
 
 function TBCEditorCodeFoldingRegions.GetItem(Index: Integer): TBCEditorFoldRegionItem;
