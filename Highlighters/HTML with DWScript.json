@@ -25,7 +25,7 @@
         },
         "MainRules": {
             "Attributes": {
-                "Element": "Editor"
+                "Element": "EditorGray"
             },
             "SubRules": {
                 "Range": [
@@ -51,7 +51,6 @@
                         }
                     },
 					{
-						"Name": "DWScript",
 						"Type": "Tag",
 						"Attributes": {
 							"Element": "Editor"
@@ -69,11 +68,70 @@
 							]
 						}
 					},
+					{
+						"Type": "Tag",
+						"Attributes": {
+							"Element": "String",
+							"ParentBackground": true
+						},
+						"TokenRange": {
+							"Open": "<script type=\"pascal\"",
+							"Close": "/script>"
+						},
+						"SubRules": {
+							"Range": [
+								{
+									"File": "DWScript.json",
+									"IncludeRange": "DWS"
+								}
+							]
+						}
+					},
+					{
+						"Type": "Tag",
+						"Attributes": {
+							"Element": "EditorGreen"
+						},
+						"Properties": {
+							"AlternativeClose": "/>"
+						},
+						"TokenRange": {
+							"Open": "<script",
+							"Close": "/script>"
+						},
+						"SubRules": {
+							"Range": [
+								{
+									"File": "JavaScript.json",
+									"IncludeRange": "JavaScript"
+								}
+							]
+						}
+					},
+					{
+						"Name": "Style",
+						"Type": "Tag",
+						"Attributes": {
+							"Element": "EditorBlue"
+						},
+						"TokenRange": {
+							"Open": "<style",
+							"Close": "/style>"
+						},
+						"SubRules": {
+							"Range": [
+								{
+									"File": "CSS.json",
+									"IncludeRange": "CSS"
+								}
+							]
+						}
+					},
                     {
                         "Name": "HTML",
                         "Type": "Tag",
                         "Attributes": {
-                            "Element": "Editor"
+                            "Element": "EditorGray"
                         },
                         "TokenRange": {
                             "Open": "<",
@@ -90,25 +148,6 @@
                                     "TokenRange": {
                                         "Open": "<!--",
                                         "Close": "-->"
-                                    }
-                                },
-                                {
-                                    "Type": "String",
-                                    "Attributes": {
-                                        "Element": "String",
-                                        "ParentBackground": true
-                                    },
-                                    "TokenRange": {
-                                        "Open": "\"",
-                                        "Close": "\""
-                                    },
-                                    "SubRules": {
-                                        "Range": [
-                                            {
-                                                "File": "DWScript.json",
-                                                "IncludeRange": "DWS"
-                                            }
-                                        ]
                                     }
                                 },
                                 {
@@ -138,47 +177,6 @@
                                     "TokenRange": {
                                         "Open": "$",
                                         "Close": " "
-                                    }
-                                },
-                                {
-                                    "Name": "JavaScript",
-                                    "Type": "Tag",
-                                    "Attributes": {
-                                        "Element": "Editor"
-                                    },
-                                    "Properties": {
-                                        "AlternativeClose": "/>"
-                                    },
-                                    "TokenRange": {
-                                        "Open": "script",
-                                        "Close": "/script"
-                                    },
-                                    "SubRules": {
-                                        "Range": [
-                                            {
-                                                "File": "JavaScript.json",
-                                                "IncludeRange": "JavaScript"
-                                            }
-                                        ]
-                                    }
-                                },
-                                {
-                                    "Name": "Style",
-                                    "Type": "Tag",
-                                    "Attributes": {
-                                        "Element": "Editor"
-                                    },
-                                    "TokenRange": {
-                                        "Open": "style",
-                                        "Close": "/style"
-                                    },
-                                    "SubRules": {
-                                        "Range": [
-                                            {
-                                                "File": "CSS.json",
-                                                "IncludeRange": "CSS"
-                                            }
-                                        ]
                                     }
                                 }
                             ],
@@ -443,76 +441,33 @@
         },
         "SkipRegion": [
             {
-                "OpenToken": "'",
-                "CloseToken": "'",
-                "RegionType": "String"
+                "File": "JavaScript.json"
             },
             {
-                "OpenToken": "\"",
-                "CloseToken": "\"",
-                "RegionType": "String"
-            },
-            {
-                "OpenToken": "/'/",
-                "CloseToken": ",",
-                "RegionType": "String"
-            },
-            {
-                "OpenToken": "/\"/",
-                "CloseToken": ",",
-                "RegionType": "String"
-            },
-            {
-                "OpenToken": "=/",
-                "CloseToken": "/;",
-                "RegionType": "String",
-                "SkipEmptyChars": true
-            },
-            {
-                "OpenToken": "//",
-                "RegionType": "SingleLine"
-            },
-            {
-                "OpenToken": "#",
-                "RegionType": "SingleLine"
-            },
-            {
-                "OpenToken": "/*",
-                "CloseToken": "*/",
-                "RegionType": "MultiLine"
+                "File": "DWScript.json"
             }
         ],
         "FoldRegion": [
             {
-                "OpenToken": "<?",
+                "OpenToken": "<?pas",
                 "CloseToken": "?>"
             },
             {
-                "OpenToken": "{",
-                "CloseToken": "}"
+                "File": "DWScript.json"
             },
             {
-                "OpenToken": "IF",
-                "CloseToken": "ENDIF",
-                "Properties": {
-                    "BreakIfNotFoundBeforeNextRegion": "):"
-                }
+                "File": "JavaScript.json"
             }
         ]
+
     },
     "MatchingPair": {
         "Pairs": [
             {
-                "OpenToken": "(",
-                "CloseToken": ")"
+                "File": "DWScript.json"
             },
             {
-                "OpenToken": "[",
-                "CloseToken": "]"
-            },
-            {
-                "OpenToken": "{",
-                "CloseToken": "}"
+                "File": "JavaScript.json"
             },
             {
                 "OpenToken": "<",
@@ -523,23 +478,7 @@
     "CompletionProposal": {
         "SkipRegion": [
             {
-                "OpenToken": "'",
-                "CloseToken": "'",
-                "RegionType": "String"
-            },
-            {
-                "OpenToken": "\"",
-                "CloseToken": "\"",
-                "RegionType": "String"
-            },
-            {
-                "OpenToken": "//",
-                "RegionType": "SingleLine"
-            },
-            {
-                "OpenToken": "/*",
-                "CloseToken": "*/",
-                "RegionType": "MultiLine"
+                "File": "DWScript.json"
             },
             {
                 "OpenToken": "<!--",

@@ -500,9 +500,6 @@
         }
     },
     "CodeFolding": {
-        "Options": {
-            "StringEscapeChar": "$"
-        },
         "SkipRegion": [
             {
                 "OpenToken": "'",
@@ -516,7 +513,8 @@
             {
                 "OpenToken": "{",
                 "CloseToken": "}",
-                "RegionType": "MultiLine"
+                "RegionType": "MultiLine",
+				"NextCharIsNot": "$"
             },
             {
                 "OpenToken": "(*",
@@ -587,22 +585,6 @@
                 "Properties": {
                     "OpenTokenBeginningOfLine": true,
                     "OpenIsClose": true,
-                    "SharedClose": true
-                }
-            },
-            {
-                "OpenToken": "UNIT",
-                "CloseToken": "END.",
-                "Properties": {
-                    "OpenTokenBeginningOfLine": true,
-                    "SharedClose": true
-                }
-            },
-            {
-                "OpenToken": "PROGRAM",
-                "CloseToken": "END",
-                "Properties": {
-                    "OpenTokenBeginningOfLine": true,
                     "SharedClose": true
                 }
             },
