@@ -73,11 +73,13 @@ type
     FKeyboardHandler: TBCEditorKeyboardHandler;
     FKeyCommands: TBCEditorKeyCommands;
     FLastDblClick: Cardinal;
+    FLastDisplayLineCount: Integer;
     FLastDisplayY: Integer;
     FLastKey: Word;
     FLastRow: Integer;
     FLastShiftState: TShiftState;
     FLastSortOrder: TBCEditorSortOrder;
+    FLastTopLine: Integer;
     FLeftChar: Integer;
     FLeftMargin: TBCEditorLeftMargin;
     FLeftMarginCharWidth: Integer;
@@ -88,6 +90,7 @@ type
     FMatchingPairMatchStack: array of TBCEditorMatchingPairTokenMatch;
     FMatchingPairOpenDuplicate, FMatchingPairCloseDuplicate: array of Integer;
     FMinimap: TBCEditorMinimap;
+    FMinimapBufferBmp: Graphics.TBitmap;
     FMinimapClickOffsetY: Integer;
     FModified: Boolean;
     FMouseDownX: Integer;
@@ -747,6 +750,7 @@ begin
   FMarkList.OnChange := MarkListChange;
   { Painting }
   FBufferBmp := Graphics.TBitmap.Create;
+  FMinimapBufferBmp := Graphics.TBitmap.Create;
   FTextDrawer := TBCEditorTextDrawer.Create([fsBold], FFontDummy);
   Font.Assign(FFontDummy);
   Font.OnChange := FontChanged;
@@ -849,6 +853,7 @@ begin
   FFontDummy.Free;
   FOriginalLines.Free;
   FBufferBmp.Free;
+  FMinimapBufferBmp.Free;
   FActiveLine.Free;
   FRightMargin.Free;
   FScroll.Free;
@@ -3324,6 +3329,7 @@ end;
 
 procedure TBCBaseEditor.MinimapChanged(Sender: TObject);
 begin
+  FMinimapBufferBmp.Height := 0;
   SizeOrFontChanged(True);
   Invalidate;
   if not (csLoading in ComponentState) then
@@ -4027,13 +4033,13 @@ begin
   LTextPosition := DisplayToTextPosition(LDisplayPosition);
   if (CaretX <> LTextPosition.Char) or (CaretY <> LTextPosition.Line) then
   begin
-    IncPaintLock;
+    //IncPaintLock;
     try
       InternalCaretPosition := LTextPosition;
       if MouseCapture then
         SetSelectionEndPosition(CaretPosition);
     finally
-      DecPaintLock;
+      //DecPaintLock;
     end;
   end;
   ComputeScroll(LCursorPoint.X, LCursorPoint.Y);
@@ -6577,6 +6583,8 @@ begin
     LWasSelected := SelectionAvailable;
     FMouseDownX := X;
     FMouseDownY := Y;
+    if FMinimap.Visible then
+      FMinimapBufferBmp.Height := 0;
   end;
 
   if not FMinimap.Dragging and FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
@@ -6959,19 +6967,22 @@ end;
 procedure TBCBaseEditor.Paint;
 var
   LClipRect, DrawRect: TRect;
-  LLine1, LLine2, LLine3, LColumn1, LColumn2: Integer;
+  LLine1, LLine2, LLine3, LColumn1, LColumn2, LTemp: Integer;
   LHandle: HDC;
+  LSelectionAvailable: Boolean;
 begin
   LClipRect := Canvas.ClipRect;
 
   LColumn1 := FLeftChar;
+  LTemp := FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2;
   if LClipRect.Left > FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2 then
-    Inc(LColumn1, (LClipRect.Left - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2) div FCharWidth);
-  LColumn2 := FLeftChar + (LClipRect.Right - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2 + FCharWidth - 1) div FCharWidth;
+    Inc(LColumn1, (LClipRect.Left - LTemp) div FCharWidth);
+  LColumn2 := FLeftChar + (LClipRect.Right - LTemp + FCharWidth - 1) div FCharWidth;
 
   LLine1 := FTopLine;
-  LLine2 := MinMax(FTopLine + (LClipRect.Bottom + FTextHeight - 1) div LineHeight, 1, GetDisplayLineCount);
-  LLine3 := FTopLine + (LClipRect.Bottom + FTextHeight - 1) div LineHeight;
+  LTemp := (LClipRect.Bottom + FTextHeight - 1) div LineHeight;
+  LLine2 := MinMax(FTopLine + LTemp, 1, GetDisplayLineCount);
+  LLine3 := FTopLine + LTemp;
 
   HideCaret;
   FBufferBmp.Width := Width;
@@ -6981,6 +6992,7 @@ begin
   Canvas.Handle := FBufferBmp.Canvas.Handle;
   FBufferBmp.Canvas.Handle := LHandle;
   LHandle := Canvas.Handle; { important, don't remove }
+
   FTextDrawer.BeginDrawing(LHandle);
   try
     { Paint the text area if it was (partly) invalidated }
@@ -7033,19 +7045,39 @@ begin
         FMinimap.CharHeight := FTextDrawer.CharHeight - 1;
         FMinimap.VisibleLines := ClientHeight div FMinimap.CharHeight;
 
-        LLine1 := Max(FMinimap.TopLine, 1);
-        LLine2 := Min(GetDisplayLineCount, LLine1 + ((LClipRect.Bottom-LClipRect.Top) div FMinimap.CharHeight) - 1);
+        LSelectionAvailable := SelectionAvailable;
+
+        if (DrawRect.Bottom-DrawRect.Top = FMinimapBufferBmp.Height) and (FLastTopLine = FTopLine) and
+          (FLastDisplayLineCount = DisplayLineCount) and (not LSelectionAvailable or
+          LSelectionAvailable and
+          (FSelectionBeginPosition.Line >= FTopLine) and (FSelectionEndPosition.Line <= FTopLine + FVisibleLines)) then
+        begin
+          LLine1 := FTopLine;
+          LLine2 := FTopLine + FVisibleLines;
+          Canvas.CopyRect(DrawRect, FMinimapBufferBmp.Canvas, Rect(0, 0, DrawRect.Right-DrawRect.Left, DrawRect.Bottom-DrawRect.Top));
+        end
+        else
+        begin
+          LLine1 := Max(FMinimap.TopLine, 1);
+          LLine2 := Min(GetDisplayLineCount, LLine1 + ((LClipRect.Bottom-LClipRect.Top) div FMinimap.CharHeight) - 1);
+        end;
+
         LColumn1 := 1;
         LColumn2 := FMinimap.GetWidth div FTextDrawer.CharWidth;
 
         PaintTextLines(DrawRect, LLine1, LLine2, LColumn1, LColumn2, True);
+
+        FMinimapBufferBmp.Width := DrawRect.Right-DrawRect.Left;
+        FMinimapBufferBmp.Height := DrawRect.Bottom-DrawRect.Top;
+        FMinimapBufferBmp.Canvas.CopyRect(Rect(0, 0, DrawRect.Right-DrawRect.Left, DrawRect.Bottom-DrawRect.Top), Canvas, DrawRect);
+
         FTextDrawer.SetBaseFont(Font);
         FTextDrawer.Style := Font.Style;
       end;
 
     { Paint search map }
     if FSearch.Map.Visible then
-      if (LClipRect.Right >= ClientRect.Right-ClientRect.Left - FSearch.Map.GetWidth) then
+      if LClipRect.Right >= ClientRect.Right-ClientRect.Left - FSearch.Map.GetWidth then
       begin
         DrawRect := LClipRect;
         DrawRect.Left := ClientRect.Right-ClientRect.Left - FSearch.Map.GetWidth;
@@ -7055,6 +7087,8 @@ begin
     if FRightMargin.Moving then
       PaintRightMarginMove;
   finally
+    FLastTopLine := FTopLine;
+    FLastDisplayLineCount := DisplayLineCount;
     FTextDrawer.EndDrawing;
     FBufferBmp.Canvas.CopyRect(ClientRect, Canvas, ClientRect);
     FBufferBmp.Canvas.Handle := Canvas.Handle;
@@ -8506,7 +8540,10 @@ begin
   LTokenRect := AClipRect;
 
   if AMinimap then
+  begin
+    ALastRow := Min(GetDisplayLineCount, Max(FMinimap.TopLine, 1) + ((AClipRect.Bottom-AClipRect.Top) div FMinimap.CharHeight) - 1);
     LTokenRect.Top := (ALastRow - FMinimap.TopLine + 1) * FMinimap.CharHeight
+  end
   else
     LTokenRect.Top := (ALastRow - TopLine + 1) * LineHeight;
 
