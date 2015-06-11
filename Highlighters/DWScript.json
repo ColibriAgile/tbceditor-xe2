@@ -77,9 +77,6 @@
                             "Element": "String",
                             "ParentBackground": true
                         },
-                        "Properties": {
-                            "CloseOnEol": false
-                        },
                         "TokenRange": {
                             "Open": "#'",
                             "Close": "'"
@@ -104,9 +101,6 @@
                         "Attributes": {
                             "Element": "String",
                             "ParentBackground": true
-                        },
-                        "Properties": {
-                            "CloseOnEol": false
                         },
                         "TokenRange": {
                             "Open": "\"",
