@@ -51,6 +51,7 @@ type
     FCodeFolding: TBCEditorCodeFolding;
     FCodeFoldingHintForm: TBCEditorCompletionProposalForm;
     FCodeFoldingRangeForLine: array of TBCEditorCodeFoldingRange;
+    FCollapsedLinesDifferenceCache: array of Integer;
     FColumnWidths: PIntegerArray;
     FCommandDrop: Boolean;
     FCompletionProposal: TBCEditorCompletionProposal;
@@ -1901,19 +1902,28 @@ var
   LCodeFoldingRange: TBCEditorCodeFoldingRange;
 begin
   LCodeFoldingRangeForLine := CodeFoldingRangeForLine(ALine);
-  Result := 0;
+
+  if ALine > High(FCollapsedLinesDifferenceCache) then
+    SetLength(FCollapsedLinesDifferenceCache, ALine + 1);
+
+  Result := FCollapsedLinesDifferenceCache[ALine];
+  if Result > 0 then
+    Exit(Result - 1);
 
   for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
   begin
     LCodeFoldingRange := FAllCodeFoldingRanges[i];
     if LCodeFoldingRange.FromLine < ALine then
     begin
-      if (LCodeFoldingRange <> LCodeFoldingRangeForLine) and LCodeFoldingRange.Collapsed and not LCodeFoldingRange.ParentCollapsed then
+      if (LCodeFoldingRange <> LCodeFoldingRangeForLine) and LCodeFoldingRange.Collapsed and
+        not LCodeFoldingRange.ParentCollapsed then
         Inc(Result, Max(LCodeFoldingRange.CollapsedLines.Count - 1, 0))
     end
     else
       Break;
   end;
+
+  FCollapsedLinesDifferenceCache[ALine] := Result+1;
 end;
 
 function TBCBaseEditor.GetWordAtCursor: string;
@@ -2650,14 +2660,14 @@ begin
   end;
 end;
 
-procedure TBCBaseEditor.CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange{; AAddUndoList: Boolean = True});
+procedure TBCBaseEditor.CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange);
 var
   i: Integer;
   LLineState: TBCEditorLineState;
   LTextLine: string;
 begin
   ClearMatchingPair;
-
+  SetLength(FCollapsedLinesDifferenceCache, 0);
   Lines.BeginUpdate;
 
   with AFoldRange do
@@ -2764,7 +2774,7 @@ var
   i: Integer;
 begin
   ClearMatchingPair;
-
+  SetLength(FCollapsedLinesDifferenceCache, 0);
   Lines.BeginUpdate;
 
   with AFoldRange do
@@ -6413,6 +6423,8 @@ begin
       TopLine := TopLine;
     if GetWordWrap then
       FWordWrapHelper.Reset;
+    if FMinimap.Visible then
+      SetLength(FCollapsedLinesDifferenceCache, 0);
   end;
 end;
 
@@ -10362,6 +10374,7 @@ procedure TBCBaseEditor.ClearCodeFolding;
 begin
   FAllCodeFoldingRanges.Clear;
   FAllCodeFoldingRanges.ClearAll;
+  SetLength(FCollapsedLinesDifferenceCache, 0);
 end;
 
 procedure TBCBaseEditor.ClearMatchingPair;
@@ -10439,6 +10452,7 @@ var
   i: Integer;
   LCodeFoldingRange: TBCEditorCodeFoldingRange;
 begin
+  SetLength(FCollapsedLinesDifferenceCache, 0);
   for i := FAllCodeFoldingRanges.AllCount - 1 downto 0 do
   begin
     LCodeFoldingRange := FAllCodeFoldingRanges[i];
@@ -11931,6 +11945,7 @@ end;
 procedure TBCBaseEditor.InitCodeFolding;
 begin
   ClearCodeFolding;
+  SetLength(FCollapsedLinesDifferenceCache, 0);
   ScanCodeFoldingRanges(FAllCodeFoldingRanges, FLines);
   CodeFoldingPrepareRangeForLine;
 end;
