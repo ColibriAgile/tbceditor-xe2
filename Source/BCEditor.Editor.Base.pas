@@ -6741,16 +6741,20 @@ var
   LRect: TRect;
   LHintWindow: THintWindow;
   S: string;
-  LTopLine: Integer;
+  LTopLine, LTemp, LTemp2: Integer;
 begin
   if FMinimap.Visible and (X > (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
-  begin
     if FMinimap.Clicked then
     begin
       if FMinimap.Dragging then
       begin
-        FMinimap.TopLine := Max(TopLine - Abs(Trunc((FMinimap.VisibleLines - FVisibleLines) * (TopLine / GetDisplayLineCount))), 1);
-        LTopLine := Max(1, FMinimap.TopLine + Y div FMinimap.CharHeight - FMinimapClickOffsetY);
+        LTemp := GetDisplayLineCount - FMinimap.VisibleLines;
+        LTemp2 := Y div FMinimap.CharHeight - FMinimapClickOffsetY;
+        FMinimap.TopLine := Max(1, Trunc((LTemp / Max(FMinimap.VisibleLines - VisibleLines, 1)) * LTemp2));
+        if FMinimap.TopLine > LTemp then
+          FMinimap.TopLine := LTemp;
+
+        LTopLine := Max(1, FMinimap.TopLine + LTemp2);
         if TopLine <> LTopLine then
         begin
           TopLine := LTopLine;
@@ -6762,7 +6766,6 @@ begin
           FMinimap.Dragging := True;
       Exit;
     end;
-  end;
 
   if FMinimap.Clicked then
     Exit;
@@ -6774,7 +6777,7 @@ begin
 
   if (rmoMouseMove in FRightMargin.Options) and FRightMargin.Visible then
   begin
-    FRightMargin.MouseOver := (Abs(RowColumnToPixels(GetDisplayPosition(FRightMargin.Position + 1, 0)).X - X) < 3);
+    FRightMargin.MouseOver := Abs(RowColumnToPixels(GetDisplayPosition(FRightMargin.Position + 1, 0)).X - X) < 3;
 
     if FRightMargin.Moving and (X > FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2) then
     begin
@@ -6792,7 +6795,6 @@ begin
         LHintWindow.ActivateHint(LRect, S);
         LHintWindow.Invalidate;
       end;
-
       Invalidate;
       Exit;
     end;
@@ -7047,7 +7049,8 @@ begin
 
         LSelectionAvailable := SelectionAvailable;
 
-        if (DrawRect.Bottom-DrawRect.Top = FMinimapBufferBmp.Height) and (FLastTopLine = FTopLine) and
+        if not FMinimap.Dragging and
+          (DrawRect.Bottom-DrawRect.Top = FMinimapBufferBmp.Height) and (FLastTopLine = FTopLine) and
           (FLastDisplayLineCount = DisplayLineCount) and (not LSelectionAvailable or
           LSelectionAvailable and
           (FSelectionBeginPosition.Line >= FTopLine) and (FSelectionEndPosition.Line <= FTopLine + FVisibleLines)) then
@@ -7855,7 +7858,6 @@ var
   LLastLine: Integer;
   LLineRect, LTokenRect: TRect;
   LLineSelectionStart, LLineSelectionEnd: Integer;
-  LPaintRightMargin: Boolean;
   LRightMarginPosition: Integer;
   LSelectionEndPosition: TBCEditorDisplayPosition;
   LSelectionStartPosition: TBCEditorDisplayPosition;
@@ -8493,13 +8495,6 @@ var
         end;
 
         PaintGuides(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
-
-        if not AMinimap and LPaintRightMargin then
-        begin
-          Canvas.Pen.Color := FRightMargin.Colors.Edge;
-          Canvas.MoveTo(LRightMarginPosition, LLineRect.Top);
-          Canvas.LineTo(LRightMarginPosition, LLineRect.Bottom + 1);
-        end;
       end;
     end;
     LIsCurrentLine := False;
@@ -8515,19 +8510,6 @@ begin
     AFirstColumn := 1;
 
   FTextOffset := FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2 - (LeftChar - 1) * FCharWidth;
-
-  LPaintRightMargin := False;
-  if not AMinimap then
-    if FRightMargin.Visible then
-    begin
-      LRightMarginPosition := FTextOffset + FRightMargin.Position * FTextDrawer.CharWidth;
-      if (LRightMarginPosition >= AClipRect.Left) and (LRightMarginPosition <= AClipRect.Right) then
-        LPaintRightMargin := True;
-    end;
-
-  { Initialize pen - don't remove this }
-  if LPaintRightMargin or (FCodeFolding.Visible and (FAllCodeFoldingRanges.AllCount > 0)) then
-    Canvas.Pen.Color := FRightMargin.Colors.Edge;
 
   if LLastLine >= LFirstLine then
   begin
@@ -8551,16 +8533,20 @@ begin
   begin
     LBackgroundColor := GetBackgroundColor;
     SetDrawingColors(False);
-
     Canvas.FillRect(LTokenRect);
-
-    if not AMinimap and LPaintRightMargin then
-    begin
-      Canvas.Pen.Color := FRightMargin.Colors.Edge;
-      Canvas.MoveTo(LRightMarginPosition, LTokenRect.Top);
-      Canvas.LineTo(LRightMarginPosition, LTokenRect.Bottom + 1);
-    end;
   end;
+
+  if not AMinimap then
+    if FRightMargin.Visible then
+    begin
+      LRightMarginPosition := FTextOffset + FRightMargin.Position * FTextDrawer.CharWidth;
+      if (LRightMarginPosition >= AClipRect.Left) and (LRightMarginPosition <= AClipRect.Right) then
+      begin
+        Canvas.Pen.Color := FRightMargin.Colors.Edge;
+        Canvas.MoveTo(LRightMarginPosition, 0);
+        Canvas.LineTo(LRightMarginPosition, Height);
+      end;
+    end;
 end;
 
 procedure TBCBaseEditor.RecalculateCharExtent;
