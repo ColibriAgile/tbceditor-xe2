@@ -21,12 +21,13 @@ type
   TBCBaseEditor = class(TCustomControl)
   strict private
     FActiveLine: TBCEditorActiveLine;
+    FAfterBookmarkPanelPaint: TBCEditorBookmarkPanelPaintEvent;
+    FOnAfterLinePaint: TBCEditorLinePaintEvent;
     FAllCodeFoldingRanges: TBCEditorAllCodeFoldingRanges;
     FAltEnabled: Boolean;
     FAlwaysShowCaret: Boolean;
     FBackgroundColor: TColor;
-    FBookmarkPanelAfterPaint: TBCEditorBookmarkPanelPaintEvent;
-    FBookmarkPanelBeforePaint: TBCEditorBookmarkPanelPaintEvent;
+    FBeforeBookmarkPanelPaint: TBCEditorBookmarkPanelPaintEvent;
     FBookmarkPanelLinePaint: TBCEditorBookmarkPanelLinePaintEvent;
     FBookMarks: array [0 .. 8] of TBCEditorBookmark;
     FBorderStyle: TBorderStyle;
@@ -584,12 +585,13 @@ type
     property MatchingPair: TBCEditorMatchingPair read FMatchingPair write FMatchingPair;
     property Minimap: TBCEditorMinimap read FMinimap write FMinimap;
     property Modified: Boolean read FModified write SetModified;
+    property OnAfterBookmarkPanelPaint: TBCEditorBookmarkPanelPaintEvent read FAfterBookmarkPanelPaint write FAfterBookmarkPanelPaint;
     property OnAfterBookmarkPlaced: TNotifyEvent read FOnAfterBookmarkPlaced write FOnAfterBookmarkPlaced;
     property OnAfterClearBookmark: TNotifyEvent read FOnAfterClearBookmark write FOnAfterClearBookmark;
+    property OnAfterLinePaint: TBCEditorLinePaintEvent read FOnAfterLinePaint write FOnAfterLinePaint;
     property OnBeforeBookmarkPlaced: TBCEditorBookmarkEvent read FOnBeforeBookmarkPlaced write FOnBeforeBookmarkPlaced;
     property OnBeforeClearBookmark: TBCEditorBookmarkEvent read FOnBeforeClearBookmark write FOnBeforeClearBookmark;
-    property OnBookmarkPanelAfterPaint: TBCEditorBookmarkPanelPaintEvent read FBookmarkPanelAfterPaint write FBookmarkPanelAfterPaint;
-    property OnBookmarkPanelBeforePaint: TBCEditorBookmarkPanelPaintEvent read FBookmarkPanelBeforePaint write FBookmarkPanelBeforePaint;
+    property OnBeforeBookmarkPanelPaint: TBCEditorBookmarkPanelPaintEvent read FBeforeBookmarkPanelPaint write FBeforeBookmarkPanelPaint;
     property OnBookmarkPanelLinePaint: TBCEditorBookmarkPanelLinePaintEvent read FBookmarkPanelLinePaint write FBookmarkPanelLinePaint;
     property OnCaretChanged: TBCEditorCaretChangedEvent read FOnCaretChanged write FOnCaretChanged;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
@@ -1183,18 +1185,26 @@ end;
 function TBCBaseEditor.CreateUncollapsedLines: TBCEditorLines;
 var
   i, j, k: Integer;
+  LCodeFoldingRange: TBCEditorCodeFoldingRange;
 begin
   Result := TBCEditorLines.Create(Self);
   Result.Clear;
   j := 0;
   for i := 0 to FLines.Count - 1 do
   begin
-    while (j < FAllCodeFoldingRanges.AllCount) and Assigned(FAllCodeFoldingRanges[j]) and not FAllCodeFoldingRanges[j].Collapsed do
-      Inc(j);
-    if (j < FAllCodeFoldingRanges.AllCount) and Assigned(FAllCodeFoldingRanges[j]) and (FAllCodeFoldingRanges[j].FromLine - 1 = i) then
+    LCodeFoldingRange := nil;
+    while j < FAllCodeFoldingRanges.AllCount do
     begin
-      for k := 0 to FAllCodeFoldingRanges[j].CollapsedLines.Count - 1 do
-        Result.Add(FAllCodeFoldingRanges[j].CollapsedLines[k]);
+      LCodeFoldingRange := FAllCodeFoldingRanges[j];
+      if Assigned(LCodeFoldingRange) and not LCodeFoldingRange.Collapsed then
+        Inc(j)
+      else
+        Break;
+    end;
+    if (j < FAllCodeFoldingRanges.AllCount) and Assigned(LCodeFoldingRange) and (LCodeFoldingRange.FromLine - 1 = i) then
+    begin
+      for k := 0 to LCodeFoldingRange.CollapsedLines.Count - 1 do
+        Result.Add(LCodeFoldingRange.CollapsedLines[k]);
       Inc(j);
     end
     else
@@ -1341,7 +1351,7 @@ function TBCBaseEditor.GetLeadingWhite(const ALine: string): string;
 var
   i: Integer;
 begin
-  Result := EmptyStr;
+  Result := '';
 
   i := 1;
   while (i <= Length(ALine)) and (ALine[i] < BCEDITOR_EXCLAMATION_MARK) do
@@ -1856,7 +1866,7 @@ function TBCBaseEditor.GetSelectedText: string;
 
 begin
   if not SelectionAvailable then
-    Result := EmptyStr
+    Result := ''
   else
     Result := DoGetSelectedText;
 end;
@@ -3140,7 +3150,7 @@ begin
   try
     if SelectionAvailable then
     begin
-      FUndoList.AddChange(crDelete, FSelectionBeginPosition, FSelectionEndPosition, SelectedText, FSelection.ActiveMode);
+      FUndoList.AddChange(crDelete, FSelectionBeginPosition, FSelectionEndPosition, GetSelectedText, FSelection.ActiveMode);
       SetSelectedTextPrimitive('');
     end;
     LBlockStartPosition := CaretPosition;
@@ -4376,7 +4386,7 @@ begin
   BeginUndoBlock;
   try
     if SelectionAvailable then
-      FUndoList.AddChange(crDelete, FSelectionBeginPosition, FSelectionEndPosition, SelectedText, FSelection.ActiveMode)
+      FUndoList.AddChange(crDelete, FSelectionBeginPosition, FSelectionEndPosition, GetSelectedText, FSelection.ActiveMode)
     else
       FSelection.ActiveMode := FSelection.Mode;
 
@@ -4387,7 +4397,7 @@ begin
     SetSelectedTextPrimitive(Value);
 
     if (Value <> '') and (FSelection.ActiveMode <> smColumn) then
-      FUndoList.AddChange(crInsert, LBlockStartPosition, LBlockEndPosition, '', FSelection.ActiveMode);
+      FUndoList.AddChange(crInsert, LBlockStartPosition, SelectionEndPosition, '', FSelection.ActiveMode);
   finally
     EndUndoBlock;
   end;
@@ -5662,7 +5672,7 @@ begin
         LInsertionPosition.Char := Min(LBlockBeginPosition.Char, LBlockEndPosition.Char)
       else
         LInsertionPosition.Char := 1;
-      InsertBlock(LInsertionPosition, LInsertionPosition, LStringToInsert, true);
+      InsertBlock(LInsertionPosition, LInsertionPosition, LStringToInsert, True);
       FUndoList.AddChange(crIndent, LBlockBeginPosition, LBlockEndPosition, '', smColumn);
       FUndoList.AddChange(crIndent, GetTextPosition(LBlockBeginPosition.Char + Length(LSpaces), LBlockBeginPosition.Line),
         GetTextPosition(LBlockEndPosition.Char + Length(LSpaces), LBlockEndPosition.Line), '', smColumn);
@@ -7238,16 +7248,15 @@ end;
 procedure TBCBaseEditor.PaintCodeFoldingCollapseMark(AFoldRange: TBCEditorCodeFoldingRange; ATokenPosition, ATokenLength, ALine,
   AScrolledXBy: Integer; ALineRect: TRect);
 var
-  LOldPenColor, LOldBrushColor: TColor;
+  LOldPenColor: TColor;
   LCollapseMarkRect: TRect;
   X, Y: Integer;
+  LBrush: TBrush;
 begin
+  LOldPenColor := Canvas.Pen.Color;
   if FCodeFolding.Visible and (cfoShowCollapsedCodeHint in CodeFolding.Options) and Assigned(AFoldRange) and
     AFoldRange.Collapsed and not AFoldRange.ParentCollapsed then
   begin
-    LOldBrushColor := Canvas.Brush.Color;
-    LOldPenColor := Canvas.Pen.Color;
-
     LCollapseMarkRect.Left := (ATokenPosition + ATokenLength + 1) * FCharWidth + FLeftMargin.GetWidth + FCodeFolding.GetWidth;
     LCollapseMarkRect.Top := ALineRect.Top + 2;
     LCollapseMarkRect.Bottom := ALineRect.Bottom - 2;
@@ -7258,12 +7267,16 @@ begin
     if LCollapseMarkRect.Right - AScrolledXBy > 0 then
     begin
       OffsetRect(LCollapseMarkRect, -AScrolledXBy, 0);
-
-      Canvas.Brush.Color := FCodeFolding.Colors.FoldingLine;
+      LBrush := TBrush.Create;
+      try
+        LBrush.Color := FCodeFolding.Colors.FoldingLine;
+        Winapi.Windows.FrameRect(Canvas.Handle, LCollapseMarkRect, LBrush.Handle);
+      finally
+        LBrush.Free;
+      end;
       Canvas.Pen.Color := FCodeFolding.Colors.FoldingLine;
-      Canvas.FrameRect(LCollapseMarkRect);
       { paint [...] }
-      Y := LCollapseMarkRect.Top + (LCollapseMarkRect.Bottom - LCollapseMarkRect.Top) div 2 {- 1};
+      Y := LCollapseMarkRect.Top + (LCollapseMarkRect.Bottom - LCollapseMarkRect.Top) div 2;
       X := LCollapseMarkRect.Left + FCharWidth - 1;
       Canvas.Rectangle(X, Y, X + 2, Y + 2);
       X := X + FCharWidth - 1;
@@ -7271,9 +7284,9 @@ begin
       X := X + FCharWidth - 1;
       Canvas.Rectangle(X, Y, X + 2, Y + 2);
     end;
-    Canvas.Brush.Color := LOldBrushColor;
-    Canvas.Pen.Color := LOldPenColor;
   end;
+  //Canvas.Brush.Color := LOldBrushColor;
+  Canvas.Pen.Color := LOldPenColor;
 end;
 
 procedure TBCBaseEditor.PaintGuides(ALine, AScrolledXBy: Integer; ALineRect: TRect; AMinimap: Boolean);
@@ -7509,8 +7522,8 @@ begin
       Canvas.Brush.Color := FLeftMargin.Colors.ActiveLineBackground;
       Canvas.FillRect(LPanelActiveLineRect); { fill bookmark panel active line rect}
     end;
-    if Assigned(FBookmarkPanelBeforePaint) then
-      FBookmarkPanelBeforePaint(Self, Canvas, LPanelRect, LFirstLine, LLastLine);
+    if Assigned(FBeforeBookmarkPanelPaint) then
+      FBeforeBookmarkPanelPaint(Self, Canvas, LPanelRect, LFirstLine, LLastLine);
   end;
   Canvas.Brush.Style := bsClear;
   { Word wrap }
@@ -7616,8 +7629,8 @@ begin
         FBookmarkPanelLinePaint(Self, Canvas, LLineRect, i);
       end;
     end;
-    if Assigned(FBookmarkPanelAfterPaint) then
-      FBookmarkPanelAfterPaint(Self, Canvas, LPanelRect, LFirstLine, LLastLine);
+    if Assigned(FAfterBookmarkPanelPaint) then
+      FAfterBookmarkPanelPaint(Self, Canvas, LPanelRect, LFirstLine, LLastLine);
   end;
 end;
 
@@ -8507,6 +8520,9 @@ var
         end;
 
         PaintGuides(LCurrentLine, LScrolledXBy, LLineRect, AMinimap);
+
+        if Assigned(FOnAfterLinePaint) then
+          FOnAfterLinePaint(Self, Canvas, LLineRect, RowToLine(LCurrentLine), AMinimap);
       end;
     end;
     LIsCurrentLine := False;
@@ -8987,7 +9003,7 @@ var
 begin
   LUndoBeginPosition := SelectionBeginPosition;
   LUndoEndPosition := SelectionEndPosition;
-  if AChangeString <> EmptyStr then
+  if AChangeString <> '' then
   begin
     LBlockStartPosition := SelectionBeginPosition;
     if FSelection.ActiveMode = smLine then
@@ -8996,9 +9012,9 @@ begin
   end;
   FUndoList.AddChange(crDelete, LUndoBeginPosition, LUndoEndPosition, GetSelectedText, FSelection.ActiveMode);
   SetSelectedTextPrimitive(AChangeString);
-  if AChangeString <> EmptyStr then
+  if AChangeString <> '' then
   begin
-    FUndoList.AddChange(crInsert, LBlockStartPosition, SelectionEndPosition, EmptyStr, smNormal);
+    FUndoList.AddChange(crInsert, LBlockStartPosition, SelectionEndPosition, '', smNormal);
     FUndoList.EndBlock;
   end;
 end;
@@ -10793,7 +10809,7 @@ begin
         Exit;
   end;
 { Process a comand }
-  LHelper := EmptyStr;
+  LHelper := '';
   IncPaintLock;
   try
     case ACommand of
@@ -11418,7 +11434,7 @@ begin
                 end
                 else
                 begin
-                  FLines.Insert(FCaretY - 1, EmptyStr);
+                  FLines.Insert(FCaretY - 1, '');
 
                   FUndoList.AddChange(crLineInsert, LCaretPosition, LCaretPosition, '', smNormal);
 
@@ -12250,7 +12266,7 @@ begin
     FUndoList.AddChange(crPasteBegin, SelectionBeginPosition, SelectionEndPosition, '', smNormal);
     LAddPasteEndMarker := True;
     if SelectionAvailable then
-      FUndoList.AddChange(crDelete, FSelectionBeginPosition, FSelectionEndPosition, SelectedText, FSelection.ActiveMode)
+      FUndoList.AddChange(crDelete, FSelectionBeginPosition, FSelectionEndPosition, GetSelectedText, FSelection.ActiveMode)
     else
       FSelection.ActiveMode := Selection.Mode;
 
