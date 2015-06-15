@@ -7270,7 +7270,7 @@ begin
       LBrush := TBrush.Create;
       try
         LBrush.Color := FCodeFolding.Colors.FoldingLine;
-        Winapi.Windows.FrameRect(Canvas.Handle, LCollapseMarkRect, LBrush.Handle);
+        Windows.FrameRect(Canvas.Handle, LCollapseMarkRect, LBrush.Handle);
       finally
         LBrush.Free;
       end;
