@@ -67,8 +67,7 @@ type
     FHighlightedFoldRange: TBCEditorCodeFoldingRange;
     FHighlighter: TBCEditorHighlighter;
     FHookedCommandHandlers: TObjectList;
-    FInserting: Boolean;
-    FInsertingMirrors: Boolean;
+    FInsertMode: Boolean;
     FInternalImage: TBCEditorInternalImage;
     FInvalidateRect: TRect;
     FIsScrolling: Boolean;
@@ -212,7 +211,7 @@ type
     function GetWrapAtColumn: Integer;
     function IsLineInsideCollapsedCodeFolding(ALine: Integer): Boolean;
     function IsKeywordAtCursorPosition(AOpenKeyWord: PBoolean = nil; AIncludeAfterToken: Boolean = True): Boolean;
-    function IsKeywordAtCurrentLine: Boolean;
+    function IsKeywordAtLine(ALine: Integer): Boolean;
     function IsStringAllWhite(const ALine: string): Boolean;
     function LeftSpaceCount(const ALine: string; WantTabs: Boolean = False): Integer;
     function MinPoint(const APoint1, APoint2: TPoint): TPoint;
@@ -572,7 +571,7 @@ type
     property Encoding: TEncoding read FEncoding write FEncoding;
     property Font;
     property Highlighter: TBCEditorHighlighter read FHighlighter;
-    property InsertMode: Boolean read FInserting write SetInsertMode default True;
+    property InsertMode: Boolean read FInsertMode write SetInsertMode default True;
     property IsScrolling: Boolean read FIsScrolling;
     property KeyCommands: TBCEditorKeyCommands read FKeyCommands write SetKeyCommands stored False;
     property LeftChar: Integer read FLeftChar write SetLeftChar;
@@ -696,6 +695,7 @@ begin
   FDoubleClickTime := GetDoubleClickTime;
   FBreakWhitespace := True;
   FSelectedCaseText := '';
+  FLastSortOrder := soDesc;
   { Code folding }
   FAllCodeFoldingRanges := TBCEditorAllCodeFoldingRanges.Create;
   FPlugins := TList.Create;
@@ -767,7 +767,7 @@ begin
   FRightMargin.OnChange := RightMarginChanged;
   { Text }
   TabStop := True;
-  FInserting := True;
+  FInsertMode := True;
   FFocusList := TList.Create;
   FKeyboardHandler := TBCEditorKeyboardHandler.Create;
   FKeyCommands := TBCEditorKeyCommands.Create(Self);
@@ -1426,13 +1426,6 @@ var
     for i := 0 to LOpenDuplicateLength - 1 do
     if LToken = PBCEditorMatchingPairToken(FHighlighter.MatchingPairs[FMatchingPairOpenDuplicate[i]])^.OpenToken then
       Exit;
-   { TODO: Now one character open tokens are not found. For example {
-     begin
-      LPLine := PChar(FLines[APoint.Line]);
-      Inc(LPLine, FHighlighter.GetTokenPosition - 1);
-      if (Length(LToken) > 2) and ((LPLine^ = #0) or (LPLine^ = BCEDITOR_SPACE_CHAR) or (LPLine^ = BCEDITOR_TAB_CHAR)) then
-        Exit;
-    end; }
     Result := False
   end;
 
@@ -2088,9 +2081,10 @@ begin
     Result := IsKeywordAtCursorPosForFoldRegions(AOpenKeyWord);
 end;
 
-function TBCBaseEditor.IsKeywordAtCurrentLine: Boolean;
+function TBCBaseEditor.IsKeywordAtLine(ALine: Integer): Boolean;
 var
   i: Integer;
+  LLineText: string;
   LFoldRegions: TBCEditorCodeFoldingRegions;
   LKeyWordPtr, LBookmarkTextPtr, LTextPtr: PChar;
 
@@ -2110,6 +2104,14 @@ var
     Result := not IsValidChar(FirstChar) and not IsValidChar(LastChar);
   end;
 
+  function GetLineText(ALine: Integer): string;
+  begin
+    if (ALine >= 1) and (ALine <= Lines.Count) then
+      Result := Lines[ALine - 1]
+    else
+      Result := '';
+  end;
+
 begin
   Result := False;
 
@@ -2119,7 +2121,9 @@ begin
   if Assigned(FHighlighter) and (FHighlighter.CodeFoldingRegions.Count = 0) then
     Exit;
 
-  if Trim(LineText) = '' then
+  LLineText := GetLineText(ALine);
+
+  if Trim(LLineText) = '' then
     Exit;
 
   if Assigned(FHighlighter) then
@@ -2128,7 +2132,7 @@ begin
 
     for i := 0 to LFoldRegions.Count - 1 do
     begin
-      LTextPtr := PChar(LineText);
+      LTextPtr := PChar(LLineText);
       while LTextPtr^ <> BCEDITOR_NONE_CHAR do
       begin
         SkipEmptySpace;
@@ -4053,13 +4057,13 @@ begin
   LTextPosition := DisplayToTextPosition(LDisplayPosition);
   if (CaretX <> LTextPosition.Char) or (CaretY <> LTextPosition.Line) then
   begin
-    //IncPaintLock;
+    IncPaintLock;
     try
       InternalCaretPosition := LTextPosition;
       if MouseCapture then
         SetSelectionEndPosition(CaretPosition);
     finally
-      //DecPaintLock;
+      DecPaintLock;
     end;
   end;
   ComputeScroll(LCursorPoint.X, LCursorPoint.Y);
@@ -4201,9 +4205,9 @@ end;
 
 procedure TBCBaseEditor.SetInsertMode(const Value: Boolean);
 begin
-  if FInserting <> Value then
+  if FInsertMode <> Value then
   begin
-    FInserting := Value;
+    FInsertMode := Value;
     if not (csDesigning in ComponentState) then
       ResetCaret;
   end;
@@ -6083,9 +6087,11 @@ procedure TBCBaseEditor.DoOnCommandProcessed(ACommand: TBCEditorCommand; AChar: 
 begin
   if FCodeFolding.Visible then
   begin
-    if FNeedToRescanCodeFolding or
-      ((ACommand = ecLineBreak) or (ACommand = ecChar) or (ACommand = ecDeleteLastChar) or (ACommand = ecDeleteChar)) and IsKeywordAtCurrentLine or
-      (ACommand = ecPaste) or (ACommand = ecUndo) or (ACommand = ecRedo) then
+    if not (sfBackspaceDown in FStateFlags) and
+      (FNeedToRescanCodeFolding or
+      ((ACommand = ecChar) or (ACommand = ecDeleteLastChar) or (ACommand = ecDeleteChar)) and IsKeywordAtLine(FCaretY) or
+      ((ACommand = ecLineBreak) and IsKeywordAtLine(FCaretY - 1)) or { the caret is already in the new line }
+      (ACommand = ecPaste) or (ACommand = ecUndo) or (ACommand = ecRedo)) then
       RescanCodeFoldingRanges
     else
     case ACommand of
@@ -6372,11 +6378,14 @@ begin
     FMouseOverURI := LTokenType in [Integer(ttWebLink), Integer(ttMailtoLink)];
   end;
 
+  if Key = 8 then
+    Include(FStateFlags, sfBackspaceDown);
+
   LData := nil;
   LChar := BCEDITOR_NONE_CHAR;
   try
     LEditorCommand := TranslateKeyCode(Key, Shift, LData);
-    if LEditorCommand <> ecNone then
+    if (LEditorCommand <> ecNone) then
     begin
       Key := 0;
       Include(FStateFlags, sfIgnoreNextChar);
@@ -6385,7 +6394,7 @@ begin
     else
       Exclude(FStateFlags, sfIgnoreNextChar);
   finally
-    if Assigned(lData) then
+    if Assigned(LData) then
       FreeMem(LData);
   end;
 end;
@@ -6402,8 +6411,12 @@ begin
 end;
 
 procedure TBCBaseEditor.KeyUp(var Key: Word; Shift: TShiftState);
+var
+  LData: Pointer;
+  LEditorCommand: TBCEditorCommand;
 begin
   inherited;
+  Exclude(FStateFlags, sfBackspaceDown);
 
   if FMouseOverURI then
     FMouseOverURI := False;
@@ -6412,6 +6425,16 @@ begin
     CheckIfAtMatchingKeywords;
 
   FKeyboardHandler.ExecuteKeyUp(Self, Key, Shift);
+
+  LData := nil;
+  try
+    LEditorCommand := TranslateKeyCode(Key, Shift, LData);
+    if (LEditorCommand = ecDeleteLastChar) or (LEditorCommand = ecDeleteChar) then
+      RescanCodeFoldingRanges;
+  finally
+    if Assigned(LData) then
+      FreeMem(LData);
+  end;
 end;
 
 procedure TBCBaseEditor.LinesChanged(Sender: TObject);
@@ -6773,7 +6796,7 @@ begin
         LTemp := GetDisplayLineCount - FMinimap.VisibleLines;
         LTemp2 := Y div FMinimap.CharHeight - FMinimapClickOffsetY;
         FMinimap.TopLine := Max(1, Trunc((LTemp / Max(FMinimap.VisibleLines - VisibleLines, 1)) * LTemp2));
-        if FMinimap.TopLine > LTemp then
+        if (FMinimap.TopLine > LTemp) and (LTemp > 0) then
           FMinimap.TopLine := LTemp;
 
         LTopLine := Max(1, FMinimap.TopLine + LTemp2);
@@ -10488,9 +10511,11 @@ begin
   begin
     { notify hooked command handlers before the command is executed inside of the class }
     NotifyHookedCommandHandlers(False, ACommand, AChar, AData);
-    if (ACommand = ecCut) or (ACommand = ecDeleteLine) or (ACommand = ecDeleteLastChar) or
+    if not (sfBackspaceDown in FStateFlags) and
+      ((ACommand = ecCut) or (ACommand = ecDeleteLine) or (ACommand = ecDeleteLastChar) or
       ((ACommand = ecChar) or (ACommand = ecTab) or (ACommand = ecDeleteChar)) and IsKeywordAtCursorPosition or
-      SelectionAvailable and (ACommand = ecLineBreak) then
+      SelectionAvailable and (ACommand = ecLineBreak) or
+      ((ACommand = ecChar) and CharInSet(AChar, FHighlighter.SkipOpenKeyChars + FHighlighter.SkipCloseKeyChars))) then
       FNeedToRescanCodeFolding := True;
 
     { internal command handler }
@@ -11118,8 +11143,6 @@ begin
             if not LIsJustIndented then
               FLines.Attributes[FCaretY - 1].LineState := lsModified;
           end;
-          if not FInsertingMirrors then
-            EnsureCursorPositionVisible;
         end;
       { Delete command }
       ecDeleteChar:
@@ -11630,20 +11653,20 @@ begin
             if LLength < FCaretX - 1 then
             begin
               if toTabsToSpaces in FTabs.Options then
-                LSpaceBuffer := StringOfChar(BCEDITOR_SPACE_CHAR, FCaretX - LLength - Ord(FInserting))
+                LSpaceBuffer := StringOfChar(BCEDITOR_SPACE_CHAR, FCaretX - LLength - Ord(FInsertMode))
               else
               if AllWhiteUpToCaret(LLineText, LLength) then
-                LSpaceBuffer := StringOfChar(BCEDITOR_TAB_CHAR, (FCaretX - LLength - Ord(FInserting)) div FTabs.Width) +
-                  StringOfChar(BCEDITOR_SPACE_CHAR, (FCaretX - LLength - Ord(FInserting)) mod FTabs.Width)
+                LSpaceBuffer := StringOfChar(BCEDITOR_TAB_CHAR, (FCaretX - LLength - Ord(FInsertMode)) div FTabs.Width) +
+                  StringOfChar(BCEDITOR_SPACE_CHAR, (FCaretX - LLength - Ord(FInsertMode)) mod FTabs.Width)
               else
-                LSpaceBuffer := StringOfChar(BCEDITOR_SPACE_CHAR, FCaretX - LLength - Ord(FInserting));
+                LSpaceBuffer := StringOfChar(BCEDITOR_SPACE_CHAR, FCaretX - LLength - Ord(FInsertMode));
               LSpaceCount1 := Length(LSpaceBuffer);
               LSpaceCount2 := GetLeadingExpandedLength(LSpaceBuffer, FTabs.Width);
             end;
 
             LBlockStartPosition := CaretPosition;
 
-            if FInserting then
+            if FInsertMode then
             begin
               if not GetWordWrap and not (soAutosizeMaxWidth in FScroll.Options) and (CaretX > FScroll.MaxWidth) then
                 Exit;
@@ -11849,7 +11872,7 @@ begin
                 FScroll.Options := FScroll.Options + [soPastEndOfLine];
               LBlockStartPosition := CaretPosition;
               LLength := Length(S);
-              if not FInserting then
+              if not FInsertMode then
               begin
                 LHelper := Copy(LLineText, CaretX, LLength);
                 Delete(LLineText, CaretX, LLength);
@@ -11857,7 +11880,7 @@ begin
               Insert(S, LLineText, CaretX);
               InternalCaretX := (CaretX + LLength);
               ProperSetLine(CaretY - 1, LLineText);
-              if FInserting then
+              if FInsertMode then
                 LHelper := '';
               FUndoList.AddChange(crInsert, LBlockStartPosition, CaretPosition, LHelper, smNormal);
               if CaretX >= LeftChar + FCharsInWindow then
