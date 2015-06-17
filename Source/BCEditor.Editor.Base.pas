@@ -231,12 +231,12 @@ type
     procedure CaretChanged(Sender: TObject);
     procedure CheckIfAtMatchingKeywords;
     procedure ClearSearchLines;
-    procedure CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange);
+    procedure CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange; AddToUndoList: Boolean = True);
     procedure CodeFoldingExpandCollapsedLine(const ALine: Integer);
     procedure CodeFoldingExpandCollapsedLines(const AFirst, ALast: Integer);
     procedure CodeFoldingPrepareRangeForLine;
     procedure CodeFoldingOnChange(AEvent: TBCEditorCodeFoldingChanges);
-    procedure CodeFoldingUncollapse(AFoldRange: TBCEditorCodeFoldingRange);
+    procedure CodeFoldingUncollapse(AFoldRange: TBCEditorCodeFoldingRange; AddToUndoList: Boolean = True);
     procedure CompletionProposalTimerHandler(Sender: TObject);
     procedure ComputeCaret(X, Y: Integer);
     procedure ComputeScroll(X, Y: Integer);
@@ -2674,7 +2674,7 @@ begin
   end;
 end;
 
-procedure TBCBaseEditor.CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange);
+procedure TBCBaseEditor.CodeFoldingCollapse(AFoldRange: TBCEditorCodeFoldingRange; AddToUndoList: Boolean = True);
 var
   i: Integer;
   LLineState: TBCEditorLineState;
@@ -2707,7 +2707,8 @@ begin
     SetParentCollapsedOfSubFoldRanges(True, FoldRangeLevel);
     MoveCodeFoldingRangesAfter(AFoldRange, -CollapsedLines.Count + 1);
   end;
-
+  if AddToUndoList then
+    FUndoList.AddChange(crCollapseFold, CaretPosition, CaretPosition, '', FSelection.ActiveMode, AFoldRange);
   CheckIfAtMatchingKeywords;
   Lines.EndUpdate;
 
@@ -2783,7 +2784,7 @@ begin
   Invalidate;
 end;
 
-procedure TBCBaseEditor.CodeFoldingUncollapse(AFoldRange: TBCEditorCodeFoldingRange{; AAddUndoList: Boolean = True});
+procedure TBCBaseEditor.CodeFoldingUncollapse(AFoldRange: TBCEditorCodeFoldingRange; AddToUndoList: Boolean = True);
 var
   i: Integer;
 begin
@@ -2802,7 +2803,8 @@ begin
     SetParentCollapsedOfSubFoldRanges(False, FoldRangeLevel);
     CollapsedLines.Clear;
   end;
-
+  if AddToUndoList then
+    FUndoList.AddChange(crUncollapseFold, CaretPosition, CaretPosition, '', FSelection.ActiveMode, AFoldRange);
   CheckIfAtMatchingKeywords;
   Lines.EndUpdate;
 
@@ -5974,6 +5976,7 @@ var
   LIsAutoComplete: Boolean;
   LIsPasteAction: Boolean;
   LIsKeepGoing: Boolean;
+  LIsCodeFoldingAction: Boolean;
 begin
   if ReadOnly then
     Exit;
@@ -5983,6 +5986,7 @@ begin
   LLastChangeReason := FUndoList.LastChangeReason;
   LIsAutoComplete := LLastChangeReason = crAutoCompleteEnd;
   LIsPasteAction := LLastChangeReason = crPasteEnd;
+  LIsCodeFoldingAction := FCodeFolding.Visible and ({LUndoItem.ChangeReason}LLastChangeReason in [crCollapseFold, crUncollapseFold]);
 
   LUndoItem := FUndoList.PeekItem;
   if Assigned(LUndoItem) then
@@ -6005,12 +6009,15 @@ begin
           if LIsPasteAction then
             LIsKeepGoing := FUndoList.LastChangeReason <> crPasteBegin
           else
+          if LIsCodeFoldingAction then
+            LIsKeepGoing := False
+          else
           if LUndoItem.ChangeNumber = LOldChangeNumber then
             LIsKeepGoing := True
           else
-          if FCodeFolding.Visible and (LUndoItem.ChangeReason = crDeleteCollapsedFold) then
-            LIsKeepGoing := True
-          else
+          //if FCodeFolding.Visible and (LUndoItem.ChangeReason = crDeleteCollapsedFold) then
+          //  LIsKeepGoing := True
+          //else
             LIsKeepGoing := (uoGroupUndo in FUndo.Options) and (LLastChangeReason = LUndoItem.ChangeReason) and
               not (LLastChangeReason in [crIndent, crUnindent]);
           LLastChangeReason := LUndoItem.ChangeReason;
@@ -8655,6 +8662,7 @@ var
   LTextPosition: TBCEditorTextPosition;
   LChangeScrollPastEol: Boolean;
   LBeginX: Integer;
+  LCodeFoldingRange: TBCEditorCodeFoldingRange;
 begin
   LChangeScrollPastEol := not (soPastEndOfLine in FScroll.Options);
   LUndoItem := FRedoList.PopItem;
@@ -8756,7 +8764,23 @@ begin
           FUndoList.AddChange(LUndoItem.ChangeReason, LUndoItem.ChangeStartPosition, LUndoItem.ChangeEndPosition,
             LUndoItem.ChangeString, LUndoItem.ChangeSelectionMode);
         end;
-      crDeleteCollapsedFold:
+      crCollapseFold:
+        if Assigned(LUndoItem.ChangeData) then
+        begin
+          LCodeFoldingRange := TBCEditorCodeFoldingRange(LUndoItem.ChangeData);
+          CodeFoldingUncollapse(LCodeFoldingRange, False);
+          FUndoList.AddChange(crUncollapseFold, LUndoItem.ChangeStartPosition, LUndoItem.ChangeEndPosition, '',
+            LUndoItem.ChangeSelectionMode, LCodeFoldingRange);
+        end;
+      crUncollapseFold:
+        if Assigned(LUndoItem.ChangeData) then
+        begin
+          LCodeFoldingRange := TBCEditorCodeFoldingRange(LUndoItem.ChangeData);
+          CodeFoldingCollapse(LCodeFoldingRange, False);
+          FUndoList.AddChange(crCollapseFold, LUndoItem.ChangeStartPosition, LUndoItem.ChangeEndPosition, '',
+            LUndoItem.ChangeSelectionMode, LCodeFoldingRange);
+        end;
+      {crDeleteCollapsedFold:
         begin
           if FCodeFolding.Visible then
           begin
@@ -8764,7 +8788,7 @@ begin
               '', LUndoItem.ChangeSelectionMode, LUndoItem.ChangeData, LUndoItem.ChangeIndex);
             FAllCodeFoldingRanges.AllRanges.Insert(LUndoItem.ChangeIndex, LUndoItem.ChangeData);
           end;
-        end;
+        end;  }
       crWhiteSpaceAdd:
         begin
           FUndoList.AddChange(LUndoItem.ChangeReason, LUndoItem.ChangeStartPosition, LUndoItem.ChangeEndPosition, '',
@@ -9467,8 +9491,6 @@ var
   LTempText: string;
   LChangeScrollPastEndOfLine: Boolean;
   LBeginX: Integer;
-  i: Integer;
-  LUncollapsedLineNumber: Integer;
   LCodeFoldingRange: TBCEditorCodeFoldingRange;
 begin
   LChangeScrollPastEndOfLine := not (soPastEndOfLine in FScroll.Options);
@@ -9478,22 +9500,6 @@ begin
     FSelection.ActiveMode := LUndoItem.ChangeSelectionMode;
     IncPaintLock;
     FScroll.Options := FScroll.Options + [soPastEndOfLine];
-
-    for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
-    begin
-      LCodeFoldingRange := FAllCodeFoldingRanges[i];
-      if Assigned(LCodeFoldingRange) then
-        if LCodeFoldingRange.Collapsed then
-        begin
-          LUncollapsedLineNumber := GetUncollapsedLineNumber(LCodeFoldingRange.FromLine);
-          if (LUncollapsedLineNumber <= LUndoItem.ChangeStartPosition.Line) and
-            (LUncollapsedLineNumber + LCodeFoldingRange.ToLine - LCodeFoldingRange.FromLine >= LUndoItem.ChangeEndPosition.Line) then
-          begin
-            CodeFoldingUncollapseAll;
-            Break;
-          end;
-        end;
-    end;
 
     case LUndoItem.ChangeReason of
       crCaret:
@@ -9595,7 +9601,23 @@ begin
             LUndoItem.ChangeSelectionMode);
           InternalCaretPosition := LUndoItem.ChangeStartPosition;
         end;
-      crDeleteCollapsedFold:
+      crCollapseFold:
+        if Assigned(LUndoItem.ChangeData) then
+        begin
+          LCodeFoldingRange := TBCEditorCodeFoldingRange(LUndoItem.ChangeData);
+          CodeFoldingUncollapse(LCodeFoldingRange, False);
+          FRedoList.AddChange(crUncollapseFold, LUndoItem.ChangeStartPosition, LUndoItem.ChangeEndPosition, '',
+            LUndoItem.ChangeSelectionMode, LCodeFoldingRange);
+        end;
+      crUncollapseFold:
+        if Assigned(LUndoItem.ChangeData) then
+        begin
+          LCodeFoldingRange := TBCEditorCodeFoldingRange(LUndoItem.ChangeData);
+          CodeFoldingCollapse(LCodeFoldingRange, False);
+          FRedoList.AddChange(crCollapseFold, LUndoItem.ChangeStartPosition, LUndoItem.ChangeEndPosition, '',
+            LUndoItem.ChangeSelectionMode, LCodeFoldingRange);
+        end;
+      {crDeleteCollapsedFold:
         begin
           if FAllCodeFoldingRanges.AllCount > 0 then
           begin
@@ -9626,7 +9648,7 @@ begin
               LUndoItem.ChangeEndPosition, '', LUndoItem.ChangeSelectionMode,
               FAllCodeFoldingRanges[FAllCodeFoldingRanges.AllCount-1], FAllCodeFoldingRanges.AllCount-1);
           end;
-        end;
+        end; }
     end;
   finally
     if LChangeScrollPastEndOfLine then
@@ -12365,6 +12387,7 @@ var
   LAutoComplete: Boolean;
   LPasteAction: Boolean;
   LKeepGoing: Boolean;
+  LCodeFoldingAction: Boolean;
 begin
   if ReadOnly then
     Exit;
@@ -12372,6 +12395,7 @@ begin
   LLastChange := FRedoList.LastChangeReason;
   LAutoComplete := LLastChange = crAutoCompleteBegin;
   LPasteAction := LLastChange = crPasteBegin;
+  LCodeFoldingAction := FCodeFolding.Visible and ({LUndoItem.ChangeReason} LLastChange in [crCollapseFold, crUncollapseFold]);
 
   LUndoItem := FRedoList.PeekItem;
   if Assigned(LUndoItem) then
@@ -12392,6 +12416,9 @@ begin
           else
           if LPasteAction then
             LKeepGoing := FRedoList.LastChangeReason <> crPasteEnd
+          else
+          if LCodeFoldingAction then
+            LKeepGoing := False
           else
           if LUndoItem.ChangeNumber = LOldChangeNumber then
             LKeepGoing := True
