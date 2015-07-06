@@ -55,7 +55,7 @@ type
     function GetTokenKind: Integer;
     function GetTokenLength: Integer;
     function GetTokenPosition: Integer;
-    procedure AddKeywords(var StringList: TStrings);
+    procedure AddKeywords(var AStringList: TStringList);
     procedure Clear;
     procedure LoadFromFile(AFileName: string);
     procedure Next;
@@ -114,7 +114,7 @@ begin
   FAttributes.Duplicates := dupIgnore;
   FAttributes.Sorted := False;
 
-  FCodeFoldingRegions := TBCEditorCodeFoldingRegions.Create(TBCEditorFoldRegionItem);
+  FCodeFoldingRegions := TBCEditorCodeFoldingRegions.Create(TBCEditorCodeFoldingRegionItem);
   FCompletionProposalSkipRegions := TBCEditorSkipRegions.Create(TBCEditorSkipRegionItem);
 
   FPrepared := False;
@@ -194,6 +194,20 @@ var
   LParser: TBCEditorAbstractParser;
   LKeyword: PChar;
   LCloseParent: Boolean;
+
+  procedure CheckAlternativeClose(AAlternativeClose: string);
+  begin
+    LKeyword := PChar(AAlternativeClose);
+    i := FRunPosition;
+    while (FCurrentLine[i] <> BCEDITOR_NONE_CHAR) and (FCurrentLine[i] = LKeyword^) do
+    begin
+      Inc(LKeyword);
+      Inc(i);
+    end;
+    if LKeyword^ = BCEDITOR_NONE_CHAR then
+      FCurrentRange := FCurrentRange.Parent;
+  end;
+
 begin
   while FTemporaryCurrentTokens.Count > 0 do
   begin
@@ -214,18 +228,10 @@ begin
 
   if Assigned(FCurrentRange) then
   begin
-    if FCurrentRange.AlternativeClose <> '' then
-    begin
-      LKeyword := PChar(FCurrentRange.AlternativeClose);
-      i := FRunPosition;
-      while (FCurrentLine[i] <> BCEDITOR_NONE_CHAR) and (FCurrentLine[i] = LKeyword^) do
-      begin
-        Inc(LKeyword);
-        Inc(i);
-      end;
-      if LKeyword^ = BCEDITOR_NONE_CHAR then
-        FCurrentRange := FCurrentRange.Parent;
-    end;
+    if FCurrentRange.AlternativeClose1 <> '' then
+      CheckAlternativeClose(FCurrentRange.AlternativeClose1);
+     if FCurrentRange.AlternativeClose2 <> '' then
+      CheckAlternativeClose(FCurrentRange.AlternativeClose2);
   end;
 
   FTokenPosition := FRunPosition;
@@ -332,15 +338,15 @@ begin
   FCurrentRange := TBCEditorRange(Value);
 end;
 
-procedure TBCEditorHighlighter.AddKeywords(var StringList: TStrings);
+procedure TBCEditorHighlighter.AddKeywords(var AStringList: TStringList);
 var
   i, j: Integer;
 begin
-  if not Assigned(StringList) then
+  if not Assigned(AStringList) then
     Exit;
   for i := 0 to FMainRules.KeyListCount - 1 do
     for j := 0 to FMainRules.KeyList[i].KeyList.Count - 1 do
-      StringList.Add(FMainRules.KeyList[i].KeyList[j]);
+      AStringList.Add(FMainRules.KeyList[i].KeyList[j]);
 end;
 
 procedure TBCEditorHighlighter.Reset;
@@ -444,7 +450,7 @@ procedure TBCEditorHighlighter.LoadFromFile(AFileName: string);
 var
   LStream: TStream;
   LEditor: TBCBaseEditor;
-  LTempLines: TStrings;
+  LTempLines: TStringList;
   LTopLine: Integer;
 begin
   FLoading := True;

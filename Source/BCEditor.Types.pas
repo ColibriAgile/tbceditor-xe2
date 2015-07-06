@@ -32,7 +32,7 @@ type
     var AForeground: TColor; var ABackground: TColor) of object;
 
   TBCEditorStateFlag = (sfCaretChanged, sfScrollBarChanged, sfLinesChanging, sfIgnoreNextChar, sfCaretVisible, sfDblClicked,
-    sfWaitForDragging, sfCodeFoldingInfoClicked, sfInSelection, sfBackspaceDown);
+    sfWaitForDragging, sfCodeFoldingInfoClicked, sfInSelection);
   TBCEditorStateFlags = set of TBCEditorStateFlag;
 
   TBCEditorOption = (
@@ -151,11 +151,9 @@ type
     Token: string;
   end;
 
-  //TBCEditorStartType = (stUnspecified, stAny, stTerm);
   TBCEditorBreakType = (btUnspecified, btAny, btTerm);
-  //TBCEditorStartLine = (slNotFirst, slFirst, slFirstNonSpace);
-  TBCEditorRangeType = (ttUnspecified, ttAddress, ttChar, ttComment, ttDirective, ttFloat, ttHex, ttMailtoLink,
-    ttNumber, ttOctal, ttReservedWord, ttString, ttSymbol, ttWebLink);
+  TBCEditorRangeType = (ttUnspecified, ttAddress, ttAttribute, ttChar, ttComment, ttDirective, ttFloat, ttHex,
+    ttMailtoLink, ttMethod, ttMethodName, ttNumber, ttOctal, ttReservedWord, ttString, ttSymbol, ttWebLink);
 
   TBCEditorMatchingPairToken = record
     OpenToken: string;
@@ -192,6 +190,7 @@ type
     TabString: string;
     Foreground, Background: TColor;
     FontStyle: TFontStyles;
+    MatchingPairUnderline: Boolean;
   end;
 
   TBCEditorCompletionType = (ctNone, ctCode, ctHint);
@@ -213,7 +212,7 @@ type
   );
   TBCEditorLeftMarginLineNumberOptions = set of TBCEditorLeftMarginLineNumberOption;
 
-  TBCEditorMatchingPairOption = (mpoHighlightAfterToken, mpoHighlightUnmatched);
+  TBCEditorMatchingPairOption = (mpoHighlightAfterToken, mpoHighlightUnmatched, mpoUnderline, mpoUseMatchedColor);
   TBCEditorMatchingPairOptions = set of TBCEditorMatchingPairOption;
 
   TBCEditorMinimapOption = (moShowIndentGuides);
@@ -227,6 +226,10 @@ type
   TBCEditorKeyCharType = (ctFoldOpen, ctFoldClose, ctSkipOpen, ctSkipClose);
 
   TBCEditorSortOrder = (soToggle, soAsc, soDesc);
+
+  TBCEditorChangeReason = (crInsert, crPaste, crDragDropInsert, crDeleteAfterCursor, crDelete,
+    crLineBreak, crLineInsert, crIndent, crUnindent, crSilentDelete, crSilentDeleteAfterCursor, crAutoCompleteBegin,
+    crAutoCompleteEnd, crCaret, crSelection, crNothing, crGroupBreak, crDeleteAll, crCollapseFold, crUncollapseFold);
 
 implementation
 

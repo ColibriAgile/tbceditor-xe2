@@ -98,40 +98,49 @@ end;
 function StrToRangeType(const AString: string): TBCEditorRangeType;
 begin
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_ADDRESS then
-    Result :=  ttAddress
+    Result := ttAddress
+  else
+  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_ATTRIBUTE then
+    Result := ttAttribute
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_CHARACTER then
-    Result :=  ttChar
+    Result := ttChar
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_COMMENT then
-    Result :=  ttComment
+    Result := ttComment
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_DIRECTIVE then
-    Result :=  ttDirective
+    Result := ttDirective
    else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_FLOAT then
-    Result :=  ttFloat
+    Result := ttFloat
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_HEX then
-    Result :=  ttHex
-   else
+    Result := ttHex
+  else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_MAIL_TO_LINK then
     Result := ttMailtoLink
   else
+  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_METHOD then
+    Result := ttMethod
+  else
+  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_METHOD_NAME then
+    Result := ttMethodName
+  else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_NUMBER then
-    Result :=  ttNumber
+    Result := ttNumber
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_OCTAL then
-    Result :=  ttOctal
+    Result := ttOctal
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_RESERVED_WORD then
-    Result :=  ttReservedWord
+    Result := ttReservedWord
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_STRING then
-    Result :=  ttString
+    Result := ttString
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_SYMBOL then
-    Result :=  ttSymbol
+    Result := ttSymbol
   else
   if AString = BCEDITOR_ATTRIBUTE_ELEMENT_WEB_LINK then
     Result := ttWebLink
@@ -275,6 +284,7 @@ begin
       LEditor.LeftMargin.Colors.LineStateNormal := StringToColorDef(LColorsObject['LeftMarginLineStateNormal'].Value, LEditor.LeftMargin.Colors.LineStateNormal);
       LEditor.Minimap.Colors.VisibleLines := StringToColorDef(LColorsObject['MinimapVisibleLines'].Value, LEditor.Minimap.Colors.VisibleLines);
       LEditor.MatchingPair.Colors.Matched := StringToColorDef(LColorsObject['MatchingPairMatched'].Value, LEditor.MatchingPair.Colors.Matched);
+      LEditor.MatchingPair.Colors.Underline := StringToColorDef(LColorsObject['MatchingPairUnderline'].Value, LEditor.MatchingPair.Colors.Underline);
       LEditor.MatchingPair.Colors.Unmatched := StringToColorDef(LColorsObject['MatchingPairUnmatched'].Value, LEditor.MatchingPair.Colors.Unmatched);
       LEditor.RightMargin.Colors.Edge := StringToColorDef(LColorsObject['RightEdge'].Value, LEditor.RightMargin.Colors.Edge);
       LEditor.RightMargin.Colors.MovingEdge := StringToColorDef(LColorsObject['RightMovingEdge'].Value, LEditor.RightMargin.Colors.MovingEdge);
@@ -285,6 +295,9 @@ begin
       LEditor.Search.Map.Colors.Foreground := StringToColorDef(LColorsObject['SearchMapForeground'].Value, LEditor.Search.Map.Colors.Foreground);
       LEditor.Selection.Colors.Background := StringToColorDef(LColorsObject['SelectionBackground'].Value, LEditor.Selection.Colors.Background);
       LEditor.Selection.Colors.Foreground := StringToColorDef(LColorsObject['SelectionForeground'].Value, LEditor.Selection.Colors.Foreground);
+      LEditor.WordWrap.Colors.Background := StringToColorDef(LColorsObject['WordWrapIndicatorBackground'].Value, LEditor.WordWrap.Colors.Background);
+      LEditor.WordWrap.Colors.Arrow := StringToColorDef(LColorsObject['WordWrapIndicatorArrow'].Value, LEditor.WordWrap.Colors.Arrow);
+      LEditor.WordWrap.Colors.Lines := StringToColorDef(LColorsObject['WordWrapIndicatorLines'].Value, LEditor.WordWrap.Colors.Lines);
     end;
     LFontsObject := AEditorObject['Fonts'].ObjectValue;
     if Assigned(LFontsObject) then
@@ -417,7 +430,8 @@ begin
           ARange.CloseOnTerm := PropertiesObject.B['CloseOnTerm'];
           ARange.SkipWhitespace := PropertiesObject.B['SkipWhitespace'];
           ARange.CloseParent := PropertiesObject.B['CloseParent'];
-          ARange.AlternativeClose := PropertiesObject['AlternativeClose'].Value;
+          ARange.AlternativeClose1 := PropertiesObject['AlternativeClose1'].Value;
+          ARange.AlternativeClose2 := PropertiesObject['AlternativeClose2'].Value;
           ARange.OpenBeginningOfLine := PropertiesObject.B['OpenBeginningOfLine'];
         end;
 
@@ -518,8 +532,8 @@ var
   i: Integer;
   LJsonDataValue: PJsonDataValue;
   LSkipRegionType: TBCEditorSkipRegionItemType;
-  LFoldRegionItem: TBCEditorFoldRegionItem;
-  LFoldRegions: TBCEditorCodeFoldingRegions;
+  LRegionItem: TBCEditorCodeFoldingRegionItem;
+  LRegions: TBCEditorCodeFoldingRegions;
   LSkipRegionItem: TBCEditorSkipRegionItem;
   LFileName: string;
   LEditor: TBCBaseEditor;
@@ -527,7 +541,7 @@ var
   LJSONObject: TJsonObject;
   LOpenToken, LCloseToken: string;
 begin
-  LFoldRegions := FHighlighter.CodeFoldingRegions;
+  LRegions := FHighlighter.CodeFoldingRegions;
   if ACodeFoldingObject.Contains('SkipRegion') then
   for i := 0 to ACodeFoldingObject['SkipRegion'].ArrayValue.Count - 1 do
   begin
@@ -554,22 +568,22 @@ begin
         end;
       end;
       { Skip duplicates }
-      if LFoldRegions.SkipRegions.Contains(LOpenToken, LCloseToken) then
+      if LRegions.SkipRegions.Contains(LOpenToken, LCloseToken) then
         Continue;
     end;
 
     LSkipRegionType := StrToRegionType(LJsonDataValue.ObjectValue['RegionType'].Value);
     if (LSkipRegionType = ritMultiLineComment) and (cfoFoldMultilineComments in TBCBaseEditor(FHighlighter.Editor).CodeFolding.Options) then
     begin
-      LFoldRegionItem := LFoldRegions.Add(LOpenToken, LCloseToken);
-      LFoldRegionItem.NoSubs := True;
+      LRegionItem := LRegions.Add(LOpenToken, LCloseToken);
+      LRegionItem.NoSubs := True;
       FHighlighter.AddKeyChar(ctFoldOpen, LOpenToken[1]);
       if LCloseToken <> '' then
         FHighlighter.AddKeyChar(ctFoldClose, LCloseToken[1]);
     end
     else
     begin
-      LSkipRegionItem := LFoldRegions.SkipRegions.Add(LOpenToken, LCloseToken);
+      LSkipRegionItem := LRegions.SkipRegions.Add(LOpenToken, LCloseToken);
       LSkipRegionItem.RegionType := LSkipRegionType;
       LSkipRegionItem.SkipEmptyChars := LJsonDataValue.ObjectValue.B['SkipEmptyChars'];
       LSkipRegionItem.SkipIfNextCharIsNot := BCEDITOR_NONE_CHAR;
@@ -587,7 +601,7 @@ procedure TBCEditorHighlighterJSONImporter.ImportCodeFoldingFoldRegions(ACodeFol
 var
   i: Integer;
   LJsonDataValue: PJsonDataValue;
-  LFoldRegionItem: TBCEditorFoldRegionItem;
+  LRegionItem: TBCEditorCodeFoldingRegionItem;
   LMemberObject: TJsonObject;
   LFoldRegions: TBCEditorCodeFoldingRegions;
   LFileName: string;
@@ -627,26 +641,26 @@ begin
         Continue;
     end;
 
-    LFoldRegionItem := LFoldRegions.Add(LOpenToken, LCloseToken);
+    LRegionItem := LFoldRegions.Add(LOpenToken, LCloseToken);
 
     LMemberObject := LJsonDataValue.ObjectValue['Properties'].ObjectValue;
     if Assigned(LMemberObject) then
     begin
       { Options }
-      LFoldRegionItem.OpenTokenBeginningOfLine := LMemberObject.B['OpenTokenBeginningOfLine'];
-      LFoldRegionItem.CloseTokenBeginningOfLine := LMemberObject.B['CloseTokenBeginningOfLine'];
-      LFoldRegionItem.SharedClose := LMemberObject.B['SharedClose'];
-      LFoldRegionItem.OpenIsClose := LMemberObject.B['OpenIsClose'];
-      LFoldRegionItem.TokenEndIsPreviousLine := LMemberObject.B['TokenEndIsPreviousLine'];
-      LFoldRegionItem.NoSubs := LMemberObject.B['NoSubs'];
-      LFoldRegionItem.SkipIfFoundAfterOpenToken := LMemberObject['SkipIfFoundAfterOpenToken'].Value;
-      LFoldRegionItem.BreakIfNotFoundBeforeNextRegion := LMemberObject['BreakIfNotFoundBeforeNextRegion'].Value;
-      LFoldRegionItem.OpenTokenEnd := LMemberObject['OpenTokenEnd'].Value;
+      LRegionItem.OpenTokenBeginningOfLine := LMemberObject.B['OpenTokenBeginningOfLine'];
+      LRegionItem.CloseTokenBeginningOfLine := LMemberObject.B['CloseTokenBeginningOfLine'];
+      LRegionItem.SharedClose := LMemberObject.B['SharedClose'];
+      LRegionItem.OpenIsClose := LMemberObject.B['OpenIsClose'];
+      LRegionItem.TokenEndIsPreviousLine := LMemberObject.B['TokenEndIsPreviousLine'];
+      LRegionItem.NoSubs := LMemberObject.B['NoSubs'];
+      LRegionItem.SkipIfFoundAfterOpenToken := LMemberObject['SkipIfFoundAfterOpenToken'].Value;
+      LRegionItem.BreakIfNotFoundBeforeNextRegion := LMemberObject['BreakIfNotFoundBeforeNextRegion'].Value;
+      LRegionItem.OpenTokenEnd := LMemberObject['OpenTokenEnd'].Value;
     end;
     if LOpenToken <> '' then
       FHighlighter.AddKeyChar(ctFoldOpen, LOpenToken[1]);
-    if LFoldRegionItem.BreakIfNotFoundBeforeNextRegion <> '' then
-      FHighlighter.AddKeyChar(ctFoldOpen, LFoldRegionItem.BreakIfNotFoundBeforeNextRegion[1]);
+    if LRegionItem.BreakIfNotFoundBeforeNextRegion <> '' then
+      FHighlighter.AddKeyChar(ctFoldOpen, LRegionItem.BreakIfNotFoundBeforeNextRegion[1]);
     if LCloseToken <> '' then
       FHighlighter.AddKeyChar(ctFoldClose, LCloseToken[1]);
   end;

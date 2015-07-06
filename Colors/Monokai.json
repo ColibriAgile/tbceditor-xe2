@@ -3,7 +3,7 @@
       "Info":{
          "General":{
             "Version":"1.0",
-            "Date":"7.6.2015"
+            "Date":"28.6.2015"
          },
          "Author":{
             "Name":"Lasse Rautiainen",
@@ -38,6 +38,7 @@
             "LeftMarginLineStateNormal":"$002EE2A6",
             "LeftMarginBookmarkPanel":"$00222827",
             "MatchingPairMatched":"$007226F9",
+            "MatchingPairUnderline":"$00414746",
             "MatchingPairUnmatched":"clYellow",
             "MinimapVisibleLines":"$003E4849",
             "RightMargin":"clSilver",
@@ -48,7 +49,10 @@
             "SearchMapBackground":"$00F4F4F4",
             "SearchMapForeground":"$0078AAFF",
             "SelectionBackground":"$003E4849",
-            "SelectionForeground":"clNone"
+            "SelectionForeground":"clNone",
+            "WordWrapIndicatorBackground": "$00222827",
+            "WordWrapIndicatorArrow": "$00F8F8F2",
+            "WordWrapIndicatorLines": "$007226F9"
          },
          "Fonts":{
             "LineNumbers":"Consolas",

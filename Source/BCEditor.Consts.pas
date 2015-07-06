@@ -3,7 +3,7 @@ unit BCEditor.Consts;
 interface
 
 uses
-  BCEditor.Types;
+  BCEditor.Types, Graphics;
 
 const
   BCEDITOR_WHEEL_DIVISOR = 120;
@@ -45,12 +45,15 @@ const
   UTF8BOM: array [0 .. 2] of Byte = ($EF, $BB, $BF);
   { Highlighter attribute elements }
   BCEDITOR_ATTRIBUTE_ELEMENT_ADDRESS = 'Address';
+  BCEDITOR_ATTRIBUTE_ELEMENT_ATTRIBUTE = 'Attribute';
   BCEDITOR_ATTRIBUTE_ELEMENT_CHARACTER = 'Character';
   BCEDITOR_ATTRIBUTE_ELEMENT_COMMENT = 'Comment';
   BCEDITOR_ATTRIBUTE_ELEMENT_DIRECTIVE = 'Directive';
   BCEDITOR_ATTRIBUTE_ELEMENT_FLOAT = 'Float';
   BCEDITOR_ATTRIBUTE_ELEMENT_HEX = 'Hex';
   BCEDITOR_ATTRIBUTE_ELEMENT_MAIL_TO_LINK = 'MailtoLink';
+  BCEDITOR_ATTRIBUTE_ELEMENT_METHOD = 'Method';
+  BCEDITOR_ATTRIBUTE_ELEMENT_METHOD_NAME = 'MethodName';
   BCEDITOR_ATTRIBUTE_ELEMENT_NUMBER = 'Number';
   BCEDITOR_ATTRIBUTE_ELEMENT_OCTAL = 'Octal';
   BCEDITOR_ATTRIBUTE_ELEMENT_RESERVED_WORD = 'ReservedWord';
@@ -66,7 +69,11 @@ const
   clLeftMarginBookmarkBackground = $00F4F4F4;
   clIndentHighlight = $00CC9999;
   clIndent = $00CC9999;
+  clMatchingPairUnderline = $00CC9999;
   clMinimapVisibleLines = $00E6FAFF;
+  clWordWrapIndicatorBackground = $00FFFFFF;
+  clWordWrapIndicatorArrow = clNavy;
+  clWordWrapIndicatorLines = clBlack;
 
 implementation
 
