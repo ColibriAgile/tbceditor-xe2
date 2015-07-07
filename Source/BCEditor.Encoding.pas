@@ -44,6 +44,4 @@ begin
   Result := FUTF8WithoutBOM;
 end;
 
-
 end.
-
