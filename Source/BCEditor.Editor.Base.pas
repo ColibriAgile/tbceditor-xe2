@@ -9374,11 +9374,6 @@ begin
       InternalCaretY := 1;
   finally
     FLines.EndUpdate;
-    if (LBeginTextPosition.Char <> LEndTextPosition.Char) or (LBeginTextPosition.Line <> LEndTextPosition.Line) then
-    begin
-      SelectionBeginPosition := LBeginTextPosition;
-      SelectionEndPosition := CaretPosition;
-    end;
     DecPaintLock;
   end;
 end;
