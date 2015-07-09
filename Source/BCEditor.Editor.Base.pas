@@ -32,7 +32,7 @@ type
     FBookMarks: array [0 .. 8] of TBCEditorBookmark;
     FBorderStyle: TBorderStyle;
     FBreakWhitespace: Boolean;
-    FBufferBmp: Graphics.TBitmap;
+ //   FBufferBmp: Graphics.TBitmap;
     FCaret: TBCEditorCaret;
     FCaretAtEndOfLine: Boolean;
     FCaretOffset: TPoint;
@@ -773,7 +773,7 @@ begin
   FMarkList := TBCEditorBookmarkList.Create(Self);
   FMarkList.OnChange := MarkListChange;
   { Painting }
-  FBufferBmp := Graphics.TBitmap.Create;
+ // FBufferBmp := Graphics.TBitmap.Create;
   FMinimapBufferBmp := Graphics.TBitmap.Create;
   FTextDrawer := TBCEditorTextDrawer.Create([fsBold], FFontDummy);
   Font.Assign(FFontDummy);
@@ -882,7 +882,7 @@ begin
   FInternalBookmarkImage.Free;
   FFontDummy.Free;
   FOriginalLines.Free;
-  FBufferBmp.Free;
+ // FBufferBmp.Free;
   FMinimapBufferBmp.Free;
   FActiveLine.Free;
   FRightMargin.Free;
@@ -6467,14 +6467,15 @@ var
   LLength: Integer;
   LLastScan: Integer;
 begin
-  if Assigned(FHighlighter) and (FLines.Count > 0) then
-  begin
-    LLastScan := Index;
-    repeat
-      LLastScan := RescanHighlighterRangesFrom(LLastScan);
-      Inc(LLastScan);
-    until LLastScan >= Index + ACount;
-  end;
+  if Assigned(Parent) then
+    if Assigned(FHighlighter) and (FLines.Count > 0) then
+    begin
+      LLastScan := Index;
+      repeat
+        LLastScan := RescanHighlighterRangesFrom(LLastScan);
+        Inc(LLastScan);
+      until LLastScan >= Index + ACount;
+    end;
 
   if GetWordWrap then
     FWordWrapHelper.LinesInserted(Index, ACount);
@@ -6953,7 +6954,7 @@ procedure TBCBaseEditor.Paint;
 var
   LClipRect, DrawRect: TRect;
   LLine1, LLine2, LLine3, LColumn1, LColumn2, LTemp: Integer;
-  LHandle: HDC;
+//  LHandle: HDC;
   LSelectionAvailable: Boolean;
 begin
   LClipRect := Canvas.ClipRect;
@@ -6970,15 +6971,16 @@ begin
   LLine3 := FTopLine + LTemp;
 
   HideCaret;
-  FBufferBmp.Width := Width;
-  FBufferBmp.Height := Height;
+ // FBufferBmp.Width := Width;
+ // FBufferBmp.Height := Height;
 
-  LHandle := Canvas.Handle;
+  {LHandle := Canvas.Handle;
   Canvas.Handle := FBufferBmp.Canvas.Handle;
-  FBufferBmp.Canvas.Handle := LHandle;
-  LHandle := Canvas.Handle; { important, don't remove }
+  FBufferBmp.Canvas.Handle := LHandle;   }
+  //LHandle := Canvas.Handle; { important, don't remove }
 
-  FTextDrawer.BeginDrawing(LHandle);
+  //FTextDrawer.BeginDrawing(LHandle);
+  FTextDrawer.BeginDrawing(Canvas.Handle);
   try
     { Paint the text area if it was (partly) invalidated }
     if LClipRect.Right > FLeftMargin.GetWidth + FCodeFolding.GetWidth then
@@ -7076,9 +7078,9 @@ begin
     FLastTopLine := FTopLine;
     FLastDisplayLineCount := DisplayLineCount;
     FTextDrawer.EndDrawing;
-    FBufferBmp.Canvas.CopyRect(ClientRect, Canvas, ClientRect);
+    {FBufferBmp.Canvas.CopyRect(ClientRect, Canvas, ClientRect);
     FBufferBmp.Canvas.Handle := Canvas.Handle;
-    Canvas.Handle := LHandle;
+    Canvas.Handle := LHandle;  }
     UpdateCaret;
   end;
 end;
