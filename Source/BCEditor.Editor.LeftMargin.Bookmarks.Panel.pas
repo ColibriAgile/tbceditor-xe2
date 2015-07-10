@@ -3,7 +3,7 @@ unit BCEditor.Editor.LeftMargin.Bookmarks.Panel;
 interface
 
 uses
-  Classes, Graphics, BCEditor.Types, BCEditor.Consts;
+  Classes, Graphics, BCEditor.Types;
 
 type
   TBCEditorLeftMarginBookMarkPanel = class(TPersistent)

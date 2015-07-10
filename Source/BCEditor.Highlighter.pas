@@ -89,7 +89,7 @@ type
 implementation
 
 uses
-  BCEditor.Highlighter.JSONImporter, Types, BCEditor.Utils, BCEditor.Consts, BCEditor.Editor.Base;
+  BCEditor.Highlighter.JSONImporter, Types, BCEditor.Consts, BCEditor.Editor.Base;
 
 { TBCEditorHighlighter }
 

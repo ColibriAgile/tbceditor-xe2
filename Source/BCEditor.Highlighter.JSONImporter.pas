@@ -39,9 +39,8 @@ type
 implementation
 
 uses
-  SysUtils, Graphics, Forms, BCEditor.Consts, BCEditor.Utils, BCEditor.Types, Dialogs,
-  BCEditor.Highlighter.Token, BCEditor.Language,
-   BCEditor.Editor.CodeFolding.Types;
+  SysUtils, Graphics, Forms, BCEditor.Consts, BCEditor.Types, Dialogs,
+  BCEditor.Highlighter.Token, BCEditor.Editor.CodeFolding.Types;
 
 var
   GMultiHighlighter: Boolean;

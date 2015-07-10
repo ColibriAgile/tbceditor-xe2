@@ -3,9 +3,9 @@ unit BCEditor.Editor.Minimap.Colors;
 interface
 
 uses
-  Classes, Graphics, BCEditor.Consts, BCEditor.Editor.CodeFolding.Types;
+  Classes, Graphics, BCEditor.Consts;
 
-type
+type
   TBCEditorMinimapColors = class(TPersistent)
   strict private
     FVisibleLines: TColor;
