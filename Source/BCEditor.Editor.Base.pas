@@ -32,7 +32,7 @@ type
     FBookMarks: array [0 .. 8] of TBCEditorBookmark;
     FBorderStyle: TBorderStyle;
     FBreakWhitespace: Boolean;
- //   FBufferBmp: Graphics.TBitmap;
+    FBufferBmp: Graphics.TBitmap;
     FCaret: TBCEditorCaret;
     FCaretAtEndOfLine: Boolean;
     FCaretOffset: TPoint;
@@ -449,7 +449,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-
+    {$IFDEF USE_ALPHASKINS}
+    procedure AfterConstruction; override;
+    {$ENDIF}
     function CaretInView: Boolean;
     function CreateFileStream(AFileName: string): TStream; virtual;
     function CreateUncollapsedLines: TStringList;
@@ -522,7 +524,7 @@ type
     procedure InvalidateMinimap;
     procedure InvalidateSelection;
     procedure LeftMarginChanged(Sender: TObject);
-    procedure LoadFromFile(const AFileName: String);
+    procedure LoadFromFile(const AFileName: String; AEncoding: SysUtils.TEncoding = nil);
     procedure LockUndo;
     procedure Notification(AComponent: TComponent; AOperation: TOperation); override;
     procedure PasteFromClipboard;
@@ -537,7 +539,7 @@ type
     procedure RemoveMouseDownHandler(AHandler: TMouseEvent);
     procedure RemoveMouseUpHandler(AHandler: TMouseEvent);
     procedure RescanCodeFoldingRanges;
-    procedure SaveToFile(const AFileName: String);
+    procedure SaveToFile(const AFileName: String; AEncoding: SysUtils.TEncoding = nil);
     procedure SelectAll;
     procedure SetBookmark(AIndex: Integer; X: Integer; Y: Integer);
     procedure SetCaretAndSelection(const CaretPosition, BlockBeginPosition, BlockEndPosition: TBCEditorTextPosition; ACaret: Integer = -1);
@@ -696,7 +698,7 @@ begin
   inherited Create(AOwner);
 
   {$IFDEF USE_ALPHASKINS}
-  FCommonData := TsScrollWndData.Create(Self);
+  FCommonData := TsScrollWndData.Create(Self, True);
   FCommonData.COC := COC_TsMemo;
   if FCommonData.SkinSection = '' then
     FCommonData.SkinSection := s_Edit;
@@ -773,7 +775,7 @@ begin
   FMarkList := TBCEditorBookmarkList.Create(Self);
   FMarkList.OnChange := MarkListChange;
   { Painting }
- // FBufferBmp := Graphics.TBitmap.Create;
+  FBufferBmp := Graphics.TBitmap.Create;
   FMinimapBufferBmp := Graphics.TBitmap.Create;
   FTextDrawer := TBCEditorTextDrawer.Create([fsBold], FFontDummy);
   Font.Assign(FFontDummy);
@@ -882,7 +884,7 @@ begin
   FInternalBookmarkImage.Free;
   FFontDummy.Free;
   FOriginalLines.Free;
- // FBufferBmp.Free;
+  FBufferBmp.Free;
   FMinimapBufferBmp.Free;
   FActiveLine.Free;
   FRightMargin.Free;
@@ -3282,12 +3284,13 @@ begin
 
   LTempBitmap := Graphics.TBitmap.Create;
   try
-    LTempBitmap.Width := FCharWidth;
-    LTempBitmap.Height := LineHeight;
     { Background }
     LTempBitmap.Canvas.Pen.Color := FCaret.NonBlinking.Colors.Background;
     LTempBitmap.Canvas.Brush.Color := FCaret.NonBlinking.Colors.Background;
-    LTempBitmap.Canvas.Rectangle(0, 0, LTempBitmap.Width, LTempBitmap.Height);
+    { Size }
+    LTempBitmap.Width := FCharWidth;
+    LTempBitmap.Height := LineHeight;
+    //LTempBitmap.Canvas.Rectangle(0, 0, LTempBitmap.Width, LTempBitmap.Height);
     { Character }
     LTempBitmap.Canvas.Brush.Style := bsClear;
     LTempBitmap.Canvas.Font.Name := Font.Name;
@@ -3331,7 +3334,7 @@ begin
     LKeyword := UpperCase(LKeyword);
   for i := 0 to FLines.Count - 1 do
   begin
-    LLine := FLines[i-1];
+    LLine := FLines[i];
     if not (soCaseSensitive in FSearch.Options) then
       LLine := UpperCase(LLine);
     LTextPtr := PChar(LLine);
@@ -6528,6 +6531,14 @@ begin
   end;
 end;
 
+{$IFDEF USE_ALPHASKINS}
+procedure TBCBaseEditor.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  FCommonData.Loaded;
+end;
+{$ENDIF}
+
 procedure TBCBaseEditor.Loaded;
 begin
   inherited Loaded;
@@ -6730,16 +6741,14 @@ begin
       if FMinimap.Dragging then
       begin
         LTemp := GetDisplayLineCount - FMinimap.VisibleLines;
-        LTemp2 := Y div FMinimap.CharHeight - FMinimapClickOffsetY;
+        LTemp2 := Max(Y div FMinimap.CharHeight - FMinimapClickOffsetY, 0);
         FMinimap.TopLine := Max(1, Trunc((LTemp / Max(FMinimap.VisibleLines - VisibleLines, 1)) * LTemp2));
         if (FMinimap.TopLine > LTemp) and (LTemp > 0) then
           FMinimap.TopLine := LTemp;
-
         LTopLine := Max(1, FMinimap.TopLine + LTemp2);
         if TopLine <> LTopLine then
         begin
           Inc(FProcessingMinimap);
-          //OutputDebugString(PChar(Format('FProcessingMinimap = %d, Y=%d, TopLine = %d', [FProcessingMinimap, Y, LTopLine])));
           TopLine := LTopLine;
           Paint;
         end;
@@ -6954,7 +6963,7 @@ procedure TBCBaseEditor.Paint;
 var
   LClipRect, DrawRect: TRect;
   LLine1, LLine2, LLine3, LColumn1, LColumn2, LTemp: Integer;
-//  LHandle: HDC;
+  LHandle: HDC;
   LSelectionAvailable: Boolean;
 begin
   LClipRect := Canvas.ClipRect;
@@ -6971,16 +6980,15 @@ begin
   LLine3 := FTopLine + LTemp;
 
   HideCaret;
- // FBufferBmp.Width := Width;
- // FBufferBmp.Height := Height;
+  FBufferBmp.Width := Width;
+  FBufferBmp.Height := Height;
 
-  {LHandle := Canvas.Handle;
+  LHandle := Canvas.Handle;
   Canvas.Handle := FBufferBmp.Canvas.Handle;
-  FBufferBmp.Canvas.Handle := LHandle;   }
-  //LHandle := Canvas.Handle; { important, don't remove }
+  FBufferBmp.Canvas.Handle := LHandle;   
+  LHandle := Canvas.Handle; { important, don't remove }
 
-  //FTextDrawer.BeginDrawing(LHandle);
-  FTextDrawer.BeginDrawing(Canvas.Handle);
+  FTextDrawer.BeginDrawing(LHandle);
   try
     { Paint the text area if it was (partly) invalidated }
     if LClipRect.Right > FLeftMargin.GetWidth + FCodeFolding.GetWidth then
@@ -7078,9 +7086,9 @@ begin
     FLastTopLine := FTopLine;
     FLastDisplayLineCount := DisplayLineCount;
     FTextDrawer.EndDrawing;
-    {FBufferBmp.Canvas.CopyRect(ClientRect, Canvas, ClientRect);
+    FBufferBmp.Canvas.CopyRect(ClientRect, Canvas, ClientRect);
     FBufferBmp.Canvas.Handle := Canvas.Handle;
-    Canvas.Handle := LHandle;  }
+    Canvas.Handle := LHandle;  
     UpdateCaret;
   end;
 end;
@@ -9813,13 +9821,25 @@ begin
   Result := 0;
   if Length(ASearchText) = 0 then
     Exit;
+
   LIsBackward := roBackwards in FReplace.Options;
   LIsPrompt := roPrompt in FReplace.Options;
   LIsReplaceAll := roReplaceAll in FReplace.Options;
   LIsDeleteLine := eraDeleteLine = FReplace.Action;
   LIsFromCursor := not (roEntireScope in FReplace.Options);
+
+  FSearchEngine.Pattern := ASearchText;
+  case FReplace.Engine of
+    seNormal:
+    begin
+      TBCEditorNormalSearch(FSearchEngine).CaseSensitive := roCaseSensitive in FReplace.Options;
+      TBCEditorNormalSearch(FSearchEngine).WholeWordsOnly := roWholeWordsOnly in FReplace.Options;
+    end;
+  end;
+
   if not SelectionAvailable then
     FReplace.Options := FReplace.Options - [roSelectedOnly];
+
   if roSelectedOnly in FReplace.Options then
   begin
     LStartTextPosition := SelectionBeginPosition;
@@ -9833,10 +9853,6 @@ begin
     if FSelection.ActiveMode = smColumn then
       if LStartTextPosition.Char > LEndTextPosition.Char then
         SwapInt(LStartTextPosition.Char, LEndTextPosition.Char);
-    if LIsBackward then
-      LCurrentTextPosition := LEndTextPosition
-    else
-      LCurrentTextPosition := LStartTextPosition;
   end
   else
   begin
@@ -9849,19 +9865,13 @@ begin
         LEndTextPosition := CaretPosition
       else
         LStartTextPosition := CaretPosition;
-    if LIsBackward then
-      LCurrentTextPosition := LEndTextPosition
-    else
-      LCurrentTextPosition := LStartTextPosition;
   end;
-  FSearchEngine.Pattern := ASearchText;
-  case FReplace.Engine of
-    seNormal:
-    begin
-      TBCEditorNormalSearch(FSearchEngine).CaseSensitive := roCaseSensitive in FReplace.Options;
-      TBCEditorNormalSearch(FSearchEngine).WholeWordsOnly := roWholeWordsOnly in FReplace.Options;
-    end;
-  end;
+
+  if LIsBackward then
+    LCurrentTextPosition := LEndTextPosition
+  else
+    LCurrentTextPosition := LStartTextPosition;
+
   LReplaceLength := 0;
   if LIsReplaceAll and not LIsPrompt then
   begin
@@ -9871,15 +9881,18 @@ begin
   end
   else
     LIsEndUndoBlock := False;
+
   try
     while (LCurrentTextPosition.Line >= LStartTextPosition.Line) and (LCurrentTextPosition.Line <= LEndTextPosition.Line) do
     begin
       LCurrentLine := FSearchEngine.FindAll(Lines[LCurrentTextPosition.Line - 1]);
       LResultOffset := 0;
+
       if LIsBackward then
         LSearchIndex := Pred(FSearchEngine.ResultCount)
       else
         LSearchIndex := 0;
+
       while LCurrentLine > 0 do
       begin
         LFound := FSearchEngine.Results[LSearchIndex] + LResultOffset;
@@ -12081,7 +12094,7 @@ begin
   end;
 end;
 
-procedure TBCBaseEditor.LoadFromFile(const AFileName: String);
+procedure TBCBaseEditor.LoadFromFile(const AFileName: String; AEncoding: SysUtils.TEncoding = nil);
 var
   LFileStream: TFileStream;
   LBuffer: TBytes;
@@ -12096,6 +12109,9 @@ begin
   ClearBookmarks;
   LFileStream := TFileStream.Create(AFileName, fmOpenRead);
   try
+    if Assigned(AEncoding) then
+      FEncoding := AEncoding
+    else
     { Identify encoding }
     if IsUTF8(LFileStream, LWithBOM) then
     begin
@@ -12515,7 +12531,7 @@ begin
   Invalidate;
 end;
 
-procedure TBCBaseEditor.SaveToFile(const AFileName: String);
+procedure TBCBaseEditor.SaveToFile(const AFileName: String; AEncoding: SysUtils.TEncoding = nil);
 var
   LUncollapsedLines: TStringList;
 var
@@ -12525,6 +12541,8 @@ begin
   try
     LUncollapsedLines := CreateUncollapsedLines;
     try
+      if Assigned(AEncoding) then
+        FEncoding := AEncoding;
       LUncollapsedLines.SaveToStream(LFileStream, FEncoding);
     finally
       LUncollapsedLines.Free;
@@ -12864,10 +12882,6 @@ end;
 procedure TBCBaseEditor.WndProc(var Message: TMessage);
 const
   ALT_KEY_DOWN = $20000000;
-{$IFDEF USE_ALPHASKINS}
-var
-  PS: TPaintStruct;
-{$ENDIF}
 begin
   { Prevent Alt-Backspace from beeping }
   if (Message.Msg = WM_SYSCHAR) and (Message.wParam = VK_BACK) and (Message.LParam and ALT_KEY_DOWN <> 0) then
@@ -12900,14 +12914,13 @@ begin
           end;
 
         AC_SETNEWSKIN:
-          if ACUInt(Message.LParam) = ACUInt(SkinData.SkinManager) then
           begin
             CommonWndProc(Message, FCommonData);
             Exit;
           end;
 
         AC_REMOVESKIN:
-          if ACUInt(Message.LParam) = ACUInt(SkinData.SkinManager) then
+          if not (csDestroying in ComponentState) then
           begin
             if FScrollWnd <> nil then
               FreeAndNil(FScrollWnd);
@@ -12918,41 +12931,42 @@ begin
           end;
 
         AC_REFRESH:
-          if ACUInt(Message.LParam) = ACUInt(SkinData.SkinManager) then
+          if Visible then
           begin
             CommonWndProc(Message, FCommonData);
+            SendMessage(Handle, WM_NCPaint, 0, 0);
             RefreshEditScrolls(SkinData, FScrollWnd);
-            if HandleAllocated and Visible then
-              RedrawWindow(Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or RDW_FRAME);
-
             Exit;
           end
       end;
-
-    CM_FONTCHANGED:
-      if Showing and HandleAllocated then
-        RedrawWindow(Handle, nil, 0, RDW_ERASE or RDW_INVALIDATE or RDW_FRAME);
   end;
 
-  if not ControlIsReady(Self) or not FCommonData.Skinned then
+  if not ControlIsReady(Self) or not Assigned(FCommonData) or not FCommonData.Skinned then
     inherited
   else
   begin
     case Message.Msg of
-      WM_PAINT:
-        begin
-          if InUpdating(FCommonData) then
-          begin
-            BeginPaint(Handle, PS);
-            EndPaint  (Handle, PS);
-            Exit;
-          end;
-          inherited;
-          Exit;
+      SM_ALPHACMD:
+        case Message.WParamHi of
+          AC_ENDPARENTUPDATE:
+            if FCommonData.Updating then
+            begin
+              FCommonData.Updating := False;
+              Perform(WM_NCPAINT, 0, 0); Exit
+            end;
         end;
+
+      WM_PRINT:
+      begin
+        Perform(WM_PAINT, Message.WParam, Message.LParam);
+        Perform(WM_NCPAINT, Message.WParam, Message.LParam);
+        Exit;
+      end;
+
+      WM_ENABLE:
+        Exit;
     end;
-    if CommonWndProc(Message, FCommonData) then
-      Exit;
+    CommonWndProc(Message, FCommonData);
 
     inherited;
 
@@ -12960,12 +12974,12 @@ begin
       CM_SHOWINGCHANGED:
         RefreshEditScrolls(SkinData, FScrollWnd);
 
-      CM_VISIBLECHANGED, CM_ENABLEDCHANGED, WM_SETFONT:
+     { CM_VISIBLECHANGED, CM_ENABLEDCHANGED, WM_SETFONT:
         FCommonData.Invalidate;
 
       CM_TEXTCHANGED, CM_CHANGED:
         if Assigned(FScrollWnd) then
-          UpdateScrolls(FScrollWnd, True);
+          UpdateScrolls(FScrollWnd, True);   }
     end;
   end;
   {$ELSE}
