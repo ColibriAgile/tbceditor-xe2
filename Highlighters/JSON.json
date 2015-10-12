@@ -3,7 +3,7 @@
       "Info":{
          "General":{
             "Version":"1.0",
-            "Date":"14.6.2015",
+            "Date":"3.9.2015",
             "Sample":[
                "{\r\n",
                "  \"firstName\": \"John\",\r\n",
@@ -107,6 +107,74 @@
                         {
                            "Type":"String",
                            "Attributes":{
+                              "Element":"Symbol",
+                              "ParentBackground":true
+                           },
+                           "Properties":{
+                              "AlternativeClose":[
+                                "{"
+                              ]
+                           },
+                           "TokenRange":{
+                              "Open":"[",
+                              "Close":"]"
+                           },
+                           "SubRules":{
+                              "Range":[
+                                 {
+                                    "Type":"String",
+                                    "Attributes":{
+                                       "Element":"String",
+                                       "ParentBackground":true
+                                    },
+                                    "Properties":{
+                                       "CloseOnEndOfLine":true
+                                    },
+                                    "TokenRange":{
+                                       "Open":"\"",
+                                       "Close":"\""
+                                    },
+                                    "SubRules":{
+                                       "Range":[
+                                          {
+                                             "Type":"String",
+                                             "Attributes":{
+                                                "Element":"String",
+                                                "ParentBackground":true
+                                             },
+                                             "Properties":{
+                                                "CloseOnEndOfLine":true,
+                                                "CloseOnTerm":true
+                                             },
+                                             "TokenRange":{
+                                                "Open":"\\\"",
+                                                "Close":"\""
+                                             }
+                                          },
+                                          {
+                                             "Type":"String",
+                                             "Attributes":{
+                                                "Element":"String",
+                                                "ParentBackground":true
+                                             },
+                                             "Properties":{
+                                                "CloseOnEndOfLine":true,
+                                                "CloseOnTerm":true
+                                             },
+                                             "TokenRange":{
+                                                "Open":"\\\\",
+                                                "Close":""
+                                             }
+                                          }
+                                       ]
+                                    }
+                                 }
+                              ]
+                           }
+                        },
+                        {
+                           "Type":"String",
+                           "Attributes":{
                               "Element":"String",
                               "ParentBackground":true
                            },
@@ -204,24 +272,28 @@
       }
    },
    "CodeFolding":{
-      "Options":{
-         "StringEscapeChar":"\\"
-      },
-      "SkipRegion":[
+      "Ranges":[
          {
-            "OpenToken":"\"",
-            "CloseToken":"\"",
-            "RegionType":"String"
-         }
-      ],
-      "FoldRegion":[
-         {
-            "OpenToken":"{",
-            "CloseToken":"}"
-         },
-         {
-            "OpenToken":"[",
-            "CloseToken":"]"
+            "Options":{
+               "StringEscapeChar":"\\"
+            },
+            "SkipRegion":[
+               {
+                  "OpenToken":"\"",
+                  "CloseToken":"\"",
+                  "RegionType":"String"
+               }
+            ],
+            "FoldRegion":[
+               {
+                  "OpenToken":"{",
+                  "CloseToken":"}"
+               },
+               {
+                  "OpenToken":"[",
+                  "CloseToken":"]"
+               }
+            ]
          }
       ]
    },

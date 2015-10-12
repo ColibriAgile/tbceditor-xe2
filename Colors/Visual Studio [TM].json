@@ -3,7 +3,7 @@
       "Info":{
          "General":{
             "Version":"1.0",
-            "Date":"28.6.2015"
+            "Date":"30.9.2015"
          },
          "Author":{
             "Name":"Lasse Rautiainen",
@@ -40,6 +40,7 @@
             "MatchingPairMatched":"clAqua",
             "MatchingPairUnderline":"clGray",
             "MatchingPairUnmatched":"clYellow",
+            "MinimapBookmark":"clGreen",
             "MinimapVisibleLines":"$00F0FFFF",
             "RightMargin":"clSilver",
             "RightMovingEdge":"clSilver",
@@ -50,7 +51,6 @@
             "SearchMapForeground":"clBlack",
             "SelectionBackground":"clHighlight",
             "SelectionForeground":"clHighlightText",
-            "WordWrapIndicatorBackground": "clWindow",
             "WordWrapIndicatorArrow": "clWindowText",
             "WordWrapIndicatorLines": "clBlue"
          },
@@ -117,6 +117,11 @@
          },
          {
             "Name":"HighlightedBlock",
+            "Foreground":"clBlack",
+            "Background":"clWindow"
+         },
+         {
+            "Name":"HighlightedBlockSymbol",
             "Foreground":"clBlack",
             "Background":"clWindow"
          },

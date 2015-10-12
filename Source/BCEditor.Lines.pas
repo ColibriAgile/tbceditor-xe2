@@ -52,7 +52,9 @@ type
     FLengthOfLongestLine: Integer;
     FList: PEditorStringRecordList;
     FLongestLineNeedsUpdate: Boolean;
+    FOnAfterSetText: TNotifyEvent;
     FOnBeforePutted: TStringListChangeEvent;
+    FOnBeforeSetText: TNotifyEvent;
     FOnChange: TNotifyEvent;
     FOnChanging: TNotifyEvent;
     FOnCleared: TNotifyEvent;
@@ -106,7 +108,9 @@ type
     property ExpandedStrings[Index: Integer]: string read GetExpandedString;
     property ExpandedStringLengths[Index: Integer]: Integer read GetExpandedStringLength;
     property List: PEditorStringRecordList read FList;
+    property OnAfterSetText: TNotifyEvent read FOnAfterSetText write FOnAfterSetText;
     property OnBeforePutted: TStringListChangeEvent read FOnBeforePutted write FOnBeforePutted;
+    property OnBeforeSetText: TNotifyEvent read FOnBeforeSetText write FOnBeforeSetText;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnChanging: TNotifyEvent read FOnChanging write FOnChanging;
     property OnCleared: TNotifyEvent read FOnCleared write FOnCleared;
@@ -235,7 +239,7 @@ procedure TBCEditorLines.Clear;
 begin
   if FCount <> 0 then
   begin
-    BeginUpdate;
+    //BeginUpdate;
     try
       Finalize(FList^[0], FCount);
       FCount := 0;
@@ -243,7 +247,7 @@ begin
       if Assigned(FOnCleared) then
         FOnCleared(Self);
     finally
-      EndUpdate;
+      //EndUpdate;
     end;
   end;
   { Clear information about longest line }
@@ -562,14 +566,14 @@ begin
       SetLength(LBuffer, LSize);
       Stream.Read(LBuffer[0], LSize);
       LSize := TEncoding.GetBufferEncoding(LBuffer, Encoding);
-      SetTextStr(Encoding.GetString(LBuffer, LSize, Length(LBuffer) - LSize));
+      LStrBuffer := Encoding.GetString(LBuffer, LSize, Length(LBuffer) - LSize);
     end
     else
     begin
       SetLength(LStrBuffer, LSize shr 1);
       Stream.ReadBuffer(LStrBuffer[1], LSize);
-      SetTextStr(LStrBuffer);
     end;
+    SetTextStr(LStrBuffer);
   finally
     EndUpdate;
   end;
@@ -666,6 +670,8 @@ var
   LLength: Integer;
   PValue, PStartValue, PLastChar: PChar;
 begin
+  if Assigned(FOnBeforeSetText) then
+    FOnBeforeSetText(Self);
   Clear;
   PValue := Pointer(Value);
   if Assigned(PValue) then
@@ -675,7 +681,7 @@ begin
     while PValue <= PLastChar do
     begin
       PStartValue := PValue;
-      while (PValue^ <> #13) and (PValue^ <> #10) and (PValue^ <> WideChar($2028)) and (PValue <= PLastChar) do
+      while (PValue^ <> BCEDITOR_CARRIAGE_RETURN) and (PValue^ <> BCEDITOR_LINEFEED) and (PValue^ <> WideChar($2028)) and (PValue <= PLastChar) do
         Inc(PValue);
       if PValue <> PStartValue then
       begin
@@ -684,9 +690,9 @@ begin
       end
       else
         InsertItem(FCount, '');
-      if PValue^ = #13 then
+      if PValue^ = BCEDITOR_CARRIAGE_RETURN then
         Inc(PValue);
-      if PValue^ = #10 then
+      if PValue^ = BCEDITOR_LINEFEED then
         Inc(PValue);
       if PValue^ = WideChar($2028) then
         Inc(PValue);
@@ -697,6 +703,8 @@ begin
     FOnInserted(Self, 0, FCount);
   if Assigned(FOnChange) then
     FOnChange(Self);
+  if Assigned(FOnAfterSetText) then
+    FOnAfterSetText(Self);
 end;
 
 procedure TBCEditorLines.SetUpdateState(Updating: Boolean);

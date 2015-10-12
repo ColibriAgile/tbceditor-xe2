@@ -60,13 +60,13 @@ begin
             Break;
          end;
       end;
-      if (j < editor.AllCodeFoldingRanges.AllCount) and Assigned(codeFoldingRange) and (codeFoldingRange.FromLine - 1 = i) then begin
-         for k := 0 to codeFoldingRange.CollapsedLines.Count - 1 do
-            Add(codeFoldingRange.CollapsedLines, k);
-         Inc(j);
-      end else begin
-         Add(editor.Lines, i)
-      end;
+//      if (j < editor.AllCodeFoldingRanges.AllCount) and Assigned(codeFoldingRange) and (codeFoldingRange.FromLine - 1 = i) then begin
+//         for k := 0 to codeFoldingRange.CollapsedLines.Count - 1 do
+//            Add(codeFoldingRange.CollapsedLines, k);
+//         Inc(j);
+//      end else begin
+//         Add(editor.Lines, i)
+//      end;
    end;
 end;
 

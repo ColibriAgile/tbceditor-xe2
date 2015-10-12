@@ -91,14 +91,14 @@ type
   end;
 
   TBCEditorAbstractParserArray = array [AnsiChar] of TBCEditorAbstractParser;
-  //TBCEditorBooleanArray = array [AnsiChar] of Boolean;
+
   TBCEditorCaseFunction = function(AChar: Char): Char;
   TBCEditorStringCaseFunction = function(const AString: string): string;
 
   TBCEditorRange = class(TBCEditorRule)
   strict private
-    FAlternativeClose1: string;
-    FAlternativeClose2: string;
+    FAlternativeCloseArray: TBCEditorArrayOfString;
+    FAlternativeCloseArrayCount: Integer;
     FOpenBeginningOfLine: Boolean;
     FCaseFunct: TBCEditorCaseFunction;
     FCaseSensitive: Boolean;
@@ -127,6 +127,7 @@ type
     function GetSet(Index: Integer): TBCEditorSet;
     function GetSetCount: Integer;
     function GetToken(Index: Integer): TBCEditorToken;
+    procedure SetAlternativeCloseArrayCount(const Value: Integer);
     procedure SetCaseSensitive(const Value: Boolean);
   public
     constructor Create(AOpenToken: string = ''; ACloseToken: string = ''); virtual;
@@ -137,13 +138,14 @@ type
     procedure AddRange(NewRange: TBCEditorRange);
     procedure AddSet(NewSet: TBCEditorSet);
     procedure AddToken(NewToken: TBCEditorToken);
-    procedure AddTokenRange(AOpenToken, ACloseToken: string);
+    procedure AddTokenRange(AOpenToken: string; AOpenTokenBreakType: TBCEditorBreakType; ACloseToken: string;
+      ACloseTokenBreakType: TBCEditorBreakType);
     procedure Clear;
     procedure Prepare(AParent: TBCEditorRange);
     procedure Reset;
     procedure SetDelimiters(ADelimiters: TBCEditorCharSet);
-    property AlternativeClose1: string read FAlternativeClose1 write FAlternativeClose1;
-    property AlternativeClose2: string read FAlternativeClose2 write FAlternativeClose2;
+    property AlternativeCloseArray: TBCEditorArrayOfString read FAlternativeCloseArray write FAlternativeCloseArray;
+    property AlternativeCloseArrayCount: Integer read FAlternativeCloseArrayCount write SetAlternativeCloseArrayCount;
     property OpenBeginningOfLine: Boolean read FOpenBeginningOfLine write FOpenBeginningOfLine;
     property CaseFunct: TBCEditorCaseFunction read FCaseFunct;
     property CaseSensitive: Boolean read FCaseSensitive write SetCaseSensitive;
@@ -338,7 +340,7 @@ begin
       Exit;
     end;
   end;
-  ARun := Succ(StartPosition);
+  ARun := StartPosition + 1;
 end;
 
 constructor TBCEditorDefaultParser.Create(AToken: TBCEditorToken);
@@ -418,11 +420,13 @@ begin
 
   FOpenToken := TBCEditorMultiToken.Create;
   FCloseToken := TBCEditorMultiToken.Create;
-  AddTokenRange(AOpenToken, ACloseToken);
+  AddTokenRange(AOpenToken, btAny, ACloseToken, btAny);
 
  // FillChar(FSymbolList, SizeOf(SymbolList), 0);
 
   SetCaseSensitive(False);
+
+  FAlternativeCloseArrayCount := 0;
 
   FPrepared := False;
 
@@ -534,10 +538,13 @@ begin
   Result := TBCEditorSet(FSets[Index]);
 end;
 
-procedure TBCEditorRange.AddTokenRange(AOpenToken, ACloseToken: string);//: Integer;
+procedure TBCEditorRange.AddTokenRange(AOpenToken: string; AOpenTokenBreakType: TBCEditorBreakType; ACloseToken: string;
+  ACloseTokenBreakType: TBCEditorBreakType);
 begin
   FOpenToken.AddSymbol(AOpenToken);
+  FOpenToken.BreakType := AOpenTokenBreakType;
   FCloseToken.AddSymbol(ACloseToken);
+  FCloseToken.BreakType := ACloseTokenBreakType;
 end;
 
 procedure TBCEditorRange.SetDelimiters(ADelimiters: TBCEditorCharSet);
@@ -547,6 +554,12 @@ begin
   Delimiters := ADelimiters;
   for i := 0 to RangeCount - 1 do
     Ranges[i].SetDelimiters(ADelimiters);
+end;
+
+procedure TBCEditorRange.SetAlternativeCloseArrayCount(const Value: Integer);
+begin
+  FAlternativeCloseArrayCount := Value;
+  SetLength(FAlternativeCloseArray, Value);
 end;
 
 procedure TBCEditorRange.SetCaseSensitive(const Value: Boolean);
@@ -696,6 +709,7 @@ begin
     LLength := Length(Token.Symbol);
     if LLength < 1 then
       Continue;
+
     Symbol := Token.Symbol;
     FirstChar := Symbol[1];
 
@@ -790,7 +804,7 @@ var
 begin
   OpenToken.Clear;
   CloseToken.Clear;
-  AddTokenRange('', '');
+  //AddTokenRange('', '');
   CloseOnTerm := False;
   CloseOnEndOfLine := False;
   CloseParent := False;

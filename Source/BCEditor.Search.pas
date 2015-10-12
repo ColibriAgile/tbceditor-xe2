@@ -16,6 +16,7 @@ type
   public
     function FindAll(const NewText: string): Integer; virtual; abstract;
     function Replace(const aOccurrence, aReplacement: string): string; virtual; abstract;
+    procedure Clear; virtual; abstract;
     property Lengths[aIndex: Integer]: Integer read GetLength;
     property Pattern: string read GetPattern write SetPattern;
     property ResultCount: Integer read GetResultCount;
@@ -57,7 +58,8 @@ type
     function FindAll(const NewText: string): Integer; override;
     function FindFirst(const NewText: string): Integer;
     function Next: Integer;
-    function Replace(const aOccurrence, aReplacement: string): string; override;
+    function Replace(const AOccurrence, AReplacement: string): string; override;
+    procedure Clear; override;
     procedure FixResults(First, Delta: Integer);
     property CaseSensitive: Boolean read FCaseSensitive write SetCaseSensitive;
     property Count: Integer read FCount write FCount;
@@ -100,7 +102,7 @@ var
 begin
   if (Delta <> 0) and (FResults.Count > 0) then
   begin
-    i := Pred(FResults.Count);
+    i := FResults.Count - 1;
     while i >= 0 do
     begin
       if Integer(FResults[i]) <= First then
@@ -176,7 +178,7 @@ begin
         begin
           if FWholeWordsOnly then
             if not TestWholeWord then
-              break;
+              Break;
           Inc(FCount);
           Result := FRun - FOrigin - FPatternLength + 2;
           Exit;
@@ -186,7 +188,7 @@ begin
       end;
       Inc(FRun, FLookAt);
       if FRun >= FTheEnd then
-        break;
+        Break;
       Inc(FRun, FShift[AnsiChar(FRun^)] - 1);
     end;
   end;
@@ -225,23 +227,28 @@ begin
   end;
 end;
 
+procedure TBCEditorNormalSearch.Clear;
+begin
+  FResults.Count := 0;
+end;
+
 function TBCEditorNormalSearch.FindAll(const NewText: string): Integer;
 var
   Found: Integer;
 begin
-  FResults.Count := 0;
+  Clear;
   Found := FindFirst(NewText);
   while Found > 0 do
   begin
-    FResults.Add(pointer(Found));
+    FResults.Add(Pointer(Found));
     Found := Next;
   end;
   Result := FResults.Count;
 end;
 
-function TBCEditorNormalSearch.Replace(const aOccurrence, aReplacement: string): string;
+function TBCEditorNormalSearch.Replace(const AOccurrence, AReplacement: string): string;
 begin
-  Result := aReplacement;
+  Result := AReplacement;
 end;
 
 function TBCEditorNormalSearch.FindFirst(const NewText: string): Integer;

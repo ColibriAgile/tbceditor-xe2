@@ -6,9 +6,6 @@ uses
   Messages, Classes, Types, StdCtrls, Forms, Controls, Graphics, BCEditor.Utils,
   BCEditor.Types, BCEditor.Editor.CompletionProposal.Columns{$IFDEF USE_ALPHASKINS}, sScrollBar{$ENDIF};
 
-const
-  TextHeightString = 'X';
-
 type
   TBCEditorValidateEvent = procedure(Sender: TObject; Shift: TShiftState; EndToken: Char) of object;
 
@@ -24,7 +21,6 @@ type
     FColumns: TBCEditorProposalColumns;
     FCompletionStart: Integer;
     FCurrentString: string;
-    FDisplayType: TBCEditorCompletionType;
     FEffectiveItemHeight: Integer;
     FFiltered: Boolean;
     FFont: TFont;
@@ -80,6 +76,11 @@ type
     procedure ScrollBarOnEnter(Sender: TObject);
     procedure ScrollBarOnScroll(Sender: TObject; ScrollCode: TScrollCode; var ScrollPos: Integer);
     procedure StringListChange(Sender: TObject);
+    procedure WMChar(var Msg: TWMChar); message WM_CHAR;
+    procedure WMEraseBackgrnd(var Message: TMessage); message WM_ERASEBKGND;
+    procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
+    procedure WMMouseActivate(var Msg: TMessage); message WM_MOUSEACTIVATE;
+    procedure WMMouseWheel(var Msg: TMessage); message WM_MOUSEWHEEL;
   protected
     function CanResize(var NewWidth, NewHeight: Integer): Boolean; override;
     procedure Activate; override;
@@ -91,17 +92,13 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Paint; override;
     procedure Resize; override;
-    procedure WMChar(var Msg: TWMChar); message WM_CHAR;
-    procedure WMEraseBackgrnd(var Message: TMessage); message WM_ERASEBKGND;
-    procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
-    procedure WMMouseWheel(var Msg: TMessage); message WM_MOUSEWHEEL;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
     function GetCurrentInput: string;
     procedure CancelCompletion;
-    procedure Execute(ACurrentString: string; X, Y: Integer; ADisplayType: TBCEditorCompletionType = ctNone);
+    procedure Execute(ACurrentString: string; X, Y: Integer);
 
     property BackgroundColor: TColor read FBackgroundColor write FBackgroundColor default clWindow;
     property BorderColor: TColor read FBorderColor write FBorderColor default clBtnFace;
@@ -246,7 +243,8 @@ var
   Editor: TBCBaseEditor;
 begin
   Editor := Owner as TBCBaseEditor;
-  Editor.AddKeyPressHandler(EditorKeyPress);
+  if Assigned(Editor) then
+    Editor.AddKeyPressHandler(EditorKeyPress);
 end;
 
 procedure TBCEditorCompletionProposalForm.RemoveKeyPressHandler;
@@ -254,28 +252,28 @@ var
   Editor: TBCBaseEditor;
 begin
   Editor := Owner as TBCBaseEditor;
-  Editor.RemoveKeyPressHandler(EditorKeyPress);
+  if Assigned(Editor) then
+    Editor.RemoveKeyPressHandler(EditorKeyPress);
 end;
 
 procedure TBCEditorCompletionProposalForm.CreateParams(var Params: TCreateParams);
 begin
+  BorderStyle := bsNone;
   inherited;
-
-  with Params do
-    if ((Win32Platform and VER_PLATFORM_WIN32_NT) <> 0) and (Win32MajorVersion > 4) and (Win32MinorVersion > 0) then
-      WindowClass.Style := WindowClass.Style or CS_DROPSHADOW;
+  Params.Style := WS_POPUP or WS_CLIPSIBLINGS or WS_CLIPCHILDREN or WS_SYSMENU;
+  Params.ExStyle := Params.ExStyle or WS_EX_STATICEDGE;
 end;
 
 procedure TBCEditorCompletionProposalForm.Activate;
 begin
   Visible := True;
-  if (FDisplayType = ctCode) and Assigned(Owner) then
+  if Assigned(Owner) then
     (Owner as TBCBaseEditor).AddFocusControl(Self);
 end;
 
 procedure TBCEditorCompletionProposalForm.Deactivate;
 begin
-  if (FDisplayType = ctCode) and Assigned(Owner) then
+  if Assigned(Owner) then
     (Owner as TBCBaseEditor).RemoveFocusControl(Self);
   Close;
 end;
@@ -283,111 +281,96 @@ end;
 procedure TBCEditorCompletionProposalForm.KeyDown(var Key: Word; Shift: TShiftState);
 var
   LChar: Char;
-  LData: Pointer;
-  LEditorCommand: TBCEditorCommand;
 begin
-  case FDisplayType of
-    ctCode:
+  case Key of
+    VK_RETURN, VK_TAB:
+      if Assigned(OnValidate) then
+        OnValidate(Self, Shift, BCEDITOR_NONE_CHAR);
+    VK_ESCAPE:
       begin
-        case Key of
-          VK_RETURN, VK_TAB:
-            if Assigned(OnValidate) then
-              OnValidate(Self, Shift, BCEDITOR_NONE_CHAR);
-          VK_ESCAPE:
-            begin
-              if Assigned(OnCancel) then
-                OnCancel(Self);
-            end;
-          VK_LEFT:
-            begin
-              if Length(FCurrentString) > 0 then
-              begin
-                CurrentString := Copy(CurrentString, 1, Length(CurrentString) - 1);
-                if Assigned(Owner) then
-                  (Owner as TBCBaseEditor).CommandProcessor(ecLeft, BCEDITOR_NONE_CHAR, nil);
-              end
-              else
-              begin
-                // Since we have control, we need to re-send the key to
-                // the editor so that the cursor behaves properly
-                if Assigned(Owner) then
-                  (Owner as TBCBaseEditor).CommandProcessor(ecLeft, BCEDITOR_NONE_CHAR, nil);
+        if Assigned(OnCancel) then
+          OnCancel(Self);
+      end;
+    VK_LEFT:
+      begin
+        if Length(FCurrentString) > 0 then
+        begin
+          CurrentString := Copy(CurrentString, 1, Length(CurrentString) - 1);
+          if Assigned(Owner) then
+            (Owner as TBCBaseEditor).CommandProcessor(ecLeft, BCEDITOR_NONE_CHAR, nil);
+        end
+        else
+        begin
+          // Since we have control, we need to re-send the key to
+          // the editor so that the cursor behaves properly
+          if Assigned(Owner) then
+            (Owner as TBCBaseEditor).CommandProcessor(ecLeft, BCEDITOR_NONE_CHAR, nil);
 
-                if Assigned(OnCancel) then
-                  OnCancel(Self);
-              end;
-            end;
-          VK_RIGHT:
-            begin
-              if Assigned(Owner) then
-                with Owner as TBCBaseEditor do
-                begin
-                  if CaretX <= Length(LineText) then
-                    LChar := LineText[CaretX]
-                  else
-                    LChar := BCEDITOR_SPACE_CHAR;
-
-                  if Self.IsWordBreakChar(LChar) then
-                  begin
-                    if Assigned(OnCancel) then
-                      OnCancel(Self)
-                  end
-                  else
-                    CurrentString := CurrentString + LChar;
-
-                  CommandProcessor(ecRight, BCEDITOR_NONE_CHAR, nil);
-                end;
-            end;
-          VK_PRIOR:
-            MoveLine(-FVisibleLines);
-          VK_NEXT:
-            MoveLine(FVisibleLines);
-          VK_END:
-            Position := FAssignedList.Count - 1;
-          VK_HOME:
-            Position := 0;
-          VK_UP:
-            if ssCtrl in Shift then
-              Position := 0
-            else
-              MoveLine(-1);
-          VK_DOWN:
-            if ssCtrl in Shift then
-              Position := FAssignedList.Count - 1
-            else
-              MoveLine(1);
-          VK_BACK:
-            if Shift = [] then
-            begin
-              if Length(FCurrentString) > 0 then
-              begin
-                CurrentString := Copy(CurrentString, 1, Length(CurrentString) - 1);
-
-                if Assigned(Owner) then
-                  (Owner as TBCBaseEditor).CommandProcessor(ecDeleteLastChar, BCEDITOR_NONE_CHAR, nil);
-              end
-              else
-              begin
-                if Assigned(Owner) then
-                  (Owner as TBCBaseEditor).CommandProcessor(ecDeleteLastChar, BCEDITOR_NONE_CHAR, nil);
-
-                if Assigned(OnCancel) then
-                  OnCancel(Self);
-              end;
-            end;
-          VK_DELETE:
-            if Assigned(Owner) then
-              (Owner as TBCBaseEditor).CommandProcessor(ecDeleteChar, BCEDITOR_NONE_CHAR, nil);
+          if Assigned(OnCancel) then
+            OnCancel(Self);
         end;
       end;
-    ctHint:
-      with Owner as TBCBaseEditor do
+    VK_RIGHT:
       begin
-        LData := nil;
-        LChar := BCEDITOR_NONE_CHAR;
-        LEditorCommand := TranslateKeyCode(Key, Shift, LData);
-        CommandProcessor(LEditorCommand, LChar, LData);
+        if Assigned(Owner) then
+          with Owner as TBCBaseEditor do
+          begin
+            if DisplayCaretX <= Length(LineText) then
+              LChar := LineText[DisplayCaretX]
+            else
+              LChar := BCEDITOR_SPACE_CHAR;
+
+            if Self.IsWordBreakChar(LChar) then
+            begin
+              if Assigned(OnCancel) then
+                OnCancel(Self)
+            end
+            else
+              CurrentString := CurrentString + LChar;
+
+            CommandProcessor(ecRight, BCEDITOR_NONE_CHAR, nil);
+          end;
       end;
+    VK_PRIOR:
+      MoveLine(-FVisibleLines);
+    VK_NEXT:
+      MoveLine(FVisibleLines);
+    VK_END:
+      Position := FAssignedList.Count - 1;
+    VK_HOME:
+      Position := 0;
+    VK_UP:
+      if ssCtrl in Shift then
+        Position := 0
+      else
+        MoveLine(-1);
+    VK_DOWN:
+      if ssCtrl in Shift then
+        Position := FAssignedList.Count - 1
+      else
+        MoveLine(1);
+    VK_BACK:
+      if Shift = [] then
+      begin
+        if Length(FCurrentString) > 0 then
+        begin
+          CurrentString := Copy(CurrentString, 1, Length(CurrentString) - 1);
+
+          if Assigned(Owner) then
+            (Owner as TBCBaseEditor).CommandProcessor(ecBackspace, BCEDITOR_NONE_CHAR, nil);
+        end
+        else
+        begin
+          if Assigned(Owner) then
+            (Owner as TBCBaseEditor).CommandProcessor(ecBackspace, BCEDITOR_NONE_CHAR, nil);
+
+          if Assigned(OnCancel) then
+            OnCancel(Self);
+        end;
+      end;
+    VK_DELETE:
+      if Assigned(Owner) then
+        (Owner as TBCBaseEditor).CommandProcessor(ecDeleteChar, BCEDITOR_NONE_CHAR, nil);
   end;
   Invalidate;
 end;
@@ -400,42 +383,35 @@ end;
 
 procedure TBCEditorCompletionProposalForm.KeyPressW(var Key: Char);
 begin
-  case FDisplayType of
-    ctCode:
+  case Key of
+    BCEDITOR_CARRIAGE_RETURN, BCEDITOR_ESCAPE:
+      ;
+    BCEDITOR_SPACE_CHAR .. high(Char):
       begin
-        case Key of
-          BCEDITOR_CARRIAGE_RETURN, BCEDITOR_ESCAPE:
-            ;
-          BCEDITOR_SPACE_CHAR .. high(Char):
-            begin
-              if IsWordBreakChar(Key) and Assigned(OnValidate) then
-              begin
-                if Key = BCEDITOR_SPACE_CHAR then
-                  OnValidate(Self, [], BCEDITOR_NONE_CHAR)
-                else
-                  OnValidate(Self, [], Key);
-              end;
-
-              CurrentString := CurrentString + Key;
-
-              if Assigned(OnKeyPress) then
-                OnKeyPress(Self, Key);
-            end;
-          BCEDITOR_BACKSPACE_CHAR:
-            if Assigned(OnKeyPress) then
-              OnKeyPress(Self, Key);
-        else
-          with Owner as TBCBaseEditor do
-          CommandProcessor(ecChar, Key, nil);
-
-          if Assigned(OnCancel) then
-            OnCancel(Self);
+        if IsWordBreakChar(Key) and Assigned(OnValidate) then
+        begin
+          if Key = BCEDITOR_SPACE_CHAR then
+            OnValidate(Self, [], BCEDITOR_NONE_CHAR)
+          else
+            OnValidate(Self, [], Key);
         end;
+
+        CurrentString := CurrentString + Key;
+
+        if Assigned(OnKeyPress) then
+          OnKeyPress(Self, Key);
       end;
-    ctHint:
+    BCEDITOR_BACKSPACE_CHAR:
       if Assigned(OnKeyPress) then
         OnKeyPress(Self, Key);
+  else
+    with Owner as TBCBaseEditor do
+    CommandProcessor(ecChar, Key, nil);
+
+    if Assigned(OnCancel) then
+      OnCancel(Self);
   end;
+
   Invalidate;
 end;
 
@@ -451,29 +427,24 @@ var
   BorderWidth: Integer;
 begin
   Result := True;
-  case FDisplayType of
-    ctCode:
-      begin
-        if Resizeable then
-          BorderWidth := 2 * GetSystemMetrics(SM_CYSIZEFRAME)
-        else
-          BorderWidth := 0;
+  if Resizeable then
+    BorderWidth := 2 * GetSystemMetrics(SM_CYSIZEFRAME)
+  else
+    BorderWidth := 0;
 
-        if FEffectiveItemHeight <> 0 then
-        begin
-          NewVisibleLines := (NewHeight - BorderWidth - FHeightBuffer) div FEffectiveItemHeight;
-          if NewVisibleLines < 1 then
-            NewVisibleLines := 1;
-        end
-        else
-          NewVisibleLines := 0;
+  if FEffectiveItemHeight <> 0 then
+  begin
+    NewVisibleLines := (NewHeight - BorderWidth - FHeightBuffer) div FEffectiveItemHeight;
+    if NewVisibleLines < 1 then
+      NewVisibleLines := 1;
+  end
+  else
+    NewVisibleLines := 0;
 
-        FVisibleLines := NewVisibleLines;
-        NewHeight := FEffectiveItemHeight * FVisibleLines + FHeightBuffer + BorderWidth;
-        if (NewWidth - BorderWidth) < FScrollBar.Width then
-          NewWidth := FScrollBar.Width + BorderWidth;
-      end;
-  end;
+  FVisibleLines := NewVisibleLines;
+  NewHeight := FEffectiveItemHeight * FVisibleLines + FHeightBuffer + BorderWidth;
+  if (NewWidth - BorderWidth) < FScrollBar.Width then
+    NewWidth := FScrollBar.Width + BorderWidth;
 end;
 
 procedure TBCEditorCompletionProposalForm.Resize;
@@ -504,71 +475,43 @@ procedure TBCEditorCompletionProposalForm.Paint;
 const
   TitleMargin = 2;
 var
-  TmpRect: TRect;
   i: Integer;
 begin
-  if FDisplayType = ctCode then
+  with FBitmap do
   begin
-    with FBitmap do
+    ResetCanvas;
+    Canvas.Rectangle(0, 0, ClientWidth, ClientHeight);
+    for i := 0 to Min(FVisibleLines, FAssignedList.Count - 1) do
     begin
-      ResetCanvas;
-      Canvas.Rectangle(0, 0, ClientWidth, ClientHeight);
-      for i := 0 to Min(FVisibleLines, FAssignedList.Count - 1) do
-      begin
-        if i + FScrollBar.Position >= FAssignedList.Count then
-          Continue;
-        if i + FScrollBar.Position = Position then
-        with Canvas do
-        begin
-          Brush.Color := FSelectedBackgroundColor;
-          Pen.Color := FSelectedBackgroundColor;
-          Rectangle(0, FEffectiveItemHeight * i, ClientWidth - FScrollBar.Width, FEffectiveItemHeight * (i + 1));
-          Pen.Color := FSelectedTextColor;
-          Font.Assign(FFont);
-          Font.Color := FSelectedTextColor;
-        end;
-        BCEditor.Utils.TextOut(Canvas, FMargin, FEffectiveItemHeight * i, FAssignedList[FScrollBar.Position + i]);
-
-        if i + FScrollBar.Position = Position then
-          ResetCanvas;
-      end;
-    end;
-    Canvas.Draw(0, FHeightBuffer, FBitmap);
-
-    if not Resizeable then
-    with Canvas do
-    begin
-      Pen.Color := FBorderColor;
-      PenPos := Point(ClientWidth - 1, ClientHeight - 1);
-      LineTo(ClientWidth - 1, 0);
-      LineTo(0, 0);
-      LineTo(0, ClientHeight - 1);
-      LineTo(ClientWidth - 1, ClientHeight - 1);
-    end;
-  end
-  else
-  if FDisplayType = ctHint then
-  begin
-    with FBitmap do
-    begin
-      ResetCanvas;
-      TmpRect := Rect(0, 0, ClientWidth, ClientHeight);
-      Canvas.FillRect(TmpRect);
-
-      for i := 0 to FItemList.Count - 1 do
-        BCEditor.Utils.TextOut(Canvas, FMargin + 1, FEffectiveItemHeight * i + FMargin, FItemList[i]);
-
+      if i + FScrollBar.Position >= FAssignedList.Count then
+        Continue;
+      if i + FScrollBar.Position = Position then
       with Canvas do
       begin
-        Pen.Color := FBorderColor;
-        PenPos := Point(ClientWidth - 1, ClientHeight - 1);
-        LineTo(ClientWidth - 1, 0);
-        LineTo(0, 0);
-        LineTo(0, ClientHeight - 1);
-        LineTo(ClientWidth - 1, ClientHeight - 1);
+        Canvas.Brush.Color := FSelectedBackgroundColor;
+        Pen.Color := FSelectedBackgroundColor;
+        Rectangle(0, FEffectiveItemHeight * i, ClientWidth - FScrollBar.Width, FEffectiveItemHeight * (i + 1));
+        Pen.Color := FSelectedTextColor;
+        Font.Assign(FFont);
+        Font.Color := FSelectedTextColor;
       end;
+      BCEditor.Utils.TextOut(Canvas, FMargin, FEffectiveItemHeight * i, FAssignedList[FScrollBar.Position + i]);
+
+      if i + FScrollBar.Position = Position then
+        ResetCanvas;
     end;
-    Canvas.Draw(0, 0, FBitmap);
+  end;
+  Canvas.Draw(0, FHeightBuffer, FBitmap);
+
+  if not Resizeable then
+  with Canvas do
+  begin
+    Pen.Color := FBorderColor;
+    PenPos := Point(ClientWidth - 1, ClientHeight - 1);
+    LineTo(ClientWidth - 1, 0);
+    LineTo(0, 0);
+    LineTo(0, ClientHeight - 1);
+    LineTo(ClientWidth - 1, ClientHeight - 1);
   end;
 end;
 
@@ -653,8 +596,7 @@ var
   i: Integer;
 begin
   FCurrentString := Value;
-  if FDisplayType <> ctCode then
-    Exit;
+
   if FFiltered then
   begin
     RecalcList;
@@ -684,9 +626,8 @@ end;
 
 procedure TBCEditorCompletionProposalForm.DoDoubleClick(Sender: TObject);
 begin
-  if FDisplayType = ctCode then
-    if Assigned(OnValidate) then
-      OnValidate(Self, [], BCEDITOR_NONE_CHAR);
+  if Assigned(OnValidate) then
+    OnValidate(Self, [], BCEDITOR_NONE_CHAR);
 end;
 
 procedure TBCEditorCompletionProposalForm.SetPosition(const Value: Integer);
@@ -743,7 +684,7 @@ end;
 procedure TBCEditorCompletionProposalForm.RecalcItemHeight;
 begin
   Canvas.Font.Assign(FFont);
-  FFontHeight := TextHeight(Canvas, TextHeightString);
+  FFontHeight := TextHeight(Canvas, 'X');
   if FItemHeight > 0 then
     FEffectiveItemHeight := FItemHeight
   else
@@ -820,61 +761,47 @@ end;
 
 procedure TBCEditorCompletionProposalForm.AdjustMetrics;
 begin
-  if FDisplayType = ctCode then
-  begin
-    FHeightBuffer := 0;
+  FHeightBuffer := 0;
 
-    if (ClientWidth >= FScrollBar.Width) and (ClientHeight >= FHeightBuffer) then
-    begin
-      FBitmap.Width := ClientWidth - FScrollBar.Width;
-      FBitmap.Height := ClientHeight - FHeightBuffer;
-    end;
-  end
-  else
+  if (ClientWidth >= FScrollBar.Width) and (ClientHeight >= FHeightBuffer) then
   begin
-    if (ClientWidth > 0) and (ClientHeight > 0) then
-    begin
-      FBitmap.Width := ClientWidth;
-      FBitmap.Height := ClientHeight;
-    end;
+    FBitmap.Width := ClientWidth - FScrollBar.Width;
+    FBitmap.Height := ClientHeight - FHeightBuffer;
   end;
 end;
 
 procedure TBCEditorCompletionProposalForm.AdjustScrollBarPosition;
 var
-  Offset: Integer;
+  LOffset: Integer;
 begin
-  if FDisplayType = ctCode then
+  if Assigned(FScrollBar) then
   begin
-    if Assigned(FScrollBar) then
-    begin
-      if Resizeable then
-        Offset := 0
-      else
-        Offset := 1;
-      FScrollBar.Top := FHeightBuffer + Offset;
-      FScrollBar.Height := ClientHeight - FHeightBuffer - 2 * Offset;
-      FScrollBar.Left := ClientWidth - FScrollBar.Width - Offset;
+    if Resizeable then
+      LOffset := 0
+    else
+      LOffset := 1;
+    FScrollBar.Top := FHeightBuffer + LOffset;
+    FScrollBar.Height := ClientHeight - FHeightBuffer - 2 * LOffset;
+    FScrollBar.Left := ClientWidth - FScrollBar.Width - LOffset;
 
-      if FAssignedList.Count - FVisibleLines < 0 then
+    if FAssignedList.Count - FVisibleLines < 0 then
+    begin
+      FScrollBar.PageSize := 0;
+      FScrollBar.Max := 0;
+      FScrollBar.Enabled := False;
+    end
+    else
+    begin
+      FScrollBar.PageSize := 0;
+      FScrollBar.Max := FAssignedList.Count - FVisibleLines;
+      if FScrollBar.Max <> 0 then
       begin
-        FScrollBar.PageSize := 0;
-        FScrollBar.Max := 0;
-        FScrollBar.Enabled := False;
+        FScrollBar.LargeChange := FVisibleLines;
+        FScrollBar.PageSize := 1;
+        FScrollBar.Enabled := True;
       end
       else
-      begin
-        FScrollBar.PageSize := 0;
-        FScrollBar.Max := FAssignedList.Count - FVisibleLines;
-        if FScrollBar.Max <> 0 then
-        begin
-          FScrollBar.LargeChange := FVisibleLines;
-          FScrollBar.PageSize := 1;
-          FScrollBar.Enabled := True;
-        end
-        else
-          FScrollBar.Enabled := False;
-      end;
+        FScrollBar.Enabled := False;
     end;
   end;
 end;
@@ -897,8 +824,7 @@ begin
   AdjustMetrics;
 end;
 
-procedure TBCEditorCompletionProposalForm.Execute(ACurrentString: string; x, y: Integer;
-  ADisplayType: TBCEditorCompletionType);
+procedure TBCEditorCompletionProposalForm.Execute(ACurrentString: string; X, Y: Integer);
 
   function GetWorkAreaWidth: Integer;
   begin
@@ -912,90 +838,57 @@ procedure TBCEditorCompletionProposalForm.Execute(ACurrentString: string; x, y: 
 
   procedure RecalcFormPlacement;
   var
-    i: Integer;
-    tmpWidth: Integer;
-    tmpHeight: Integer;
-    TmpX: Integer;
-    tmpY: Integer;
-    tmpStr: string;
-    BorderWidth: Integer;
-    NewWidth: Integer;
+    LWidth: Integer;
+    LHeight: Integer;
+    LX: Integer;
+    LY: Integer;
+    LBorderWidth: Integer;
   begin
-    TmpX := x;
-    tmpY := y;
-    tmpWidth := 0;
-    tmpHeight := 0;
-    case FDisplayType of
-      ctCode:
-        begin
-          if Resizeable then
-            BorderWidth := 2 * GetSystemMetrics(SM_CYSIZEFRAME)
-          else
-            BorderWidth := 0;
-          tmpWidth := FFormWidth;
-          tmpHeight := FHeightBuffer + FEffectiveItemHeight * FVisibleLines + BorderWidth;
-        end;
-      ctHint:
-        begin
-          BorderWidth := 2;
-          tmpHeight := FEffectiveItemHeight * ItemList.Count + BorderWidth + 2 * Margin;
+    LX := x;
+    LY := y;
 
-          Canvas.Font.Assign(Font);
-          for i := 0 to ItemList.Count - 1 do
-          begin
-            tmpStr := ItemList[i];
-            NewWidth := Canvas.TextWidth(tmpStr);
-            if NewWidth > tmpWidth then
-              tmpWidth := NewWidth;
-          end;
+    if Resizeable then
+      LBorderWidth := 2 * GetSystemMetrics(SM_CYSIZEFRAME)
+    else
+      LBorderWidth := 0;
+    LWidth := FFormWidth;
+    LHeight := FHeightBuffer + FEffectiveItemHeight * FVisibleLines + LBorderWidth;
 
-          Inc(tmpWidth, 2 * Margin + BorderWidth + 4);
-        end;
-    end;
-
-    if TmpX + tmpWidth > GetWorkAreaWidth then
+    if LX + LWidth > GetWorkAreaWidth then
     begin
-      TmpX := GetWorkAreaWidth - tmpWidth - 5; // small space buffer
-      if TmpX < 0 then
-        TmpX := 0;
+      LX := GetWorkAreaWidth - LWidth - 5;
+      if LX < 0 then
+        LX := 0;
     end;
 
-    if tmpY + tmpHeight > GetWorkAreaHeight then
+    if LY + LHeight > GetWorkAreaHeight then
     begin
-      tmpY := tmpY - tmpHeight - (Owner as TBCBaseEditor).LineHeight - 2;
-      if tmpY < 0 then
-        tmpY := 0;
+      LY := LY - LHeight - (Owner as TBCBaseEditor).LineHeight - 2;
+      if LY < 0 then
+        LY := 0;
     end;
 
-    Width := tmpWidth;
-    Height := tmpHeight;
-    Top := tmpY;
-    Left := TmpX;
+    SetWindowPos(Handle, HWND_TOP, LX, LY, 0, 0, SWP_NOACTIVATE or SWP_SHOWWINDOW or SWP_NOSIZE);
+    Width := LWidth;
+    Height := LHeight;
   end;
 
 begin
-  FDisplayType := ADisplayType;
-
-  case FDisplayType of
-    ctCode:
-      begin
-        FAssignedList.Assign(ItemList);
-        if FAssignedList.Count > 0 then
-        begin
-          FScrollBar.Visible := True;
-          RecalcFormPlacement;
-          CurrentString := ACurrentString;
-          Show;
-        end;
-      end;
-    ctHint:
-      begin
-        FScrollBar.Visible := False;
-        RecalcFormPlacement;
-        Show;
-      end;
+  FAssignedList.Assign(ItemList);
+  if FAssignedList.Count > 0 then
+  begin
+    FScrollBar.Visible := True;
+    RecalcFormPlacement;
+    CurrentString := ACurrentString;
+    Visible := True;
   end;
-  FNoNextKey := (FDisplayType = ctCode) and Visible;
+
+  FNoNextKey := Visible;
+end;
+
+procedure TBCEditorCompletionProposalForm.WMMouseActivate(var Msg: TMessage);
+begin
+  Msg.Result := MA_NOACTIVATE;
 end;
 
 procedure TBCEditorCompletionProposalForm.HandleOnCancel(Sender: TObject);
@@ -1012,20 +905,24 @@ procedure TBCEditorCompletionProposalForm.HandleOnValidate(Sender: TObject; Shif
 var
   Editor: TBCBaseEditor;
   Value: string;
+  LTextPosition: TBCEditorTextPosition;
 begin
+  if not Assigned(Owner) then
+    Exit;
   Editor := Owner as TBCBaseEditor;
   with Editor do
   begin
     BeginUpdate;
     BeginUndoBlock;
     try
+      LTextPosition := Editor.TextCaretPosition;
       if FAdjustCompletionStart then
-        FCompletionStart := GetTextPosition(FCompletionStart, CaretY).Char;
-      SelectionBeginPosition := GetTextPosition(FCompletionStart, CaretY);
+        FCompletionStart := GetTextPosition(FCompletionStart, LTextPosition.Line).Char;
+      SelectionBeginPosition := GetTextPosition(FCompletionStart, LTextPosition.Line);
       if EndToken = BCEDITOR_NONE_CHAR then
-        SelectionEndPosition := GetTextPosition(WordEnd.Char, CaretY)
+        SelectionEndPosition := GetTextPosition(WordEnd.Char, LTextPosition.Line)
       else
-        SelectionEndPosition := GetTextPosition(CaretX, CaretY);
+        SelectionEndPosition := LTextPosition;
 
       if FAssignedList.Count > Position then
         Value := FAssignedList[Position]
@@ -1041,8 +938,8 @@ begin
         if CanFocus then
           SetFocus;
         EnsureCursorPositionVisible;
-        CaretPosition := SelectionEndPosition;
-        SelectionBeginPosition := CaretPosition;
+        TextCaretPosition := SelectionEndPosition;
+        SelectionBeginPosition := TextCaretPosition;
       end;
     finally
       EndUndoBlock;
@@ -1098,7 +995,7 @@ begin
   Result := '';
   Editor := Owner as TBCBaseEditor;
   S := Editor.LineText;
-  i := Editor.CaretX - 1;
+  i := Editor.DisplayCaretX - 1;
   if i <= Length(S) then
   begin
     FAdjustCompletionStart := False;
@@ -1106,7 +1003,7 @@ begin
       Dec(i);
 
     FCompletionStart := i + 1;
-    Result := Copy(S, i + 1, Editor.CaretX - i - 1);
+    Result := Copy(S, i + 1, Editor.DisplayCaretX - i - 1);
   end
   else
     FAdjustCompletionStart := True;

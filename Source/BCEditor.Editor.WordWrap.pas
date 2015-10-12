@@ -3,11 +3,9 @@ unit BCEditor.Editor.WordWrap;
 interface
 
 uses
-  Classes, BCEditor.Editor.Glyph, Graphics, BCEditor.Editor.WordWrap.Colors;
+  Classes, BCEditor.Editor.Glyph, Graphics, BCEditor.Types, BCEditor.Editor.WordWrap.Colors;
 
 type
-  TBCEditorWordWrapStyle = (wwsClientWidth, wwsRightMargin, wwsSpecified);
-
   TBCEditorWordWrap = class(TPersistent)
   strict private
     FBitmap: Graphics.TBitmap;
@@ -91,7 +89,7 @@ begin
   FBitmap := Graphics.TBitmap.Create;
   with FBitmap do
   begin
-    Canvas.Brush.Color := FColors.Background;
+    Canvas.Brush.Color := clFuchsia;
     Width := 15;
     Height := 14;
     Canvas.Pen.Color := FColors.Arrow;
@@ -115,6 +113,7 @@ begin
     Canvas.MoveTo(2, 12);
     Canvas.LineTo(7, 12);
   end;
+  FIndicator.MaskColor := clFuchsia;
   FIndicator.Glyph.Handle := FBitmap.Handle;
 end;
 

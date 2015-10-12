@@ -3,17 +3,17 @@ unit BCEditor.Highlighter;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics,
-  BCEditor.Highlighter.Rules, BCEditor.Highlighter.Token,
+  Classes, SysUtils, Controls, Graphics, BCEditor.Highlighter.Rules, BCEditor.Highlighter.Token,
   BCEditor.Types, BCEditor.Highlighter.Attributes, BCEditor.Highlighter.Info, BCEditor.Editor.SkipRegions,
-  BCEditor.Highlighter.Colors, BCEditor.Editor.CodeFolding.FoldRegions;
+  BCEditor.Highlighter.Colors, BCEditor.Editor.CodeFolding.Regions;
 
 type
   TBCEditorHighlighter = class(TObject)
   strict private
     FAttributes: TStringList;
     FBeginningOfLine: Boolean;
-    FCodeFoldingRegions: TBCEditorCodeFoldingRegions;
+    FCodeFoldingRanges: TBCEditorCodeFoldingRanges;
+    FCodeFoldingRangeCount: Integer;
     FColors: TBCEditorHighlighterColors;
     FCompletionProposalSkipRegions: TBCEditorSkipRegions;
     FCurrentLine: PChar;
@@ -24,8 +24,10 @@ type
     FFileName: string;
     FInfo: TBCEditorHighlighterInfo;
     FLoading: Boolean;
+    FMatchingPairHighlight: Boolean;
     FMatchingPairs: TList;
     FMainRules: TBCEditorRange;
+    FMultiHighlighter: Boolean;
     FName: string;
     FPrepared: Boolean;
     FPreviousEndOfLine: Boolean;
@@ -42,6 +44,7 @@ type
     procedure Prepare;
     procedure Reset;
     procedure SetAttributesOnChange(AEvent: TNotifyEvent);
+    procedure SetCodeFoldingRangeCount(Value: Integer);
     procedure SetWordBreakChars(AChars: TBCEditorCharSet);
   public
     constructor Create(AOwner: TWinControl);
@@ -58,6 +61,7 @@ type
     procedure AddKeywords(var AStringList: TStringList);
     procedure Clear;
     procedure LoadFromFile(AFileName: string);
+    procedure LoadFromStream(AStream: TStream);
     procedure Next;
     procedure NextToEndOfLine;
     procedure ResetCurrentRange;
@@ -68,14 +72,17 @@ type
 
     property Attribute[Index: Integer]: TBCEditorHighlighterAttribute read GetAttribute;
     property Attributes: TStringList read FAttributes;
-    property CodeFoldingRegions: TBCEditorCodeFoldingRegions read FCodeFoldingRegions;
+    property CodeFoldingRanges: TBCEditorCodeFoldingRanges read FCodeFoldingRanges write FCodeFoldingRanges;
+    property CodeFoldingRangeCount: Integer read FCodeFoldingRangeCount write SetCodeFoldingRangeCount;
     property CompletionProposalSkipRegions: TBCEditorSkipRegions read FCompletionProposalSkipRegions write FCompletionProposalSkipRegions;
     property Editor: TWinControl read FEditor;
     property FileName: string read FFileName write FFileName;
     property Info: TBCEditorHighlighterInfo read FInfo write FInfo;
     property Loading: Boolean read FLoading write FLoading;
     property MainRules: TBCEditorRange read FMainRules;
+    property MatchingPairHighlight: Boolean read FMatchingPairHighlight write FMatchingPairHighlight default True;
     property MatchingPairs: TList read FMatchingPairs write FMatchingPairs;
+    property MultiHighlighter: Boolean read FMultiHighlighter write FMultiHighlighter;
     property Name: string read FName write FName;
     property Colors: TBCEditorHighlighterColors read FColors write FColors;
     property WordBreakChars: TBCEditorCharSet read FWordBreakChars write SetWordBreakChars;
@@ -89,7 +96,7 @@ type
 implementation
 
 uses
-  BCEditor.Highlighter.JSONImporter, Types, BCEditor.Consts, BCEditor.Editor.Base;
+  BCEditor.Highlighter.JSONImporter, Types, BCEditor.Consts, BCEditor.Editor.Base, IOUtils;
 
 { TBCEditorHighlighter }
 
@@ -114,7 +121,8 @@ begin
   FAttributes.Duplicates := dupIgnore;
   FAttributes.Sorted := False;
 
-  FCodeFoldingRegions := TBCEditorCodeFoldingRegions.Create(TBCEditorCodeFoldingRegionItem);
+  FCodeFoldingRangeCount := 0;
+
   FCompletionProposalSkipRegions := TBCEditorSkipRegions.Create(TBCEditorSkipRegionItem);
 
   FPrepared := False;
@@ -130,6 +138,7 @@ begin
 
   FColors := TBCEditorHighlighterColors.Create(Self);
   FMatchingPairs := TList.Create;
+  FMatchingPairHighlight := True;
 
   FTemporaryCurrentTokens := TList.Create;
 
@@ -146,8 +155,6 @@ begin
   FInfo := nil;
   FAttributes.Free;
   FAttributes := nil;
-  FCodeFoldingRegions.Free;
-  FCodeFoldingRegions := nil;
   FCompletionProposalSkipRegions.Free;
   FCompletionProposalSkipRegions := nil;
   FMatchingPairs.Free;
@@ -190,24 +197,10 @@ end;
 
 procedure TBCEditorHighlighter.Next;
 var
-  i: Integer;
+  i, j: Integer;
   LParser: TBCEditorAbstractParser;
   LKeyword: PChar;
   LCloseParent: Boolean;
-
-  procedure CheckAlternativeClose(AAlternativeClose: string);
-  begin
-    LKeyword := PChar(AAlternativeClose);
-    i := FRunPosition;
-    while (FCurrentLine[i] <> BCEDITOR_NONE_CHAR) and (FCurrentLine[i] = LKeyword^) do
-    begin
-      Inc(LKeyword);
-      Inc(i);
-    end;
-    if LKeyword^ = BCEDITOR_NONE_CHAR then
-      FCurrentRange := FCurrentRange.Parent;
-  end;
-
 begin
   while FTemporaryCurrentTokens.Count > 0 do
   begin
@@ -228,10 +221,24 @@ begin
 
   if Assigned(FCurrentRange) then
   begin
-    if FCurrentRange.AlternativeClose1 <> '' then
-      CheckAlternativeClose(FCurrentRange.AlternativeClose1);
-     if FCurrentRange.AlternativeClose2 <> '' then
-      CheckAlternativeClose(FCurrentRange.AlternativeClose2);
+    if FCurrentRange.AlternativeCloseArrayCount > 0 then
+    begin
+      for i := 0 to FCurrentRange.AlternativeCloseArrayCount - 1 do
+      begin
+        LKeyword := PChar(FCurrentRange.AlternativeCloseArray[i]);
+        j := FRunPosition;
+        while (FCurrentLine[j] <> BCEDITOR_NONE_CHAR) and (FCurrentLine[j] = LKeyword^) do
+        begin
+          Inc(LKeyword);
+          Inc(j);
+        end;
+        if LKeyword^ = BCEDITOR_NONE_CHAR then
+        begin
+          FCurrentRange := FCurrentRange.Parent;
+          Break;
+        end;
+      end;
+    end;
   end;
 
   FTokenPosition := FRunPosition;
@@ -333,6 +340,15 @@ begin
   FCurrentRange := MainRules;
 end;
 
+procedure TBCEditorHighlighter.SetCodeFoldingRangeCount(Value: Integer);
+begin
+  if Value <> FCodeFoldingRangeCount then
+  begin
+    SetLength(FCodeFoldingRanges, Value);
+    FCodeFoldingRangeCount := Value;
+  end;
+end;
+
 procedure TBCEditorHighlighter.SetCurrentRange(Value: Pointer);
 begin
   FCurrentRange := TBCEditorRange(Value);
@@ -369,7 +385,7 @@ begin
     LToken := GetToken;
     for i := 0 to FCurrentRange.KeyListCount - 1 do
       for j := 0 to FCurrentRange.KeyList[i].KeyList.Count - 1 do
-      if FCurrentRange.KeyList[i].KeyList[j] = LToken then
+      if FCurrentRange.KeyList[i].KeyList[j]=LToken then
       begin
         Result := Integer(FCurrentRange.KeyList[i].TokenType);
         Exit;
@@ -393,8 +409,12 @@ begin
   for i := FMatchingPairs.Count - 1 downto 0 do
     Dispose(PBCEditorMatchingPairToken(FMatchingPairs.Items[i]));
   FMatchingPairs.Clear;
-  FCodeFoldingRegions.SkipRegions.Clear;
-  FCodeFoldingRegions.Clear;
+  for i := 0 to FCodeFoldingRangeCount - 1 do
+  begin
+    FCodeFoldingRanges[i].Free;
+    FCodeFoldingRanges[i] := nil;
+  end;
+  CodeFoldingRangeCount := 0;
   (Editor as TBCBaseEditor).ClearMatchingPair;
 end;
 
@@ -402,7 +422,7 @@ procedure TBCEditorHighlighter.Prepare;
 begin
   FAttributes.Clear;
   AddAllAttributes(MainRules);
- // FMainRules.Prepare(FMainRules);
+  FMainRules.Prepare(FMainRules);
 end;
 
 procedure TBCEditorHighlighter.UpdateAttributes(ARange: TBCEditorRange; AParentRange: TBCEditorRange);
@@ -450,34 +470,57 @@ procedure TBCEditorHighlighter.LoadFromFile(AFileName: string);
 var
   LStream: TStream;
   LEditor: TBCBaseEditor;
-  LTempLines: TStringList;
-  LTopLine: Integer;
 begin
-  FLoading := True;
   FFileName := AFileName;
-  FName := ExtractFileName(AFileName);
-  FName := Copy(FName, 1, Pos('.', FName) - 1);
+  FName := TPath.GetFileNameWithoutExtension(AFileName);
   LEditor := FEditor as TBCBaseEditor;
   if Assigned(LEditor) then
   begin
-    LTempLines := TStringList.Create;
     LStream := LEditor.CreateFileStream(LEditor.GetHighlighterFileName(AFileName));
     try
-      LTopLine := LEditor.TopLine;
-      LTempLines.Assign(LEditor.Lines);
-      LEditor.Lines.Clear;
-      LEditor.ClearCodeFolding;
+      LoadFromStream(LStream);
+    finally
+      LStream.Free;
+    end;
+  end;
+end;
+
+procedure TBCEditorHighlighter.LoadFromStream(AStream: TStream);
+var
+  LEditor: TBCBaseEditor;
+  LTempLines: TStringList;
+  LTopLine: Integer;
+  LCaretPosition: TBCEditorTextPosition;
+begin
+  FLoading := True;
+  LEditor := FEditor as TBCBaseEditor;
+  LTopLine := 0;
+  if Assigned(LEditor) then
+  begin
+    LTempLines := TStringList.Create;
+    try
+      if LEditor.Visible then
+        LCaretPosition := LEditor.TextCaretPosition;
+      if LEditor.Lines.Count <> 0 then
+      begin
+        LTopLine := LEditor.TopLine;
+        LTempLines.Text := LEditor.Lines.Text;
+        LEditor.Lines.Clear;
+      end;
       with TBCEditorHighlighterJSONImporter.Create(Self) do
       try
-        ImportFromStream(LStream);
+        ImportFromStream(AStream);
       finally
         Free;
       end;
-      LEditor.Lines.Assign(LTempLines);
-      LEditor.TopLine := LTopLine;
-      LEditor.InitCodeFolding;
+      if LTempLines.Count <> 0 then
+      begin
+        LEditor.Lines.Text := LTempLines.Text;
+        LEditor.TopLine := LTopLine;
+      end;
+      if LEditor.Visible then
+        LEditor.TextCaretPosition := LCaretPosition;
     finally
-      LStream.Free;
       LTempLines.Free;
     end;
     UpdateColors;

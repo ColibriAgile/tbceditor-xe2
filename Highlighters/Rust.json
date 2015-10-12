@@ -3,13 +3,13 @@
       "Info":{
          "General":{
             "Version":"1.0",
-            "Date":"29.8.2015",
+            "Date":"6.10.2015",
             "Sample":[
-               "#!/usr/bin/ruby -w\r\n",
+               "// Hello World in Rust\r\n",
                "\r\n",
-               "# This is a single line comment.\r\n",
-               "\r\n",
-               "puts \"Hello, Ruby!\""
+               "fn main() {\r\n",
+               "    println!(\"Hello, world!\");\r\n",
+               "}"
             ]
          },
          "Author":{
@@ -29,70 +29,11 @@
                      "Element":"Comment",
                      "ParentBackground":true
                   },
-                  "TokenRange":{
-                     "Open":"=begin",
-                     "Close":"=end"
-                  }
-               },
-               {
-                  "Type":"Comment",
-                  "Attributes":{
-                     "Element":"Comment",
-                     "ParentBackground":true
-                  },
                   "Properties":{
                      "CloseOnEndOfLine":true
                   },
                   "TokenRange":{
-                     "Open":"#"
-                  }
-               },
-               {
-                  "Type":"String",
-                  "Attributes":{
-                     "Element":"String",
-                     "ParentBackground":true
-                  },
-                  "Properties":{
-                     "CloseOnEndOfLine":true
-                  },
-                  "TokenRange":{
-                     "Open":"'",
-                     "Close":"'"
-                  },
-                  "SubRules":{
-                     "Range":[
-                        {
-                           "Type":"String",
-                           "Attributes":{
-                              "Element":"String",
-                              "ParentBackground":true
-                           },
-                           "Properties":{
-                              "CloseOnEndOfLine":true,
-                              "CloseOnTerm":true
-                           },
-                           "TokenRange":{
-                              "Open":"\\'",
-                              "Close":""
-                           }
-                        },
-                        {
-                           "Type":"String",
-                           "Attributes":{
-                              "Element":"String",
-                              "ParentBackground":true
-                           },
-                           "Properties":{
-                              "CloseOnEndOfLine":true,
-                              "CloseOnTerm":true
-                           },
-                           "TokenRange":{
-                              "Open":"\\\\",
-                              "Close":""
-                           }
-                        }
-                     ]
+                     "Open":"//"
                   }
                },
                {
@@ -153,7 +94,7 @@
                      "CloseOnEndOfLine":true
                   },
                   "TokenRange":{
-                     "Open":"#!"
+                     "Open":"#"
                   }
                },
                {
@@ -174,45 +115,59 @@
             ],
             "KeyList":[
                {
+                  "Name":"Keywords",
                   "Type":"ReservedWord",
                   "Words":[
-                     "__encoding__",
-                     "__line__",
-                     "__file__",
-                     "alias",
-                     "and",
+                     "abstract",
+                     "alignof",
+                     "as",
+                     "become",
+                     "box",
                      "break",
-                     "case",
-                     "class",
-                     "def",
-                     "defined?",
+                     "const",
+                     "continue",
+                     "crate",
                      "do",
                      "else",
-                     "elseif",
-                     "end",
-                     "ensure",
+                     "enum",
+                     "extern",
                      "false",
+                     "final",
+                     "fn",
                      "for",
                      "if",
+                     "impl",
                      "in",
-                     "module",
-                     "next",
-                     "nil",
-                     "not",
-                     "or",
-                     "redo",
-                     "rescue",
-                     "retry",
+                     "let",
+                     "loop",
+                     "macro",
+                     "match",
+                     "mod",
+                     "move",
+                     "mut",
+                     "offsetof",
+                     "override",
+                     "priv",
+                     "proc",
+                     "pub",
+                     "pure",
+                     "ref",
                      "return",
                      "self",
+                     "sizeof",
+                     "static",
+                     "struct",
                      "super",
-                     "then",
+                     "trait",
                      "true",
-                     "undef",
-                     "unless",
-                     "until",
-                     "when",
-                     "whilte",
+                     "type",
+                     "typeof",
+                     "unsafe",
+                     "unsized",
+                     "use",
+                     "virtual",
+                     "where",
+                     "while",
                      "yield"
                   ],
                   "Attributes":{
@@ -223,13 +178,16 @@
                {
                   "Type":"Symbol",
                   "Words":[
-                     "..",
                      ":",
                      ";",
                      "<",
                      ">",
                      "=",
                      "/",
+                     "%",
+                     "&",
+                     "|",
+                     "^",
                      "*",
                      ".",
                      ",",
@@ -272,35 +230,24 @@
    "CodeFolding":{
       "Ranges":[
          {
+            "Options":{
+               "StringEscapeChar":"\\"
+            },
             "SkipRegion":[
-               {
-                  "OpenToken":"'",
-                  "CloseToken":"'",
-                  "RegionType":"String"
-               },
                {
                   "OpenToken":"\"",
                   "CloseToken":"\"",
                   "RegionType":"String"
                },
                {
-                  "OpenToken":"#",
+                  "OpenToken":"//",
                   "RegionType":"SingleLine"
-               },
-               {
-                  "OpenToken":"=BEGIN",
-                  "CloseToken":"=END",
-                  "RegionType":"MultiLine"
                }
             ],
             "FoldRegion":[
                {
                   "OpenToken":"{",
                   "CloseToken":"}"
-               },
-               {
-                  "OpenToken":"DEF",
-                  "CloseToken":"END"
                }
             ]
          }
@@ -325,23 +272,13 @@
    "CompletionProposal":{
       "SkipRegion":[
          {
-            "OpenToken":"'",
-            "CloseToken":"'",
-            "RegionType":"String"
-         },
-         {
             "OpenToken":"\"",
             "CloseToken":"\"",
             "RegionType":"String"
          },
          {
-            "OpenToken":"#",
+            "OpenToken":"//",
             "RegionType":"SingleLine"
-         },
-         {
-            "OpenToken":"=begin",
-            "CloseToken":"=end",
-            "RegionType":"MultiLine"
          }
       ]
    }

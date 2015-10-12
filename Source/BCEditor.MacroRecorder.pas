@@ -3,13 +3,11 @@ unit BCEditor.MacroRecorder;
 interface
 
 uses
-  Windows, WideStrUtils, Classes, Controls, Graphics, Menus,
-  BCEditor.Language,
-  BCEditor.Editor.Base, BCEditor.Editor.KeyCommands, BCEditor.Types;
+  Windows, WideStrUtils, Classes, Controls, Graphics, BCEditor.Language,
+  Menus, BCEditor.Editor.Base, BCEditor.Editor.KeyCommands, BCEditor.Types;
 
 type
   TBCEditorMacroState = (msStopped, msRecording, msPlaying, msPaused);
-  TBCEditorMacroCommand = (mcRecord, mcPlayback);
 
   TBCEditorMacroEvent = class(TObject)
   protected
@@ -100,7 +98,8 @@ type
 
   TBCBaseEditorMacroRecorder = class(TComponent)
   strict private
-    FShortCuts: array [TBCEditorMacroCommand] of TShortCut;
+    FPlaybackShortCut: TShortCut;
+    FRecordShortCut: TShortCut;
     FOnStateChange: TNotifyEvent;
     FOnUserCommand: TBCEditorUserCommandEvent;
     FMacroName: string;
@@ -118,9 +117,11 @@ type
     FCurrentEditor: TBCBaseEditor;
     FState: TBCEditorMacroState;
     FEvents: TList;
-    FCommandIDs: array [TBCEditorMacroCommand] of TBCEditorCommand;
+    FRecordCommandID: TBCEditorCommand;
+    FPlaybackCommandID: TBCEditorCommand;
     procedure Notification(aComponent: TComponent; aOperation: TOperation); override;
-    procedure SetShortCut(const Index: Integer; const Value: TShortCut);
+    procedure SetRecordShortCut(const Value: TShortCut);
+    procedure SetPlaybackShortCut(const Value: TShortCut);
     function GetIsEmpty: Boolean;
     procedure StateChanged;
     procedure DoAddEditor(AEditor: TBCBaseEditor);
@@ -129,8 +130,8 @@ type
       var AChar: Char; Data: Pointer; HandlerData: Pointer);
     function CreateMacroEvent(ACommand: TBCEditorCommand): TBCEditorMacroEvent;
   protected
-    property RecordCommandID: TBCEditorCommand read FCommandIDs[mcRecord];
-    property PlaybackCommandID: TBCEditorCommand read FCommandIDs[mcPlayback];
+    property RecordCommandID: TBCEditorCommand read FRecordCommandID;
+    property PlaybackCommandID: TBCEditorCommand read FPlaybackCommandID;
     procedure HookEditor(AEditor: TBCBaseEditor; ACommandID: TBCEditorCommand; AOldShortCut, ANewShortCut: TShortCut);
     procedure UnHookEditor(AEditor: TBCBaseEditor; ACommandID: TBCEditorCommand; AShortCut: TShortCut);
   public
@@ -160,8 +161,8 @@ type
     property EditorCount: Integer read GetEditorCount;
     property EventCount: Integer read GetEventCount;
     property Events[AIndex: Integer]: TBCEditorMacroEvent read GetEvent;
-    property RecordShortCut: TShortCut index Ord(mcRecord)read FShortCuts[mcRecord] write SetShortCut;
-    property PlaybackShortCut: TShortCut index Ord(mcPlayback)read FShortCuts[mcPlayback] write SetShortCut;
+    property RecordShortCut: TShortCut read FRecordShortCut write SetRecordShortCut;
+    property PlaybackShortCut: TShortCut read FPlaybackShortCut write SetPlaybackShortCut;
     property SaveMarkerPos: Boolean read FSaveMarkerPos write FSaveMarkerPos default False;
     property AsString: string read GetAsString write SetAsString;
     property MacroName: string read FMacroName write FMacroName;
@@ -271,10 +272,10 @@ constructor TBCBaseEditorMacroRecorder.Create(AOwner: TComponent);
 begin
   inherited;
   FMacroName := 'unnamed';
-  FCommandIDs[mcRecord] := NewPluginCommand;
-  FCommandIDs[mcPlayback] := NewPluginCommand;
-  FShortCuts[mcRecord] := Menus.ShortCut(Ord('R'), [ssCtrl, ssShift]);
-  FShortCuts[mcPlayback] := Menus.ShortCut(Ord('P'), [ssCtrl, ssShift]);
+  FRecordCommandID := NewPluginCommand;
+  FPlaybackCommandID := NewPluginCommand;
+  FRecordShortCut := Menus.ShortCut(Ord('R'), [ssCtrl, ssShift]);
+  FPlaybackShortCut := Menus.ShortCut(Ord('P'), [ssCtrl, ssShift]);
 end;
 
 function TBCBaseEditorMacroRecorder.CreateMacroEvent(ACommand: TBCEditorCommand): TBCEditorMacroEvent;
@@ -325,7 +326,7 @@ end;
 
 procedure ReleasePluginCommand(ACommand: TBCEditorCommand);
 begin
-  if ACommand = Pred(GCurrentCommand) then
+  if ACommand = GCurrentCommand - 1 then
     GCurrentCommand := ACommand;
 end;
 
@@ -476,7 +477,7 @@ begin
       LEvent.Initialize(Command, AChar, Data);
       FEvents.Add(LEvent);
       if SaveMarkerPos and (Command >= ecSetBookmark1) and (Command <= ecSetBookmark9) and not Assigned(Data) then
-        TBCEditorPositionEvent(LEvent).Position := FCurrentEditor.CaretPosition;
+        TBCEditorPositionEvent(LEvent).Position := FCurrentEditor.TextCaretPosition;
     end;
   end
   else
@@ -598,22 +599,37 @@ begin
     Events[i].SaveToStream(ADestination);
 end;
 
-procedure TBCBaseEditorMacroRecorder.SetShortCut(const Index: Integer; const Value: TShortCut);
+procedure TBCBaseEditorMacroRecorder.SetRecordShortCut(const Value: TShortCut);
 var
   i: Integer;
 begin
-  if FShortCuts[TBCEditorMacroCommand(index)] <> Value then
+  if FRecordShortCut <> Value then
   begin
     if Assigned(FEditors) then
       if Value <> 0 then
       for i := 0 to FEditors.Count - 1 do
-        HookEditor(Editors[i], FCommandIDs[TBCEditorMacroCommand(index)],
-          FShortCuts[TBCEditorMacroCommand(index)], Value)
+        HookEditor(Editors[i], FRecordCommandID, FRecordShortCut, Value)
       else
       for i := 0 to FEditors.Count - 1 do
-        UnHookEditor(Editors[i], FCommandIDs[TBCEditorMacroCommand(index)],
-          FShortCuts[TBCEditorMacroCommand(index)]);
-    FShortCuts[TBCEditorMacroCommand(index)] := Value;
+        UnHookEditor(Editors[i], FRecordCommandID, FRecordShortCut);
+    FRecordShortCut := Value;
+  end;
+end;
+
+procedure TBCBaseEditorMacroRecorder.SetPlaybackShortCut(const Value: TShortCut);
+var
+  i: Integer;
+begin
+  if FPlaybackShortCut <> Value then
+  begin
+    if Assigned(FEditors) then
+      if Value <> 0 then
+      for i := 0 to FEditors.Count - 1 do
+        HookEditor(Editors[i], FPlaybackCommandID, FPlaybackShortCut, Value)
+      else
+      for i := 0 to FEditors.Count - 1 do
+        UnHookEditor(Editors[i], FPlaybackCommandID, FPlaybackShortCut);
+    FPlaybackShortCut := Value;
   end;
 end;
 
@@ -742,7 +758,7 @@ begin
       end;
     end;
   end;
-  KeyCommand := TBCBaseEditor(AEditor).KeyCommands.Add;
+  KeyCommand := TBCBaseEditor(AEditor).KeyCommands.NewItem;
   try
     KeyCommand.ShortCut := ANewShortCut;
   except

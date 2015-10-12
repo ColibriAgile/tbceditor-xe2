@@ -3,7 +3,7 @@
       "Info":{
          "General":{
             "Version":"1.0",
-            "Date":"28.6.2015"
+            "Date":"30.9.2015"
          },
          "Author":{
             "Name":"Lasse Rautiainen",
@@ -23,7 +23,7 @@
             "CodeFoldingIndentHighlight":"$00414746",
             "CodeFoldingHintBackground":"$00222827",
             "CodeFoldingHintBorder":"$00414746",
-            "CodeFoldingHintText":"clNone",
+            "CodeFoldingHintText":"$00F8F8F2",
             "CompletionProposalBackground":"$00222827",
             "CompletionProposalForeground":"clNone",
             "CompletionProposalBorder":"$00414746",
@@ -40,6 +40,7 @@
             "MatchingPairMatched":"$007226F9",
             "MatchingPairUnderline":"$00414746",
             "MatchingPairUnmatched":"clYellow",
+            "MinimapBookmark":"$005E7175",
             "MinimapVisibleLines":"$003E4849",
             "RightMargin":"clSilver",
             "RightMovingEdge":"clSilver",
@@ -50,7 +51,6 @@
             "SearchMapForeground":"$0078AAFF",
             "SelectionBackground":"$003E4849",
             "SelectionForeground":"clNone",
-            "WordWrapIndicatorBackground": "$00222827",
             "WordWrapIndicatorArrow": "$00F8F8F2",
             "WordWrapIndicatorLines": "$007226F9"
          },
@@ -118,7 +118,12 @@
          },
          {
             "Name":"HighlightedBlock",
-            "Foreground":"$00F8F8F2",
+            "Foreground":"$00EFD966",
+            "Background":"$00222827"
+         },
+         {
+            "Name":"HighlightedBlockSymbol",
+            "Foreground":"$00F2F8F8",
             "Background":"$00222827"
          },
          {
@@ -134,7 +139,7 @@
          },
          {
             "Name":"Attribute",
-            "Foreground":"$00EFD966",
+            "Foreground":"$002AE27F",
             "Background":"$00222827"
          },
          {
