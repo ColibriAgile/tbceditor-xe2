@@ -104,7 +104,8 @@
                {
                   "Type":"String",
                   "Attributes":{
-                     "Element":"Method"
+                     "Element":"Method",
+                     "ParentBackground":true
                   },
                   "TokenRange":{
                      "Open":"{",
@@ -126,7 +127,8 @@
                         {
                            "Type":"String",
                            "Attributes":{
-                              "Element":"String"
+                              "Element":"String",
+                              "ParentBackground":true
                            },
                            "Properties":{
                               "AlternativeClose":[

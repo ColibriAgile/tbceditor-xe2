@@ -428,8 +428,7 @@
 							"xor"
                         ],
                         "Attributes": {
-                            "Element": "ReservedWord",
-                            "ParentBackground": true
+                            "Element": "ReservedWord"
                         }
                     },
                     {
@@ -467,8 +466,7 @@
                             "]"
                         ],
                         "Attributes": {
-                            "Element": "Symbol",
-                            "ParentBackground": true
+                            "Element": "Symbol"
                         }
                     }
                 ],

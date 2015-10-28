@@ -5,19 +5,18 @@ interface
 uses
   Windows, Math, Classes, Graphics, Dialogs, BCEditor.Consts, BCEditor.Types;
 
-  function CeilOfIntDiv(ADividend: Cardinal; ADivisor: Word): Word;
-  function DeleteWhiteSpace(const AStr: string): string;
-  function GetTabConvertProc(TabWidth: Integer): TBCEditorTabConvertProc;
-  function GetTextSize(AHandle: HDC; AText: PChar; ACount: Integer): TSize;
-  function MessageDialog(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): Integer;
-  function MinMax(Value, MinValue, MaxValue: Integer): Integer;
-  function RoundCorrect(Value: Real): LongInt;
-  function TextExtent(ACanvas: TCanvas; const Text: string): TSize;
-  function TextWidth(ACanvas: TCanvas; const Text: string): Integer;
-  function TextHeight(ACanvas: TCanvas; const Text: string): Integer;
-  procedure ClearList(var List: TList);
-  procedure FreeList(var List: TList);
-  procedure TextOut(ACanvas: TCanvas; X, Y: Integer; const Text: string);
+function CeilOfIntDiv(ADividend: Cardinal; ADivisor: Word): Word;
+function DeleteWhiteSpace(const AStr: string): string;
+function GetTabConvertProc(TabWidth: Integer): TBCEditorTabConvertProc;
+function GetTextSize(AHandle: HDC; AText: PChar; ACount: Integer): TSize;
+function MessageDialog(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): Integer;
+function MinMax(Value, MinValue, MaxValue: Integer): Integer;
+function RoundCorrect(Value: Real): LongInt;
+function TextExtent(ACanvas: TCanvas; const Text: string): TSize;
+function TextWidth(ACanvas: TCanvas; const Text: string): Integer;
+function TextHeight(ACanvas: TCanvas; const Text: string): Integer;
+procedure ClearList(var List: TList);
+procedure FreeList(var List: TList);
 
 implementation
 
@@ -50,11 +49,11 @@ begin
   if not Assigned(List) then
     Exit;
   for i := 0 to List.Count - 1 do
-  if Assigned(List[i]) then
-  begin
-    TObject(List[i]).Free;
-    List[i] := nil;
-  end;
+    if Assigned(List[i]) then
+    begin
+      TObject(List[i]).Free;
+      List[i] := nil;
+    end;
   List.Clear;
 end;
 
@@ -67,7 +66,7 @@ begin
   for i := 1 to Length(AStr) do
     if not TCharacter.IsWhiteSpace(AStr[i]) then
     begin
-      inc(j);
+      Inc(j);
       Result[j] := AStr[i];
     end;
   SetLength(Result, j);
@@ -76,14 +75,14 @@ end;
 function MessageDialog(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): Integer;
 begin
   with CreateMessageDialog(Msg, DlgType, Buttons) do
-  try
-    HelpContext := 0;
-    HelpFile := '';
-    Position := poMainFormCenter;
-    Result := ShowModal;
-  finally
-    Free;
-  end;
+    try
+      HelpContext := 0;
+      HelpFile := '';
+      Position := poMainFormCenter;
+      Result := ShowModal;
+    finally
+      Free;
+    end;
 end;
 
 function MinMax(Value, MinValue, MaxValue: Integer): Integer;
@@ -201,7 +200,7 @@ end;  }
 
 function RoundCorrect(Value: Real): LongInt;
 begin
-  Result:= Trunc(Value);
+  Result := Trunc(Value);
   if Frac(Value) >= 0.5 then
     Result := Result + 1;
 end;

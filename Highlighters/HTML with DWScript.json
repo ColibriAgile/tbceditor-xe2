@@ -93,7 +93,7 @@
 							"Element": "EditorGreen"
 						},
 						"Properties": {
-							"AlternativeClose": "/>"
+							"AlternativeClose": ["/>"]
 						},
 						"TokenRange": {
 							"Open": "<script",

@@ -41,7 +41,7 @@ const
 //
 constructor TBCEditorLinesMap.Create(editor : TBCBaseEditor);
 var
-   i, j, k : Integer;
+   i, j : Integer;
    codeFoldingRange : TBCEditorCodeFoldingRange;
 begin
    inherited Create;
@@ -51,7 +51,7 @@ begin
 
    j := 0;
    for i := 0 to editor.Lines.Count - 1 do begin
-      codeFoldingRange := nil;
+//      codeFoldingRange := nil;
       while j < editor.AllCodeFoldingRanges.AllCount do begin
          codeFoldingRange := editor.AllCodeFoldingRanges[j];
          if Assigned(codeFoldingRange) and not codeFoldingRange.Collapsed then begin

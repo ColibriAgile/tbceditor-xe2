@@ -1,0 +1,131 @@
+unit BCEditor.Editor.PopupWindow;
+
+interface
+
+uses
+  Messages, Classes, Types, Controls;
+
+type
+  TBCEditorPopupWindow = class(TCustomControl)
+  private
+    FEditor: TWinControl;
+    procedure WMEraseBkgnd(var Msg: TMessage); message WM_ERASEBKGND;
+    procedure WMMouseActivate(var Msg: TMessage); message WM_MOUSEACTIVATE;
+{$IFDEF USE_VCL_STYLES}
+    procedure WMNCPaint(var Message: TWMNCPaint); message WM_NCPAINT;
+{$ENDIF}
+  protected
+    FActiveControl: TWinControl;
+    FIsFocusable: Boolean;
+    procedure CreateParams(var Params: TCreateParams); override;
+    procedure InvalidateEditor;
+  public
+    constructor Create(AOwner: TComponent); override;
+    function GetPopupText: string; virtual;
+    procedure Hide;
+    procedure Show(Origin: TPoint); virtual;
+    property ActiveControl: TWinControl read FActiveControl;
+    property IsFocusable: Boolean read FIsFocusable;
+  end;
+
+implementation
+
+uses
+  Windows, SysUtils;
+
+constructor TBCEditorPopupWindow.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+
+  FEditor := AOwner as TWinControl;
+  ControlStyle := ControlStyle + [csNoDesignVisible, csReplicatable];
+
+  if not(csDesigning in ComponentState) then
+    ControlStyle := ControlStyle + [csAcceptsControls];
+
+  Ctl3D := False;
+  ParentCtl3D := False;
+  Parent := FEditor;
+  Visible := False;
+end;
+
+procedure TBCEditorPopupWindow.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+
+  Params.Style := WS_POPUP or WS_BORDER;
+end;
+
+function TBCEditorPopupWindow.GetPopupText: string;
+begin
+  Result := '';
+end;
+
+procedure TBCEditorPopupWindow.Hide;
+begin
+  SetWindowPos(Handle, 0, 0, 0, 0, 0, SWP_NOZORDER or SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE or SWP_HIDEWINDOW);
+  Visible := False;
+end;
+
+procedure TBCEditorPopupWindow.InvalidateEditor;
+var
+  R: TRect;
+begin
+  R := FEditor.ClientRect;
+  Windows.InvalidateRect(FEditor.Handle, @R, False);
+  UpdateWindow(FEditor.Handle);
+end;
+
+procedure TBCEditorPopupWindow.Show(Origin: TPoint);
+begin
+  SetBounds(Origin.X, Origin.Y, Width, Height);
+  SetWindowPos(Handle, HWND_TOP, Origin.X, Origin.Y, 0, 0, SWP_NOACTIVATE or SWP_SHOWWINDOW or SWP_NOSIZE);
+  Visible := True;
+end;
+
+procedure TBCEditorPopupWindow.WMMouseActivate(var Msg: TMessage);
+begin
+  if FIsFocusable then
+    inherited
+  else
+    Msg.Result := MA_NOACTIVATE;
+end;
+
+procedure TBCEditorPopupWindow.WMEraseBkgnd(var Msg: TMessage);
+begin
+  Msg.Result := -1;
+end;
+
+{$IFDEF USE_VCL_STYLES}
+procedure TBCEditorPopupWindow.WMNCPaint(var Message: TWMNCPaint);
+var
+  LRect: TRect;
+  LExStyle: Integer;
+  LTempRgn: HRGN;
+  LBorderWidth, LBorderHeight: Integer;
+begin
+  if StyleServices.Enabled then
+  begin
+    LExStyle := GetWindowLong(Handle, GWL_EXSTYLE);
+    if (LExStyle and WS_EX_CLIENTEDGE) <> 0 then
+    begin
+      GetWindowRect(Handle, LRect);
+      LBorderWidth := GetSystemMetrics(SM_CXEDGE);
+      LBorderHeight := GetSystemMetrics(SM_CYEDGE);
+      InflateRect(LRect, -LBorderWidth, -LBorderHeight);
+      LTempRgn := CreateRectRgnIndirect(LRect);
+      DefWindowProc(Handle, Message.Msg, wParam(LTempRgn), 0);
+      DeleteObject(LTempRgn);
+    end
+    else
+      DefaultHandler(Message);
+  end
+  else
+    DefaultHandler(Message);
+
+  if StyleServices.Enabled then
+    StyleServices.PaintBorder(Self, False);
+end;
+{$ENDIF}
+
+end.

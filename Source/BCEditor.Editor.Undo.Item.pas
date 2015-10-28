@@ -11,10 +11,9 @@ type
     FChangeCaretPosition: TBCEditorTextPosition;
     FChangeData: Pointer;
     FChangeEndPosition: TBCEditorTextPosition;
-    FChangeNumber: Integer;
     FChangeReason: TBCEditorChangeReason;
     FChangeSelectionMode: TBCEditorSelectionMode;
-    FChangeStartPosition: TBCEditorTextPosition;
+    FChangeBeginPosition: TBCEditorTextPosition;
     FChangeString: string;
   public
     procedure Assign(Source: TPersistent); override;
@@ -22,10 +21,9 @@ type
     property ChangeCaretPosition: TBCEditorTextPosition read FChangeCaretPosition write FChangeCaretPosition;
     property ChangeData: Pointer read FChangeData write FChangeData;
     property ChangeEndPosition: TBCEditorTextPosition read FChangeEndPosition write FChangeEndPosition;
-    property ChangeNumber: Integer read FChangeNumber write FChangeNumber;
     property ChangeReason: TBCEditorChangeReason read FChangeReason write FChangeReason;
     property ChangeSelectionMode: TBCEditorSelectionMode read FChangeSelectionMode write FChangeSelectionMode;
-    property ChangeStartPosition: TBCEditorTextPosition read FChangeStartPosition write FChangeStartPosition;
+    property ChangeBeginPosition: TBCEditorTextPosition read FChangeBeginPosition write FChangeBeginPosition;
     property ChangeString: string read FChangeString write FChangeString;
   end;
 
@@ -40,10 +38,9 @@ begin
   begin
     Self.FChangeReason := FChangeReason;
     Self.FChangeSelectionMode := FChangeSelectionMode;
-    Self.FChangeStartPosition := FChangeStartPosition;
+    Self.FChangeBeginPosition := FChangeBeginPosition;
     Self.FChangeEndPosition := FChangeEndPosition;
     Self.FChangeString := FChangeString;
-    Self.FChangeNumber := FChangeNumber;
   end
   else
     inherited Assign(Source);

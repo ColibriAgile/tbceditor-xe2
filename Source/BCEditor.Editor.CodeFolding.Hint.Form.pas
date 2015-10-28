@@ -3,9 +3,9 @@ unit BCEditor.Editor.CodeFolding.Hint.Form;
 interface
 
 uses
-  Windows, Messages, Classes, Types, StdCtrls, Forms, Controls, Graphics;
+  Windows, Messages, Classes, Types, Forms, Controls, Graphics;
 
-type
+type
   TBCEditorCodeFoldingHintForm = class(TCustomForm)
   strict private
     FBackgroundColor: TColor;
@@ -57,9 +57,9 @@ implementation
 
 uses
   SysUtils, BCEditor.Editor.Base, BCEditor.Editor.KeyCommands, BCEditor.Utils,
-  BCEditor.Editor.Utils, BCEditor.Consts, Math{$IFDEF USE_ALPHASKINS}, sSkinProvider, sMessages{$ENDIF};
+  BCEditor.Consts, Math{$IFDEF USE_ALPHASKINS}, sSkinProvider, sMessages{$ENDIF};
 
-{ TBCEditorCodeFoldingHintForm }
+{ TBCEditorCodeFoldingHintForm }
 
 constructor TBCEditorCodeFoldingHintForm.Create(AOwner: TComponent);
 {$IFDEF USE_ALPHASKINS}
@@ -193,7 +193,7 @@ begin
   FBufferBitmap.Canvas.Rectangle(TmpRect);
 
   for i := 0 to FItemList.Count - 1 do
-    BCEditor.Utils.TextOut(FBufferBitmap.Canvas, FMargin + 1, FEffectiveItemHeight * i + FMargin, FItemList[i]);
+    FBufferBitmap.Canvas.TextOut(FMargin + 1, FEffectiveItemHeight * i + FMargin, FItemList[i]);
 
   Canvas.Draw(0, 0, FBufferBitmap);
 end;
