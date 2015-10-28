@@ -11,7 +11,6 @@ function GetTabConvertProc(TabWidth: Integer): TBCEditorTabConvertProc;
 function GetTextSize(AHandle: HDC; AText: PChar; ACount: Integer): TSize;
 function MessageDialog(const Msg: string; DlgType: TMsgDlgType; Buttons: TMsgDlgButtons): Integer;
 function MinMax(Value, MinValue, MaxValue: Integer): Integer;
-function RoundCorrect(Value: Real): LongInt;
 function TextExtent(ACanvas: TCanvas; const Text: string): TSize;
 function TextWidth(ACanvas: TCanvas; const Text: string): Integer;
 function TextHeight(ACanvas: TCanvas; const Text: string): Integer;
@@ -160,49 +159,6 @@ end;
 function TextHeight(ACanvas: TCanvas; const Text: string): Integer;
 begin
   Result := TextExtent(ACanvas, Text).cy;
-end;
-
-procedure TextOut(ACanvas: TCanvas; x, Y: Integer; const Text: string);
-begin
-  with TAccessCanvas(ACanvas) do
-  begin
-    Changing;
-    RequiredState([csHandleValid, csFontValid, csBrushValid]);
-    if CanvasOrientation = coRightToLeft then
-      Inc(x, BCEditor.Utils.TextWidth(ACanvas, Text) + 1);
-    Windows.ExtTextOut(Handle, x, Y, TextFlags, nil, PChar(Text), Length(Text), nil);
-    MoveTo(x + BCEditor.Utils.TextWidth(ACanvas, Text), Y);
-    Changed;
-  end;
-end;
-
-{procedure TextRect(ACanvas: TCanvas; Rect: TRect; X, Y: Integer; const Text: string);
-var
-  Options: Longint;
-begin
-  with TAccessCanvas(ACanvas) do
-  begin
-    Changing;
-    RequiredState([csHandleValid, csFontValid, csBrushValid]);
-    Options := ETO_CLIPPED or TextFlags;
-    if Brush.Style <> bsClear then
-      Options := Options or ETO_OPAQUE;
-    if ((TextFlags and ETO_RTLREADING) <> 0) and (CanvasOrientation = coRightToLeft) then
-      Inc(X, BCEditor.Utils.TextWidth(ACanvas, Text) + 1);
-<<<<<<< HEAD
-    Windows.ExtTextOutW(Handle, X, Y, Options, @Rect, PChar(Text), Length(Text), nil);
-=======
-    Winapi.Windows.ExtTextOut(Handle, X, Y, Options, @Rect, PChar(Text), Length(Text), nil);
->>>>>>> 7a33033832e2660ba9c96be127ace5fe54c94a16
-    Changed;
-  end;
-end;  }
-
-function RoundCorrect(Value: Real): LongInt;
-begin
-  Result := Trunc(Value);
-  if Frac(Value) >= 0.5 then
-    Result := Result + 1;
 end;
 
 end.
