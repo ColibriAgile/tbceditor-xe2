@@ -62,12 +62,11 @@ type
     FAttribute: TBCEditorHighlighterAttribute;
   protected
     FParent: TBCEditorRange;
-    function GetAttribute: TBCEditorHighlighterAttribute;
   public
     constructor Create;
     destructor Destroy; override;
 
-    property Attribute: TBCEditorHighlighterAttribute read GetAttribute;
+    property Attribute: TBCEditorHighlighterAttribute read FAttribute;
     property Parent: TBCEditorRange read FParent write FParent;
     property Style: string read FStyle;
   end;
@@ -398,20 +397,6 @@ begin
   inherited;
 end;
 
-function TBCEditorRule.GetAttribute: TBCEditorHighlighterAttribute;
-begin
-  Result := nil;
-
-  if Assigned(FAttribute) then
-  begin
-    if FAttribute.ParentForeground then
-      FAttribute.Foreground := Parent.Attribute.Foreground;
-    if FAttribute.ParentBackground then
-      FAttribute.Background := Parent.Attribute.Background;
-    Result := FAttribute;
-  end;
-end;
-
 { TBCEditorRange }
 
 constructor TBCEditorRange.Create(AOpenToken: string; ACloseToken: string);
@@ -421,8 +406,6 @@ begin
   FOpenToken := TBCEditorMultiToken.Create;
   FCloseToken := TBCEditorMultiToken.Create;
   AddTokenRange(AOpenToken, btAny, ACloseToken, btAny);
-
- // FillChar(FSymbolList, SizeOf(SymbolList), 0);
 
   SetCaseSensitive(False);
 

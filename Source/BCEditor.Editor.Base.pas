@@ -130,7 +130,6 @@ type
     FOriginalRedoList: TBCEditorUndoList;
     FOriginalUndoList: TBCEditorUndoList;
     FPaintLock: Integer;
-    FPlugins: TList;
     FReadOnly: Boolean;
     FRedoList: TBCEditorUndoList;
     FReplace: TBCEditorReplace;
@@ -651,29 +650,29 @@ uses
   {$IFDEF USE_ALPHASKINS}, Winapi.CommCtrl, sVCLUtils, sMessages, sConst, sSkinProps{$ENDIF};
 
 var
-  ScrollHintWindow, RightMarginHintWindow: THintWindow;
-  ClipboardFormatBCEditor: Cardinal;
-  ClipboardFormatBorland: Cardinal;
-  ClipboardFormatMSDev: Cardinal;
+  GScrollHintWindow, GRightMarginHintWindow: THintWindow;
+  GClipboardFormatBCEditor: Cardinal;
+  GClipboardFormatBorland: Cardinal;
+  GClipboardFormatMSDev: Cardinal;
 
 function GetScrollHint: THintWindow;
 begin
-  if not Assigned(ScrollHintWindow) then
+  if not Assigned(GScrollHintWindow) then
   begin
-    ScrollHintWindow := THintWindow.Create(Application);
-    ScrollHintWindow.DoubleBuffered := True;
+    GScrollHintWindow := THintWindow.Create(Application);
+    GScrollHintWindow.DoubleBuffered := True;
   end;
-  Result := ScrollHintWindow;
+  Result := GScrollHintWindow;
 end;
 
 function GetRightMarginHint: THintWindow;
 begin
-  if not Assigned(RightMarginHintWindow) then
+  if not Assigned(GRightMarginHintWindow) then
   begin
-    RightMarginHintWindow := THintWindow.Create(Application);
-    RightMarginHintWindow.DoubleBuffered := True;
+    GRightMarginHintWindow := THintWindow.Create(Application);
+    GRightMarginHintWindow.DoubleBuffered := True;
   end;
-  Result := RightMarginHintWindow;
+  Result := GRightMarginHintWindow;
 end;
 
 { TBCBaseEditor }
@@ -689,24 +688,24 @@ begin
     FCommonData.SkinSection := s_Edit;
   {$ENDIF}
 
-  FResetLineNumbersCache := True;
-
-  FBackgroundColor := clWindow;
   Height := 150;
   Width := 200;
   Cursor := crIBeam;
   Color := clWindow;
   DoubleBuffered := False;
   ControlStyle := ControlStyle + [csOpaque, csSetCaption, csNeedsBorderPaint];
+
+  FBackgroundColor := clWindow;
   FBorderStyle := bsSingle;
-  FURIOpener := False;
-  FDoubleClickTime := GetDoubleClickTime;
   FBreakWhitespace := True;
-  FSelectedCaseText := '';
+  FDoubleClickTime := GetDoubleClickTime;
   FLastSortOrder := soDesc;
+  FResetLineNumbersCache := True;
+  FSelectedCaseText := '';
+  FURIOpener := False;
+
   { Code folding }
   FAllCodeFoldingRanges := TBCEditorAllCodeFoldingRanges.Create;
-  FPlugins := TList.Create;
   FCodeFolding := TBCEditorCodeFolding.Create;
   FCodeFolding.OnChange := CodeFoldingOnChange;
   { Directory }
@@ -778,7 +777,6 @@ begin
   { Text }
   TabStop := True;
   FInsertMode := True;
-  //FFocusList := TList.Create;
   FKeyboardHandler := TBCEditorKeyboardHandler.Create;
   FKeyCommands := TBCEditorKeyCommands.Create(Self);
   SetDefaultKeyCommands;
@@ -853,13 +851,10 @@ begin
     while destruction }
   FHookedCommandHandlers.Free;
   FHookedCommandHandlers := nil;
-  FPlugins.Free;
-  FPlugins := nil;
   FMarkList.Free;
   FKeyCommands.Free;
   FKeyCommands := nil;
   FKeyboardHandler.Free;
-  //FFocusList.Free;
   FSelection.Free;
   FOriginalUndoList.Free;
   FOriginalRedoList.Free;
@@ -1947,7 +1942,7 @@ var
   LLength, LStop: Integer;
 begin
   Result := '';
-  if (ATextPosition.Line >= 1) and (ATextPosition.Line <= FLines.Count) then
+  if (ATextPosition.Line >= 0) and (ATextPosition.Line < FLines.Count) then
   begin
     LTextLine := FLines[ATextPosition.Line];
     LLength := Length(LTextLine);
@@ -2265,7 +2260,7 @@ end;
 function TBCBaseEditor.PixelsToRowColumn(X, Y: Integer): TBCEditorDisplayPosition;
 begin
   Result.Column := Max(1, FLeftChar + ((X - FLeftMargin.GetWidth - FCodeFolding.GetWidth - 2) div FCharWidth));
-  Result.Row := Max(1, TopLine + (Y div LineHeight));
+  Result.Row := Max(1, TopLine + Y div LineHeight);
 end;
 
 function TBCBaseEditor.PreviousWordPosition: TBCEditorTextPosition;
@@ -2381,7 +2376,7 @@ var
   LStartTextPosition, LEndTextPosition: TBCEditorTextPosition;
   LCurrentTextPosition: TBCEditorTextPosition;
   LSearchLength, LSearchIndex, LFound: Integer;
-  LCurrentLine: Integer;
+  LFindAllCount: Integer;
   LIsBackward, LIsFromCursor: Boolean;
   LIsEndUndoBlock: Boolean;
   LResultOffset: Integer;
@@ -2446,9 +2441,9 @@ begin
       else
         LStartTextPosition := TextCaretPosition;
     if LIsBackward then
-      LCurrentTextPosition := LEndTextPosition
+      LCurrentTextPosition := SelectionBeginPosition
     else
-      LCurrentTextPosition := LStartTextPosition;
+      LCurrentTextPosition := SelectionEndPosition
   end;
   FSearchEngine.Pattern := ASearchText;
   case FSearch.Engine of
@@ -2462,13 +2457,13 @@ begin
   try
     while (LCurrentTextPosition.Line >= LStartTextPosition.Line) and (LCurrentTextPosition.Line <= LEndTextPosition.Line) do
     begin
-      LCurrentLine := FSearchEngine.FindAll(FLines[LCurrentTextPosition.Line]);
+      LFindAllCount := FSearchEngine.FindAll(FLines[LCurrentTextPosition.Line]);
       LResultOffset := 0;
       if LIsBackward then
         LSearchIndex := FSearchEngine.ResultCount - 1
       else
         LSearchIndex := 0;
-      while LCurrentLine > 0 do
+      while LFindAllCount > 0 do
       begin
         LFound := FSearchEngine.Results[LSearchIndex] + LResultOffset;
         LSearchLength := FSearchEngine.Lengths[LSearchIndex];
@@ -2476,7 +2471,7 @@ begin
           Dec(LSearchIndex)
         else
           Inc(LSearchIndex);
-        Dec(LCurrentLine);
+        Dec(LFindAllCount);
         if not InValidSearchRange(LFound, LFound + LSearchLength) then
           Continue;
         Inc(Result);
@@ -4414,6 +4409,7 @@ begin
   SelectedText := Value;
   EndUndoBlock;
   DecPaintLock;
+  DoChange;
 end;
 
 procedure TBCBaseEditor.SetTopLine(Value: Integer);
@@ -5158,7 +5154,7 @@ begin
           else
             LScrollHint := Format(SBCEditorScrollInfo, [TopLine, TopLine + Min(VisibleLines, FLineNumbersCount - TopLine)]);
 
-          LScrollHintRect := ScrollHintWindow.CalcHintRect(200, LScrollHint, nil);
+          LScrollHintRect := LScrollHintWindow.CalcHintRect(200, LScrollHint, nil);
 
           if soHintFollows in FScroll.Options then
           begin
@@ -5616,7 +5612,7 @@ begin
           PBCEditorSelectionMode(LBytePointer)^ := FSelection.ActiveMode;
           Inc(LBytePointer, SizeOf(TBCEditorSelectionMode));
           Move(PAnsiChar(AnsiString(AText))^, LBytePointer^, LTextLength + 1);
-          SetClipboardData(ClipboardFormatBCEditor, LGlobalMem);
+          SetClipboardData(GClipboardFormatBCEditor, LGlobalMem);
         end;
       finally
         GlobalUnlock(LGlobalMem);
@@ -5640,7 +5636,7 @@ begin
           if Assigned(LBytePointer) then
           begin
             Move(LSmType, LBytePointer^, SizeOf(LSmType));
-            SetClipboardData(ClipboardFormatBorland, LGlobalMem);
+            SetClipboardData(GClipboardFormatBorland, LGlobalMem);
           end;
         finally
           GlobalUnlock(LGlobalMem);
@@ -5662,7 +5658,7 @@ begin
           if Assigned(LBytePointer) then
           begin
             Move(LSmType, LBytePointer^, SizeOf(LSmType));
-            SetClipboardData(ClipboardFormatMSDev, LGlobalMem);
+            SetClipboardData(GClipboardFormatMSDev, LGlobalMem);
           end;
         finally
           GlobalUnlock(LGlobalMem);
@@ -10328,6 +10324,7 @@ end;
 procedure TBCBaseEditor.CutToClipboard;
 begin
   CommandProcessor(ecCut, BCEDITOR_NONE_CHAR, nil);
+  DoChange;
 end;
 
 procedure TBCBaseEditor.DeleteWhitespace;
@@ -10348,6 +10345,7 @@ begin
     end
     else
       Text := BCEditor.Utils.DeleteWhiteSpace(Text);
+    DoChange;
   end;
 end;
 
@@ -11908,6 +11906,7 @@ end;
 procedure TBCBaseEditor.PasteFromClipboard;
 begin
   CommandProcessor(ecPaste, BCEDITOR_NONE_CHAR, nil);
+  DoChange;
 end;
 
 procedure TBCBaseEditor.DoPasteFromClipboard;
@@ -11926,11 +11925,11 @@ begin
   BeginUndoBlock;
   LPasteMode := FSelection.Mode;
   try
-    if Clipboard.HasFormat(ClipboardFormatBCEditor) then
+    if Clipboard.HasFormat(GClipboardFormatBCEditor) then
     begin
       Clipboard.Open;
       try
-        LGlobalMem := Clipboard.GetAsHandle(ClipboardFormatBCEditor);
+        LGlobalMem := Clipboard.GetAsHandle(GClipboardFormatBCEditor);
         LFirstByteOfMemoryBlock := GlobalLock(LGlobalMem);
         try
           if Assigned(LFirstByteOfMemoryBlock) then
@@ -11943,11 +11942,11 @@ begin
       end;
     end
     else
-    if Clipboard.HasFormat(ClipboardFormatBorland) then
+    if Clipboard.HasFormat(GClipboardFormatBorland) then
     begin
       Clipboard.Open;
       try
-        LGlobalMem := Clipboard.GetAsHandle(ClipboardFormatBorland);
+        LGlobalMem := Clipboard.GetAsHandle(GClipboardFormatBorland);
         LFirstByteOfMemoryBlock := GlobalLock(LGlobalMem);
         try
           if Assigned(LFirstByteOfMemoryBlock) then
@@ -11963,7 +11962,7 @@ begin
       end;
     end
     else
-    if Clipboard.HasFormat(ClipboardFormatMSDev) then
+    if Clipboard.HasFormat(GClipboardFormatMSDev) then
       LPasteMode := smColumn;
 
     if SelectionAvailable then
@@ -12613,9 +12612,9 @@ initialization
   {$IFDEF USE_VCL_STYLES}
   TCustomStyleEngine.RegisterStyleHook(TBCBaseEditor, TBCEditorStyleHook);
   {$ENDIF}
-  ClipboardFormatBCEditor := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_BCEDITOR);
-  ClipboardFormatBorland := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_BORLAND);
-  ClipboardFormatMSDev := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_MSDEV);
+  GClipboardFormatBCEditor := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_BCEDITOR);
+  GClipboardFormatBorland := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_BORLAND);
+  GClipboardFormatMSDev := RegisterClipboardFormat(BCEDITOR_CLIPBOARD_FORMAT_MSDEV);
 
 finalization
   {$IFDEF USE_VCL_STYLES}
