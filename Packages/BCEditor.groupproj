@@ -1,0 +1,48 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{B90E2D18-C244-4A69-B728-21B5FF573633}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="BCEditorRuntime.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="BCEditorDesign.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="BCEditorRuntime">
+			<MSBuild Projects="BCEditorRuntime.dproj"/>
+		</Target>
+		<Target Name="BCEditorRuntime:Clean">
+			<MSBuild Projects="BCEditorRuntime.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="BCEditorRuntime:Make">
+			<MSBuild Projects="BCEditorRuntime.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="BCEditorDesign">
+			<MSBuild Projects="BCEditorDesign.dproj"/>
+		</Target>
+		<Target Name="BCEditorDesign:Clean">
+			<MSBuild Projects="BCEditorDesign.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="BCEditorDesign:Make">
+			<MSBuild Projects="BCEditorDesign.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="BCEditorRuntime;BCEditorDesign"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="BCEditorRuntime:Clean;BCEditorDesign:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="BCEditorRuntime:Make;BCEditorDesign:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>
