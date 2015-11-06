@@ -1348,7 +1348,11 @@ var
     Result := True;
     for i := 0 to LOpenDuplicateLength - 1 do
     if LToken = PBCEditorMatchingPairToken(FHighlighter.MatchingPairs[FMatchingPairOpenDuplicate[i]])^.OpenToken then
-      Exit;
+    begin
+      LElement := FHighlighter.GetCurrentRangeAttribute.Element;
+      if (LElement <> BCEDITOR_ATTRIBUTE_ELEMENT_COMMENT) and (LElement <> BCEDITOR_ATTRIBUTE_ELEMENT_STRING) then
+        Exit;
+    end;
     Result := False
   end;
 
@@ -1359,7 +1363,11 @@ var
     Result := True;
     for i := 0 to LCloseDuplicateLength - 1 do
     if LToken = PBCEditorMatchingPairToken(FHighlighter.MatchingPairs[FMatchingPairCloseDuplicate[i]])^.CloseToken then
-      Exit;
+    begin
+      LElement := FHighlighter.GetCurrentRangeAttribute.Element;
+      if (LElement <> BCEDITOR_ATTRIBUTE_ELEMENT_COMMENT) and (LElement <> BCEDITOR_ATTRIBUTE_ELEMENT_STRING) then
+        Exit;
+    end;
     Result := False
   end;
 
@@ -1916,7 +1924,7 @@ end;
 
 function TBCBaseEditor.GetTextOffset: Integer;
 begin
-  Result := FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2 - (LeftChar - 1) * FCharWidth;
+  Result := FLeftMargin.GetWidth + FCodeFolding.GetWidth - (LeftChar - 1) * FCharWidth;
 end;
 
 function TBCBaseEditor.GetWordAtCursor: string;
@@ -5378,7 +5386,7 @@ begin
   Windows.GetCursorPos(LCursorPoint);
   LCursorPoint := ScreenToClient(LCursorPoint);
 
-  if (LCursorPoint.X >= FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2) and
+  if (LCursorPoint.X >= FLeftMargin.GetWidth + FCodeFolding.GetWidth) and
     (LCursorPoint.X < (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth) then
   begin
     if FSelection.Visible then
@@ -6082,10 +6090,10 @@ end;
 
 procedure TBCBaseEditor.InvalidateRect(const ARect: TRect);
 begin
-  Windows.InvalidateRect(Canvas.Handle, @ARect, False);
+  Windows.InvalidateRect(Handle, ARect, False);
 end;
 
-procedure TBCBaseEditor.KeyDown(var Key: Word; Shift: TShiftState);
+procedure TBCBaseEditor.KeyDown(var Key: Word; Shift: TShiftState);
 var
   LData: Pointer;
   LChar: Char;
@@ -6560,9 +6568,10 @@ begin
   begin
     FRightMargin.MouseOver := Abs(RowColumnToPixels(GetDisplayPosition(FRightMargin.Position + 1, 0)).X - X) < 3;
 
-    if FRightMargin.Moving and (X > FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2) then
+    if FRightMargin.Moving then
     begin
-      FRightMarginMovePosition := X;
+      if X > FLeftMargin.GetWidth + FCodeFolding.GetWidth then
+        FRightMarginMovePosition := X;
       if rmoShowMovingHint in FRightMargin.Options then
       begin
         LHintWindow := GetRightMarginHint;
@@ -6782,7 +6791,7 @@ begin
     if LClipRect.Right > FLeftMargin.GetWidth + FCodeFolding.GetWidth then
     begin
       DrawRect := LClipRect;
-      DrawRect.Left := DrawRect.Left + FLeftMargin.GetWidth + FCodeFolding.GetWidth + 2;
+      DrawRect.Left := DrawRect.Left + FLeftMargin.GetWidth + FCodeFolding.GetWidth;
       DrawRect.Right := (ClientRect.Right-ClientRect.Left) - FMinimap.GetWidth - FSearch.Map.GetWidth;
       DeflateMinimapRect(DrawRect);
       FTextDrawer.SetBaseFont(Font);
@@ -6802,13 +6811,13 @@ begin
       if FLeftMargin.Visible then
       begin
         DrawRect := LClipRect;
-        DrawRect.Right := FLeftMargin.GetWidth + 2;
+        DrawRect.Right := FLeftMargin.GetWidth;
         PaintLeftMargin(DrawRect, LLine1, LLine2, LLine3);
       end;
 
       if FCodeFolding.Visible and (Lines.Count > 0) then
       begin
-        DrawRect.Left := FLeftMargin.GetWidth + 2;
+        DrawRect.Left := FLeftMargin.GetWidth;
         DrawRect.Right := DrawRect.Left + FCodeFolding.GetWidth;
         PaintCodeFolding(DrawRect, LLine1, LLine2);
       end;
@@ -6838,7 +6847,6 @@ begin
         begin
           LLine1 := FTopLine;
           LLine2 := FTopLine + FVisibleLines;
-          //Canvas.CopyRect(DrawRect, FMinimapBufferBmp.Canvas, Rect(0, 0, DrawRect.Width, DrawRect.Height));
           BitBlt(Canvas.Handle, DrawRect.Left, DrawRect.Top, (DrawRect.Right-DrawRect.Left), DrawRect.Bottom-DrawRect.Top,
                  FMinimapBufferBmp.Canvas.Handle, 0, 0, SRCCOPY);
         end
@@ -6852,7 +6860,6 @@ begin
 
         FMinimapBufferBmp.Width := (DrawRect.Right-DrawRect.Left);
         FMinimapBufferBmp.Height := LClipRect.Bottom-LClipRect.Top;
-        //FMinimapBufferBmp.Canvas.CopyRect(Rect(0, 0, DrawRect.Width, DrawRect.Height), Canvas, DrawRect);
         BitBlt(FMinimapBufferBmp.Canvas.Handle, 0, 0, (DrawRect.Right-DrawRect.Left), LClipRect.Bottom-LClipRect.Top, Canvas.Handle, DrawRect.Left,
           DrawRect.Top, SRCCOPY);
         FTextDrawer.SetBaseFont(Font);
@@ -6874,7 +6881,6 @@ begin
     FLastTopLine := FTopLine;
     FLastLineNumberCount := FLineNumbersCount;
     FTextDrawer.EndDrawing;
-    //FBufferBmp.Canvas.CopyRect(ClientRect, Canvas, ClientRect);
     BitBlt(FBufferBmp.Canvas.Handle, 0, 0, ClientRect.Right-ClientRect.Left, ClientRect.Bottom-ClientRect.Top, Canvas.Handle, 0, 0, SRCCOPY);
     FBufferBmp.Canvas.Handle := Canvas.Handle;
     Canvas.Handle := LHandle;
