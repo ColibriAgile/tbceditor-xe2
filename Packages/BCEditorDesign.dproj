@@ -46,10 +46,10 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
 			<DCC_UsePackage>vcldb;BCEditorRuntime;$(DCC_UsePackage)</DCC_UsePackage>
-			<DCC_BplOutput>$(cbpl32)</DCC_BplOutput>
-			<DCC_UnitSearchPath>$(clib32);$(cbpl32);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_DcpOutput>$(cbpl32)</DCC_DcpOutput>
-			<DCC_DcuOutput>$(clib32)</DCC_DcuOutput>
+			<DCC_BplOutput>$(xe2bpl)</DCC_BplOutput>
+			<DCC_UnitSearchPath>$(xe2lib);$(xe2bpl);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_DcpOutput>$(xe2bpl)</DCC_DcpOutput>
+			<DCC_DcuOutput>$(xe2lib)</DCC_DcuOutput>
 			<Icon_MainIcon>BCEditorDesign.ico</Icon_MainIcon>
 			<DCC_Namespace>System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
 			<VerInfo_Locale>1033</VerInfo_Locale>
