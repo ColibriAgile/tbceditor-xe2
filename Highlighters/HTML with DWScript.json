@@ -25,7 +25,8 @@
         },
         "MainRules": {
             "Attributes": {
-                "Element": "EditorGray"
+                "Element": "EditorGray",
+				"ParentBackground": false
             },
             "SubRules": {
                 "Range": [
@@ -53,7 +54,8 @@
 					{
 						"Type": "Tag",
 						"Attributes": {
-							"Element": "Editor"
+							"Element": "EditorWhite",
+							"ParentBackground": false
 						},
 						"TokenRange": {
 							"Open": "<?pas",
@@ -71,8 +73,8 @@
 					{
 						"Type": "Tag",
 						"Attributes": {
-							"Element": "String",
-							"ParentBackground": true
+							"Element": "EditorWhite",
+							"ParentBackground": false
 						},
 						"TokenRange": {
 							"Open": "<script type=\"pascal\"",
@@ -82,7 +84,7 @@
 							"Range": [
 								{
 									"File": "DWScript.json",
-									"IncludeRange": "DWS"
+									"IncludeRange": "DWScript"
 								}
 							]
 						}
@@ -90,7 +92,8 @@
 					{
 						"Type": "Tag",
 						"Attributes": {
-							"Element": "EditorGreen"
+							"Element": "EditorGreen",
+							"ParentBackground": false
 						},
 						"Properties": {
 							"AlternativeClose": ["/>"]
@@ -112,7 +115,8 @@
 						"Name": "Style",
 						"Type": "Tag",
 						"Attributes": {
-							"Element": "EditorBlue"
+							"Element": "EditorBlue",
+							"ParentBackground": false
 						},
 						"TokenRange": {
 							"Open": "<style",
@@ -131,7 +135,8 @@
                         "Name": "HTML",
                         "Type": "Tag",
                         "Attributes": {
-                            "Element": "EditorGray"
+                            "Element": "EditorGray",
+							"ParentBackground": false
                         },
                         "TokenRange": {
                             "Open": "<",
