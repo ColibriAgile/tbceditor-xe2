@@ -124,6 +124,7 @@ type
     FOnRightMarginMouseUp: TNotifyEvent;
     FOnScroll: TBCEditorScrollEvent;
     FOnSelectionChanged: TNotifyEvent;
+    FOnCompleteExecute: TBCEditorExecuteEvent;
     FOptions: TBCEditorOptions;
     FOriginalLines: TBCEditorLines;
     FOriginalRedoList: TBCEditorUndoList;
@@ -170,6 +171,8 @@ type
     FVisibleLines: Integer;
     FWordWrap: TBCEditorWordWrap;
     FWordWrapLineLengths: array of Integer;
+    FCompletionProposalEvent: TBCEditorCompletionProposalEvent;
+    FBeforeCompletionProposalEvent: TBCEditorBeforeCompletionProposalEvent;
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingFoldRangeForLineTo(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingLineInsideRange(ALine: Integer): TBCEditorCodeFoldingRange;
@@ -347,6 +350,7 @@ type
     procedure WMUndo(var Msg: TMessage); message WM_UNDO;
     procedure WMVScroll(var Msg: TWMScroll); message WM_VSCROLL;
     procedure WordWrapChanged(Sender: TObject);
+  private
   protected
     function DoMouseWheel(AShift: TShiftState; AWheelDelta: Integer; AMousePos: TPoint): Boolean; override;
     function DoOnReplaceText(const ASearch, AReplace: string; ALine, AColumn: Integer; DeleteLine: Boolean): TBCEditorReplaceAction;
@@ -601,6 +605,9 @@ type
     property OnRightMarginMouseUp: TNotifyEvent read FOnRightMarginMouseUp write FOnRightMarginMouseUp;
     property OnSelectionChanged: TNotifyEvent read FOnSelectionChanged write FOnSelectionChanged;
     property OnScroll: TBCEditorScrollEvent read FOnScroll write FOnScroll;
+    property OnCompleteProposal: TBCEditorCompletionProposalEvent read FCompletionProposalEvent write FCompletionProposalEvent;
+    property OnBeforeCompleteProposal: TBCEditorBeforeCompletionProposalEvent read FBeforeCompletionProposalEvent write FBeforeCompletionProposalEvent;
+    property OnCompleteExecute: TBCEditorExecuteEvent read FOnCompleteExecute write FOnCompleteExecute;
     property Options: TBCEditorOptions read FOptions write SetOptions default BCEDITOR_DEFAULT_OPTIONS;
     property PaintLock: Integer read FPaintLock;
     property ParentColor default False;
@@ -5677,7 +5684,16 @@ end;
 procedure TBCBaseEditor.DoExecuteCompletionProposal;
 var
   LPoint: TPoint;
+  ShouldAbort: Boolean;
 begin
+  ShouldAbort := False;
+
+  if Assigned(FBeforeCompletionProposalEvent) then
+    FBeforeCompletionProposalEvent(GetLineText, GetSelectedText, ShouldAbort);
+
+  if ShouldAbort then
+    Exit;
+
   LPoint := ClientToScreen(RowColumnToPixels(DisplayCaretPosition));
   Inc(LPoint.Y, LineHeight);
 
@@ -5688,8 +5704,14 @@ begin
   begin
     Parent := Self;
     Assign(FCompletionProposal);
+    FCompletionProposalPopupWindow.OnCompleteExecute := Self.FOnCompleteExecute;
     if cpoParseItemsFromText in FCompletionProposal.Options then
       SplitTextIntoWords(ItemList, False);
+
+
+    if Assigned(FCompletionProposalEvent) then
+      FCompletionProposalEvent(GetCurrentInput, Self.GetLineText, Self.GetSelectedText, ItemList);
+
     Execute(GetCurrentInput, LPoint.X, LPoint.Y);
   end;
 end;

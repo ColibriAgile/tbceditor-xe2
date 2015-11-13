@@ -113,6 +113,9 @@ type
     property OnSelectionChanged;
     property OnStartDock;
     property OnStartDrag;
+    property OnCompleteProposal;
+    property OnCompleteExecute;
+    property OnBeforeCompleteProposal;
     property Options;
     property ParentColor;
     property ParentCtl3D;

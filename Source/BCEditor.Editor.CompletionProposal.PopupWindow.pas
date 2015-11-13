@@ -9,6 +9,7 @@ uses
 
 type
   TBCEditorValidateEvent = procedure(Sender: TObject; Shift: TShiftState; EndToken: Char) of object;
+  TBCEditorExecuteEvent = procedure(Sender: TObject; SelectedText: string; var Value: string) of object;
 
   TBCEditorCompletionProposalPopupWindow = class(TBCEditorPopupWindow)
   strict private
@@ -41,6 +42,7 @@ type
     FSelectedTextColor: TColor;
     FTriggerChars: string;
     FVisibleLines: Integer;
+    FOnCompleteExecute: TBCEditorExecuteEvent;
     function IsWordBreakChar(AChar: Char): Boolean;
     function GetItemList: TStrings;
     procedure AddKeyHandlers;
@@ -75,6 +77,7 @@ type
     property ItemList: TStrings read GetItemList;
     property TopLine: Integer read FTopLine write SetTopLine;
     property OnValidate: TBCEditorValidateEvent read FOnValidate write FOnValidate;
+    property OnCompleteExecute: TBCEditorExecuteEvent read FOnCompleteExecute write FOnCompleteExecute;
 {$IFDEF USE_ALPHASKINS}
     property SkinData: TsScrollWndData read FCommonData write FCommonData;
 {$ENDIF}
@@ -586,7 +589,11 @@ begin
         Value := SelectedText;
 
       if SelectedText <> Value then
+      begin
+        if Assigned(FOnCompleteExecute) then
+          FOnCompleteExecute(Self, SelectedText, Value);
         SelectedText := Value;
+      end;
 
       with Editor do
       begin

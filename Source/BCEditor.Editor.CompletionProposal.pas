@@ -7,6 +7,8 @@ uses
   BCEditor.Editor.CompletionProposal.Trigger, BCEditor.Types;
 
 type
+  TBCEditorCompletionProposalEvent = procedure(const CurrentInput, CurrentLine, SelectedText: string; ItemList: TStrings) of object;
+  TBCEditorBeforeCompletionProposalEvent = procedure(const CurrentLine, SelectedText: string; var ShouldAbort: Boolean) of object;
   TBCEditorCompletionProposal = class(TPersistent)
   strict private
     FCloseChars: string;
