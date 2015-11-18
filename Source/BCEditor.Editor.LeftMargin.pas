@@ -139,7 +139,7 @@ begin
     Self.FAutosize := FAutosize;
     Self.FBookmarks.Assign(FBookmarks);
     Self.FColors.Assign(FColors);
-    Self.FBorder := FBorder;
+    Self.FBorder.Assign(FBorder);
     Self.FCursor := FCursor;
     Self.FFont.Assign(FFont);
     Self.FLineNumbers.Assign(FLineNumbers);
