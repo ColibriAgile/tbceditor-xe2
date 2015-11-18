@@ -554,6 +554,7 @@ type
     property CanUndo: Boolean read GetCanUndo;
     property Canvas;
     property Caret: TBCEditorCaret read FCaret write FCaret;
+    property CompletionProposalPopupWindow: TBCEditorCompletionProposalPopupWindow read FCompletionProposalPopupWindow;
     property DisplayCaretX: Integer read FDisplayCaretX write SetDisplayCaretX;
     property DisplayCaretPosition: TBCEditorDisplayPosition read GetDisplayCaretPosition write SetDisplayCaretPosition;
     property DisplayCaretY: Integer read FDisplayCaretY write SetDisplayCaretY;
