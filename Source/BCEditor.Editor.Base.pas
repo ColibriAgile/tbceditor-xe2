@@ -125,6 +125,8 @@ type
     FOnScroll: TBCEditorScrollEvent;
     FOnSelectionChanged: TNotifyEvent;
     FOnCompleteExecute: TBCEditorExecuteEvent;
+    FCompletionProposalEvent: TBCEditorCompletionProposalEvent;
+    FBeforeCompletionProposalEvent: TBCEditorBeforeCompletionProposalEvent;
     FOptions: TBCEditorOptions;
     FOriginalLines: TBCEditorLines;
     FOriginalRedoList: TBCEditorUndoList;
@@ -171,8 +173,6 @@ type
     FVisibleLines: Integer;
     FWordWrap: TBCEditorWordWrap;
     FWordWrapLineLengths: array of Integer;
-    FCompletionProposalEvent: TBCEditorCompletionProposalEvent;
-    FBeforeCompletionProposalEvent: TBCEditorBeforeCompletionProposalEvent;
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingFoldRangeForLineTo(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingLineInsideRange(ALine: Integer): TBCEditorCodeFoldingRange;
@@ -444,6 +444,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    procedure AssignEvents(Source: TPersistent);
     {$IFDEF USE_ALPHASKINS}
     procedure AfterConstruction; override;
     {$ENDIF}
@@ -2552,6 +2554,94 @@ begin
     if Sender is TBCEditorGlyph then
       InvalidateLeftMargin;
   end;
+end;
+
+procedure TBCBaseEditor.Assign(Source: TPersistent);
+var
+  sourceEditor: TBCBaseEditor;
+begin
+  if Assigned(Source) and (Source is TBCBaseEditor) then
+  begin
+    sourceEditor := TBCBaseEditor(Source);
+    Self.Align := sourceEditor.Align;
+    Self.BorderStyle := sourceEditor.BorderStyle;
+    Self.ReadOnly := sourceEditor.ReadOnly;
+    Self.CompletionProposal.Assign(sourceEditor.CompletionProposal);
+    Self.Font.Assign(sourceEditor.Font);
+    Self.Caret.Assign(sourceEditor.Caret);
+    Self.MatchingPair.Assign(sourceEditor.MatchingPair);
+    Self.Minimap.Assign(sourceEditor.Minimap);
+    Self.CodeFolding.Assign(sourceEditor.CodeFolding);
+    Self.Tabs.Assign(sourceEditor.Tabs);
+    Self.Directories.Assign(sourceEditor.Directories);
+    Self.LineSpacing.Assign(sourceEditor.LineSpacing);
+    Self.Replace.Assign(sourceEditor.Replace);
+    Self.Selection.Assign(sourceEditor.Selection);
+    Self.SpecialChars.Assign(sourceEditor.SpecialChars);
+    Self.Undo.Assign(sourceEditor.Undo);
+    Self.WordWrap.Assign(sourceEditor.WordWrap);
+    Self.ActiveLine.Assign(sourceEditor.ActiveLine);
+    Self.RightMargin.Assign(sourceEditor.RightMargin);
+    Self.LeftMargin.Assign(sourceEditor.LeftMargin);
+    Self.Search.Assign(sourceEditor.Search);
+    Self.Lines.Assign(sourceEditor.Lines);
+  end
+  else
+    inherited;
+end;
+
+procedure TBCBaseEditor.AssignEvents(Source: TPersistent);
+var
+  sourceEditor: TBCBaseEditor;
+begin
+  if not Assigned(Source) or not (Source is TBCBaseEditor) then
+    Exit;
+
+  sourceEditor := TBCBaseEditor(Source);
+  Self.OnAfterBookmarkPanelPaint := sourceEditor.OnAfterBookmarkPanelPaint;
+  Self.OnAfterBookmarkPlaced := sourceEditor.OnAfterBookmarkPlaced;
+  Self.OnAfterClearBookmark := sourceEditor.OnAfterClearBookmark;
+  Self.OnAfterLinePaint := sourceEditor.OnAfterLinePaint;
+  Self.OnBeforeBookmarkPlaced := sourceEditor.OnBeforeBookmarkPlaced;
+  Self.OnBeforeClearBookmark := sourceEditor.OnBeforeClearBookmark;
+  Self.OnBeforeBookmarkPanelPaint := sourceEditor.OnBeforeBookmarkPanelPaint;
+  Self.OnBookmarkPanelLinePaint := sourceEditor.OnBookmarkPanelLinePaint;
+  Self.OnCaretChanged := sourceEditor.OnCaretChanged;
+  Self.OnChange := sourceEditor.OnChange;
+  Self.OnClick := sourceEditor.OnClick;
+  Self.OnCommandProcessed := sourceEditor.OnCommandProcessed;
+  Self.OnContextHelp := sourceEditor.OnContextHelp;
+  Self.OnCustomLineColors := sourceEditor.OnCustomLineColors;
+  Self.OnDblClick := sourceEditor.OnDblClick;
+  Self.OnDragDrop := sourceEditor.OnDragDrop;
+  Self.OnDragOver := sourceEditor.OnDragOver;
+  Self.OnDropFiles := sourceEditor.OnDropFiles;
+  Self.OnEndDock := sourceEditor.OnEndDock;
+  Self.OnEndDrag := sourceEditor.OnEndDrag;
+  Self.OnEnter := sourceEditor.OnEnter;
+  Self.OnExit := sourceEditor.OnExit;
+  Self.OnKeyDown := sourceEditor.OnKeyDown;
+  Self.OnKeyPress := sourceEditor.OnKeyPress;
+  Self.OnKeyUp := sourceEditor.OnKeyUp;
+  Self.OnLeftMarginClick := sourceEditor.OnLeftMarginClick;
+  Self.OnMouseDown := sourceEditor.OnMouseDown;
+  Self.OnMouseMove := sourceEditor.OnMouseMove;
+  Self.OnMouseUp := sourceEditor.OnMouseUp;
+  Self.OnMouseWheel := sourceEditor.OnMouseWheel;
+  Self.OnMouseWheelDown := sourceEditor.OnMouseWheelDown;
+  Self.OnMouseWheelUp := sourceEditor.OnMouseWheelUp;
+  Self.OnPaint := sourceEditor.OnPaint;
+  Self.OnProcessCommand := sourceEditor.OnProcessCommand;
+  Self.OnProcessUserCommand := sourceEditor.OnProcessUserCommand;
+  Self.OnReplaceText := sourceEditor.OnReplaceText;
+  Self.OnRightMarginMouseUp := sourceEditor.OnRightMarginMouseUp;
+  Self.OnScroll := sourceEditor.OnScroll;
+  Self.OnSelectionChanged := sourceEditor.OnSelectionChanged;
+  Self.OnStartDock := sourceEditor.OnStartDock;
+  Self.OnStartDrag := sourceEditor.OnStartDrag;
+  Self.OnCompleteProposal := sourceEditor.OnCompleteProposal;
+  Self.OnCompleteExecute := sourceEditor.OnCompleteExecute;
+  Self.OnBeforeCompleteProposal := sourceEditor.OnBeforeCompleteProposal;
 end;
 
 procedure TBCBaseEditor.AssignSearchEngine;
