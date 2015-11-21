@@ -376,7 +376,7 @@ type
     procedure DoBlockUnindent;
     procedure DoChange; virtual;
     procedure DoCopyToClipboard(const AText: string);
-    procedure DoExecuteCompletionProposal;
+    procedure DoExecuteCompletionProposal; virtual;
     procedure DoKeyPressW(var Message: TWMKey);
     procedure DoOnAfterBookmarkPlaced;
     procedure DoOnAfterClearBookmark;
@@ -806,7 +806,7 @@ begin
   FScrollTimer.Interval := 100;
   FScrollTimer.OnTimer := ScrollTimerHandler;
   { Completion proposal }
-  FCompletionProposal := TBCEditorCompletionProposal.Create;
+  FCompletionProposal := TBCEditorCompletionProposal.Create(Self);
   FCompletionProposalTimer := TTimer.Create(Self);
   FCompletionProposalTimer.Enabled := False;
   FCompletionProposalTimer.OnTimer := CompletionProposalTimerHandler;
@@ -1432,7 +1432,8 @@ var
       Next;
     end;
   end;
-
+var
+  LCaretX: Integer;
 begin
   Result := trNotFound;
   if FHighlighter = nil then
@@ -1445,9 +1446,9 @@ begin
       ResetCurrentRange
     else
       SetCurrentRange(FLines.Ranges[APoint.Line]);
-    SetCurrentLine(FLines[APoint.Line]);
-
-    while not GetEndOfLine and (APoint.Char >= GetTokenPosition + Length(GetToken)) do
+    SetCurrentLine(FLines.ExpandedStrings[APoint.Line]);
+    LCaretX := DisplayCaretX;
+    while not GetEndOfLine and (LCaretX > GetTokenPosition + GetTokenLength) do
       Next;
 
     if GetEndOfLine then
@@ -4856,6 +4857,11 @@ var
       end
       else
         EnableScrollBar(Handle, SB_HORZ, ESB_ENABLE_BOTH);
+
+      if Visible then
+        SendMessage(Handle, WM_SETREDRAW, -1, 0);
+      if FPaintLock = 0 then
+        Invalidate;
     end
     else
       ShowScrollBar(Handle, SB_HORZ, False);
@@ -5777,6 +5783,7 @@ var
   LPoint: TPoint;
   ShouldAbort: Boolean;
 begin
+  Assert(FCompletionProposal.CompletionColumnIndex < FCompletionProposal.Columns.Count);
   ShouldAbort := False;
 
   if Assigned(FBeforeCompletionProposalEvent) then
@@ -5801,7 +5808,7 @@ begin
 
 
     if Assigned(FCompletionProposalEvent) then
-      FCompletionProposalEvent(GetCurrentInput, Self.GetLineText, Self.GetSelectedText, ItemList);
+      FCompletionProposalEvent(GetCurrentInput, Self.GetLineText, Self.GetSelectedText, FCompletionProposal.Columns);
 
     Execute(GetCurrentInput, LPoint.X, LPoint.Y);
   end;
@@ -7211,11 +7218,6 @@ begin
     LCodeFoldingRange := nil;
     LIncY := Odd(LineHeight) and not Odd(ALine);
 
-    if ColorToRGB(FBackgroundColor) < ColorToRGB(FCodeFolding.Colors.Indent) then
-      Canvas.Pen.Mode := pmMerge
-    else
-      Canvas.Pen.Mode := pmMask;
-
     LDeepestLevel := GetDeepestLevel;
 
     for i := 0 to FAllCodeFoldingRanges.AllCount - 1 do
@@ -7267,7 +7269,6 @@ begin
           end;
         end;
     end;
-    Canvas.Pen.Mode := pmCopy;
   end;
   Canvas.Pen.Color := LOldColor;
 end;
@@ -10182,9 +10183,14 @@ begin
 end;
 
 procedure TBCBaseEditor.CaretZero;
+var
+  LTextCaretPosition: TBCEditorTextPosition;
 begin
-  DisplayCaretX := 0;
-  DisplayCaretY := 0;
+  LTextCaretPosition.Char := 1;
+  LTextCaretPosition.Line := 0;
+  TextCaretPosition := LTextCaretPosition;
+  SelectionBeginPosition := LTextCaretPosition;
+  SelectionEndPosition := LTextCaretPosition;
 end;
 
 procedure TBCBaseEditor.ChainEditor(AEditor: TBCBaseEditor);

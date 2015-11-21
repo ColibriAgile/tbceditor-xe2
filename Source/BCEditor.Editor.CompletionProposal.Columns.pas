@@ -3,21 +3,23 @@ unit BCEditor.Editor.CompletionProposal.Columns;
 interface
 
 uses
-  Classes, Graphics;
+  System.Classes, Vcl.Graphics;
 
 type
   TBCEditorProposalColumn = class(TCollectionItem)
   strict private
-    FBiggestWord: string;
-    FInternalWidth: Integer;
-    FFontStyle: TFontStyles;
+    FAutoWidth: Boolean;
+    FItemList: TStrings;
+    FWidth: Integer;
+    procedure SetItemList(const Value: TStrings);
   public
     constructor Create(Collection: TCollection); override;
+    destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
   published
-    property BiggestWord: string read FBiggestWord write FBiggestWord;
-    property DefaultFontStyle: TFontStyles read FFontStyle write FFontStyle default [];
-    property FontStyle: TFontStyles read FFontStyle;
+    property AutoWidth: Boolean read FAutoWidth write FAutoWidth default True;
+    property ItemList: TStrings read FItemList write SetItemList;
+    property Width: Integer read FWidth write FWidth default 0;
   end;
 
   TBCEditorProposalColumns = class(TCollection)
@@ -42,22 +44,30 @@ implementation
 constructor TBCEditorProposalColumn.Create(Collection: TCollection);
 begin
   inherited;
-  FBiggestWord := 'CONSTRUCTOR';
-  FInternalWidth := -1;
-  FFontStyle := [];
+  FItemList := TStringList.Create;
+  FAutoWidth := True;
+  FWidth := 0;
+end;
+
+destructor TBCEditorProposalColumn.Destroy;
+begin
+  FItemList.Free;
+
+  inherited;
 end;
 
 procedure TBCEditorProposalColumn.Assign(Source: TPersistent);
 begin
   if Source is TBCEditorProposalColumn then
   with Source as TBCEditorProposalColumn do
-  begin
-    Self.FBiggestWord := FBiggestWord;
-    Self.FInternalWidth := FInternalWidth;
-    Self.FFontStyle := FFontStyle;
-  end
+    Self.FItemList.Assign(FItemList)
   else
     inherited Assign(Source);
+end;
+
+procedure TBCEditorProposalColumn.SetItemList(const Value: TStrings);
+begin
+  FItemList.Assign(Value);
 end;
 
 { TBCEditorProposalColumns }
