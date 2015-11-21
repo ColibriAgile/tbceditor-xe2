@@ -3,7 +3,7 @@ unit BCEditor.Editor.CompletionProposal.Columns;
 interface
 
 uses
-  System.Classes, Vcl.Graphics;
+  System.Classes, Vcl.Graphics, System.SysUtils;
 
 type
   TBCEditorProposalColumn = class(TCollectionItem)
@@ -22,6 +22,7 @@ type
     property Width: Integer read FWidth write FWidth default 0;
   end;
 
+  XTBCEditorProposalColumnsException = class(Exception);
   TBCEditorProposalColumns = class(TCollection)
   strict private
     FOwner: TPersistent;
@@ -32,6 +33,8 @@ type
   public
     constructor Create(AOwner: TPersistent; ItemClass: TCollectionItemClass);
     function Add: TBCEditorProposalColumn;
+    procedure AddItemToColumns(items: array of string);
+    procedure ClearAll;
     function FindItemID(ID: Integer): TBCEditorProposalColumn;
     function Insert(Index: Integer): TBCEditorProposalColumn;
     property Items[index: Integer]: TBCEditorProposalColumn read GetItem write SetItem; default;
@@ -81,6 +84,25 @@ end;
 function TBCEditorProposalColumns.GetOwner: TPersistent;
 begin
   Result := FOwner;
+end;
+
+procedure TBCEditorProposalColumns.AddItemToColumns(items: array of string);
+var
+  i: Integer;
+begin
+  if Length(items) <> Self.Count then
+    raise XTBCEditorProposalColumnsException.Create('Items does not matches columns.');
+
+  for i := Low(items) to High(items) do
+    Self[i].ItemList.Add(items[i]);
+end;
+
+procedure TBCEditorProposalColumns.ClearAll;
+var
+  i: Integer;
+begin
+  for i := 0 to Self.Count - 1 do
+    Self[i].ItemList.Clear;
 end;
 
 function TBCEditorProposalColumns.GetItem(Index: Integer): TBCEditorProposalColumn;
