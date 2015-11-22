@@ -34,6 +34,7 @@ type
     constructor Create(AOwner: TPersistent; ItemClass: TCollectionItemClass);
     function Add: TBCEditorProposalColumn;
     procedure AddItemToColumns(items: array of string);
+    procedure AddItemsToColumns(items: array of TStrings);
     procedure ClearAll;
     function FindItemID(ID: Integer): TBCEditorProposalColumn;
     function Insert(Index: Integer): TBCEditorProposalColumn;
@@ -84,6 +85,14 @@ end;
 function TBCEditorProposalColumns.GetOwner: TPersistent;
 begin
   Result := FOwner;
+end;
+
+procedure TBCEditorProposalColumns.AddItemsToColumns(items: array of TStrings);
+var
+  i: Integer;
+begin
+  for i := Low(items) to High(items) do
+    Self[i].ItemList.AddStrings(items[i]);
 end;
 
 procedure TBCEditorProposalColumns.AddItemToColumns(items: array of string);

@@ -30,8 +30,6 @@ type
     constructor Create(AOwner: TPersistent);
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
-    procedure AddItemToColumns(items: array of string);
-    procedure ClearAll;
   published
     property CloseChars: string read FCloseChars write FCloseChars;
     property Colors: TBCEditorCompletionProposalColors read FColors write FColors;
@@ -50,16 +48,6 @@ implementation
 
 uses
   Menus;
-
-{ TBCEditorCompletionProposal }
-
-procedure TBCEditorCompletionProposal.ClearAll;
-var
-  i: Integer;
-begin
-  for i := 0 to FColumns.Count - 1 do
-    FColumns[i].ItemList.Clear;
-end;
 
 constructor TBCEditorCompletionProposal.Create(AOwner: TPersistent);
 begin
@@ -90,17 +78,6 @@ begin
   FColumns.Free;
 
   inherited;
-end;
-
-procedure TBCEditorCompletionProposal.AddItemToColumns(items: array of string);
-var
-  i: Integer;
-begin
-  if Length(items) <> FColumns.Count then
-    raise XBCEditorCompletionProposalException.Create('Items does not matches columns.');
-
-  for i := Low(items) to High(items) do
-    FColumns[i].ItemList.Add(items[i]);
 end;
 
 procedure TBCEditorCompletionProposal.Assign(Source: TPersistent);
