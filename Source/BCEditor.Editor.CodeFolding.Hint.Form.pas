@@ -11,7 +11,6 @@ uses
     FBackgroundColor: TColor;
     FBufferBitmap: TBitmap;
     FBorderColor: TColor;
-    FCaseSensitive: Boolean;
     FEffectiveItemHeight: Integer;
     FFont: TFont;
     FFontHeight: Integer;
@@ -24,18 +23,18 @@ uses
     procedure AdjustMetrics;
     procedure FontChange(Sender: TObject);
     procedure RecalcItemHeight;
-    procedure SetFont(const Value: TFont);
-    procedure SetItemHeight(const Value: Integer);
-    procedure SetItemList(const Value: TStrings);
-    procedure WMEraseBackgrnd(var Message: TMessage); message WM_ERASEBKGND;
-    procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
+    procedure SetFont(const AValue: TFont);
+    procedure SetItemHeight(const AValue: Integer);
+    procedure SetItemList(const AValue: TStrings);
+    procedure WMEraseBackgrnd(var AMessage: TMessage); message WM_ERASEBKGND;
+    procedure WMGetDlgCode(var AMessage: TWMGetDlgCode); message WM_GETDLGCODE;
   protected
     procedure Activate; override;
-    procedure CreateParams(var Params: TCreateParams); override;
+    procedure CreateParams(var AParams: TCreateParams); override;
     procedure Deactivate; override;
-    procedure DoKeyPressW(Key: Char);
-    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
-    procedure KeyPressW(var Key: Char); virtual;
+    procedure DoKeyPressW(AKey: Char);
+    procedure KeyDown(var AKey: Word; AShift: TShiftState); override;
+    procedure KeyPressW(var AKey: Char); virtual;
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); overload; override;
@@ -87,8 +86,6 @@ begin
   FBackgroundColor := clWindow;
   FBorderColor := clBtnFace;
 
-  FCaseSensitive := False;
-
   BorderStyle := bsNone;
   FormStyle := fsStayOnTop;
 
@@ -120,11 +117,11 @@ begin
   inherited Destroy;
 end;
 
-procedure TBCEditorCodeFoldingHintForm.CreateParams(var Params: TCreateParams);
+procedure TBCEditorCodeFoldingHintForm.CreateParams(var AParams: TCreateParams);
 begin
-  inherited CreateParams(Params);
+  inherited CreateParams(AParams);
 
-  with Params do
+  with AParams do
     if ((Win32Platform and VER_PLATFORM_WIN32_NT) <> 0) and (Win32MajorVersion > 4) and (Win32MinorVersion > 0) then
       WindowClass.Style := WindowClass.Style or CS_DROPSHADOW;
 end;
@@ -139,7 +136,7 @@ begin
   Close;
 end;
 
-procedure TBCEditorCodeFoldingHintForm.KeyDown(var Key: Word; Shift: TShiftState);
+procedure TBCEditorCodeFoldingHintForm.KeyDown(var AKey: Word; AShift: TShiftState);
 var
   LChar: Char;
   LData: Pointer;
@@ -149,22 +146,22 @@ begin
   begin
     LData := nil;
     LChar := BCEDITOR_NONE_CHAR;
-    LEditorCommand := TranslateKeyCode(Key, Shift, LData);
+    LEditorCommand := TranslateKeyCode(AKey, AShift, LData);
     CommandProcessor(LEditorCommand, LChar, LData);
   end;
   Invalidate;
 end;
 
-procedure TBCEditorCodeFoldingHintForm.DoKeyPressW(Key: Char);
+procedure TBCEditorCodeFoldingHintForm.DoKeyPressW(AKey: Char);
 begin
-  if Key <> BCEDITOR_NONE_CHAR then
-    KeyPressW(Key);
+  if AKey <> BCEDITOR_NONE_CHAR then
+    KeyPressW(AKey);
 end;
 
-procedure TBCEditorCodeFoldingHintForm.KeyPressW(var Key: Char);
+procedure TBCEditorCodeFoldingHintForm.KeyPressW(var AKey: Char);
 begin
   if Assigned(OnKeyPress) then
-    OnKeyPress(Self, Key);
+    OnKeyPress(Self, AKey);
   Invalidate;
 end;
 
@@ -198,16 +195,16 @@ begin
   Canvas.Draw(0, 0, FBufferBitmap);
 end;
 
-procedure TBCEditorCodeFoldingHintForm.SetItemList(const Value: TStrings);
+procedure TBCEditorCodeFoldingHintForm.SetItemList(const AValue: TStrings);
 begin
-  FItemList.Assign(Value);
+  FItemList.Assign(AValue);
 end;
 
-procedure TBCEditorCodeFoldingHintForm.SetItemHeight(const Value: Integer);
+procedure TBCEditorCodeFoldingHintForm.SetItemHeight(const AValue: Integer);
 begin
-  if Value <> FItemHeight then
+  if FItemHeight <> AValue then
   begin
-    FItemHeight := Value;
+    FItemHeight := AValue;
     RecalcItemHeight;
   end;
 end;
@@ -222,20 +219,20 @@ begin
     FEffectiveItemHeight := FFontHeight;
 end;
 
-procedure TBCEditorCodeFoldingHintForm.WMEraseBackgrnd(var Message: TMessage);
+procedure TBCEditorCodeFoldingHintForm.WMEraseBackgrnd(var AMessage: TMessage);
 begin
-  message.Result := 1;
+  AMessage.Result := 1;
 end;
 
-procedure TBCEditorCodeFoldingHintForm.WMGetDlgCode(var Message: TWMGetDlgCode);
+procedure TBCEditorCodeFoldingHintForm.WMGetDlgCode(var AMessage: TWMGetDlgCode);
 begin
   inherited;
-  message.Result := message.Result or DLGC_WANTTAB;
+  AMessage.Result := AMessage.Result or DLGC_WANTTAB;
 end;
 
-procedure TBCEditorCodeFoldingHintForm.SetFont(const Value: TFont);
+procedure TBCEditorCodeFoldingHintForm.SetFont(const AValue: TFont);
 begin
-  FFont.Assign(Value);
+  FFont.Assign(AValue);
   RecalcItemHeight;
   AdjustMetrics;
 end;

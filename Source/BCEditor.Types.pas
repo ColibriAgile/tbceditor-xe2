@@ -75,6 +75,7 @@ type
 
   TBCEditorSelectionOption = (
     soALTSetsColumnMode,
+    soFromEndOfLine,
     soHighlightSimilarTerms,
     soToEndOfLine,
     soTripleClickRowSelect
@@ -172,17 +173,19 @@ type
   TBCEditorRangeType = (
     ttUnspecified,
     ttAddress,
+    ttAssemblerComment,
+    ttAssemblerReservedWord,
     ttAttribute,
-    ttChar,
+    ttCharacter,
     ttComment,
     ttDirective,
-    ttFloat,
-    ttHex,
+    ttHexNumber,
+    ttHighlightedBlock,
+    ttHighlightedBlockSymbol,
     ttMailtoLink,
     ttMethod,
     ttMethodName,
     ttNumber,
-    ttOctal,
     ttReservedWord,
     ttString,
     ttSymbol,
@@ -285,6 +288,27 @@ type
     crAutoCompleteBegin, crAutoCompleteEnd, crCaret, crSelection, crNothing, crGroupBreak);
 
   TBCEditorWordWrapStyle = (wwsClientWidth, wwsRightMargin, wwsSpecified);
+
+  TBCEditorCodeFoldingMarkStyle = (msSquare, msCircle);
+  TBCEditorCodeFoldingChanges = (fcEnabled, fcRefresh, fcRescan);
+
+  TBCEditorCodeFoldingChangeEvent = procedure(Event: TBCEditorCodeFoldingChanges) of object;
+
+  TBCEditorCodeFoldingOption = (
+    cfoFoldMultilineComments,
+    cfoHighlightFoldingLine,
+    cfoHighlightIndentGuides,
+    cfoHighlightMatchingPair,
+    cfoShowCollapsedCodeHint,
+    cfoShowCollapsedLine,
+    cfoShowIndentGuides,
+    cfoUncollapseByHintClick
+  );
+  TBCEditorCodeFoldingOptions = set of TBCEditorCodeFoldingOption;
+
+  TBCEditorLeftMarginBorderStyle = (mbsNone, mbsMiddle, mbsRight);
+
+  TBCEditorScrollHintFormat = (shfTopLineOnly, shfTopToBottom);
 
 implementation
 

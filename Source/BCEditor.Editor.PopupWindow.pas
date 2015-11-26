@@ -9,8 +9,8 @@ type
   TBCEditorPopupWindow = class(TCustomControl)
   private
     FEditor: TWinControl;
-    procedure WMEraseBkgnd(var Msg: TMessage); message WM_ERASEBKGND;
-    procedure WMMouseActivate(var Msg: TMessage); message WM_MOUSEACTIVATE;
+    procedure WMEraseBkgnd(var AMessage: TMessage); message WM_ERASEBKGND;
+    procedure WMMouseActivate(var AMessage: TMessage); message WM_MOUSEACTIVATE;
 {$IFDEF USE_VCL_STYLES}
     procedure WMNCPaint(var Message: TWMNCPaint); message WM_NCPAINT;
 {$ENDIF}
@@ -21,7 +21,6 @@ type
     procedure InvalidateEditor;
   public
     constructor Create(AOwner: TComponent); override;
-    function GetPopupText: string; virtual;
     procedure Hide;
     procedure Show(Origin: TPoint); virtual;
     property ActiveControl: TWinControl read FActiveControl;
@@ -31,7 +30,7 @@ type
 implementation
 
 uses
-  Windows, SysUtils;
+  Winapi.Windows, System.SysUtils{$IFDEF USE_VCL_STYLES}, Vcl.Themes{$ENDIF};
 
 constructor TBCEditorPopupWindow.Create(AOwner: TComponent);
 begin
@@ -56,11 +55,6 @@ begin
   Params.Style := WS_POPUP or WS_BORDER;
 end;
 
-function TBCEditorPopupWindow.GetPopupText: string;
-begin
-  Result := '';
-end;
-
 procedure TBCEditorPopupWindow.Hide;
 begin
   SetWindowPos(Handle, 0, 0, 0, 0, 0, SWP_NOZORDER or SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE or SWP_HIDEWINDOW);
@@ -72,7 +66,7 @@ var
   R: TRect;
 begin
   R := FEditor.ClientRect;
-  Windows.InvalidateRect(FEditor.Handle, @R, False);
+  Winapi.Windows.InvalidateRect(FEditor.Handle, @R, False);
   UpdateWindow(FEditor.Handle);
 end;
 
@@ -83,17 +77,17 @@ begin
   Visible := True;
 end;
 
-procedure TBCEditorPopupWindow.WMMouseActivate(var Msg: TMessage);
+procedure TBCEditorPopupWindow.WMMouseActivate(var AMessage: TMessage);
 begin
   if FIsFocusable then
     inherited
   else
-    Msg.Result := MA_NOACTIVATE;
+    AMessage.Result := MA_NOACTIVATE;
 end;
 
-procedure TBCEditorPopupWindow.WMEraseBkgnd(var Msg: TMessage);
+procedure TBCEditorPopupWindow.WMEraseBkgnd(var AMessage: TMessage);
 begin
-  Msg.Result := -1;
+  AMessage.Result := -1;
 end;
 
 {$IFDEF USE_VCL_STYLES}

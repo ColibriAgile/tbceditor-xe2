@@ -32,8 +32,7 @@ type
     destructor Destroy; override;
 
     function GetWidth: Integer;
-    procedure Assign(Source: TPersistent); override;
-    property CharWidth: Integer read FCharWidth write FCharWidth;
+    procedure Assign(ASource: TPersistent); override;
     property CharHeight: Integer read FCharHeight write FCharHeight;
     property Clicked: Boolean read FClicked write FClicked;
     property Dragging: Boolean read FDragging write FDragging;
@@ -85,10 +84,10 @@ begin
   inherited Destroy;
 end;
 
-procedure TBCEditorMinimap.Assign(Source: TPersistent);
+procedure TBCEditorMinimap.Assign(ASource: TPersistent);
 begin
-  if Source is TBCEditorMinimap then
-  with Source as TBCEditorMinimap do
+  if ASource is TBCEditorMinimap then
+  with ASource as TBCEditorMinimap do
   begin
     Self.FColors.Assign(FColors);
     Self.FFont.Assign(FFont);
@@ -98,7 +97,7 @@ begin
     Self.FCursor := FCursor;
   end
   else
-    inherited;
+    inherited Assign(ASource);
 end;
 
 procedure TBCEditorMinimap.SetOnChange(Value: TNotifyEvent);

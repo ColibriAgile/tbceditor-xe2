@@ -39,8 +39,8 @@ type
 implementation
 
 uses
-  SysUtils, Graphics, Forms, BCEditor.Consts, BCEditor.Types, Dialogs,
-  BCEditor.Highlighter.Token, BCEditor.Editor.CodeFolding.Types;
+  SysUtils, Graphics, Forms, BCEditor.Consts, BCEditor.Types, Dialogs, TypInfo,
+  BCEditor.Highlighter.Token;
 
 function StringToColorDef(const AString: string; const DefaultColor: TColor): Integer;
 begin
@@ -82,10 +82,10 @@ end;
 
 function StrToBreakType(const AString: string): TBCEditorBreakType;
 begin
-  if (AString = 'Any') or (AString = '') then
+  if AString = 'Any' then
     Result := btAny
   else
-  if AString = 'Term' then
+  if (AString = 'Term') or (AString = '') then
     Result := btTerm
   else
     Result := btUnspecified;
@@ -103,100 +103,14 @@ begin
 end;
 
 function StrToRangeType(const AString: string): TBCEditorRangeType;
+var
+  i: Integer;
 begin
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_ADDRESS then
-    Result := ttAddress
+  i := GetEnumValue(TypeInfo(TBCEditorRangeType), 'tt' + AString);
+  if i = -1 then
+    Result := ttUnspecified
   else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_ATTRIBUTE then
-    Result := ttAttribute
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_CHARACTER then
-    Result := ttChar
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_COMMENT then
-    Result := ttComment
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_DIRECTIVE then
-    Result := ttDirective
-   else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_FLOAT then
-    Result := ttFloat
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_HEX then
-    Result := ttHex
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_MAIL_TO_LINK then
-    Result := ttMailtoLink
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_METHOD then
-    Result := ttMethod
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_METHOD_NAME then
-    Result := ttMethodName
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_NUMBER then
-    Result := ttNumber
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_OCTAL then
-    Result := ttOctal
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_RESERVED_WORD then
-    Result := ttReservedWord
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_STRING then
-    Result := ttString
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_SYMBOL then
-    Result := ttSymbol
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_WEB_LINK then
-    Result := ttWebLink
-  else
-    Result := ttUnspecified;
-end;
-
-function StrToTokenKind(const AString: string): Integer;
-begin
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_ADDRESS then
-    Result := Integer(ttAddress)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_CHARACTER then
-    Result := Integer(ttChar)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_COMMENT then
-    Result := Integer(ttComment)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_DIRECTIVE then
-    Result := Integer(ttDirective)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_FLOAT then
-    Result := Integer(ttFloat)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_HEX then
-    Result := Integer(ttHex)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_MAIL_TO_LINK then
-    Result := Integer(ttMailtoLink)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_NUMBER then
-    Result := Integer(ttNumber)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_OCTAL then
-    Result := Integer(ttOctal)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_RESERVED_WORD then
-    Result := Integer(ttReservedWord)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_STRING then
-    Result := Integer(ttString)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_SYMBOL then
-    Result := Integer(ttSymbol)
-  else
-  if AString = BCEDITOR_ATTRIBUTE_ELEMENT_WEB_LINK then
-    Result := Integer(ttWebLink)
-  else
-    Result := Integer(ttUnspecified);
+    Result := TBCEditorRangeType(i);
 end;
 
 { TBCEditorHighlighterJSONImporter }
@@ -447,9 +361,9 @@ begin
         end;
 
         ARange.OpenToken.Clear;
-        ARange.OpenToken.BreakType := btAny;
+        ARange.OpenToken.BreakType := btUnspecified;
         ARange.CloseToken.Clear;
-        ARange.CloseToken.BreakType := btAny;
+        ARange.CloseToken.BreakType := btUnspecified;
 
         TokenRangeObject := RangeObject['TokenRange'].ObjectValue;
         if Assigned(TokenRangeObject) then
@@ -520,7 +434,7 @@ begin
         LJSONObject := TJsonObject.ParseFromStream(LFileStream) as TJsonObject;
         if Assigned(LJSONObject) then
         try
-          if LJSONObject.Contains('CodeFolding') then
+          if LJSONObject.Contains('CompletionProposal') then
             ImportCompletionProposal(LJSONObject['CompletionProposal'].ObjectValue);
         finally
           LJSONObject.Free;

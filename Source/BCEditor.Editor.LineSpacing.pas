@@ -21,7 +21,7 @@ type
     procedure Assign(Source: TPersistent); override;
   published
     property Rule: TLineSpacingRule read FRule write SetRule default lsSpecified;
-    property Spacing: Integer read FSpacing write SetSpacing;
+    property Spacing: Integer read FSpacing write SetSpacing default 1;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 

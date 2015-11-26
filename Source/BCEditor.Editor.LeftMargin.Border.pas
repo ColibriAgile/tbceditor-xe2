@@ -3,23 +3,21 @@ unit BCEditor.Editor.LeftMargin.Border;
 interface
 
 uses
-  Classes, Graphics;
+  Classes, Graphics, BCEditor.Types;
 
 type
-  TBCEditorLeftMarginBorderStyle = (mbsNone, mbsMiddle, mbsRight);
-
   TBCEditorLeftMarginBorder = class(TPersistent)
   strict private
-    FStyle: TBCEditorLeftMarginBorderStyle;
     FOnChange: TNotifyEvent;
-    procedure SetStyle(const Value: TBCEditorLeftMarginBorderStyle);
+    FStyle: TBCEditorLeftMarginBorderStyle;
+    procedure SetStyle(const AValue: TBCEditorLeftMarginBorderStyle);
     procedure DoChange;
   public
     constructor Create;
-    procedure Assign(Source: TPersistent); override;
+    procedure Assign(ASource: TPersistent); override;
   published
-    property Style: TBCEditorLeftMarginBorderStyle read FStyle write SetStyle default mbsNone;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property Style: TBCEditorLeftMarginBorderStyle read FStyle write SetStyle default mbsNone;
   end;
 
 implementation
@@ -37,21 +35,21 @@ begin
     FOnChange(Self);
 end;
 
-procedure TBCEditorLeftMarginBorder.Assign(Source: TPersistent);
+procedure TBCEditorLeftMarginBorder.Assign(ASource: TPersistent);
 begin
-  if Assigned(Source) and (Source is TBCEditorLeftMarginBorder) then
-  with Source as TBCEditorLeftMarginBorder do
+  if Assigned(ASource) and (ASource is TBCEditorLeftMarginBorder) then
+  with ASource as TBCEditorLeftMarginBorder do
   begin
     Self.FStyle := FStyle;
     Self.DoChange;
   end
   else
-    inherited;
+    inherited Assign(ASource);
 end;
 
-procedure TBCEditorLeftMarginBorder.SetStyle(const Value: TBCEditorLeftMarginBorderStyle);
+procedure TBCEditorLeftMarginBorder.SetStyle(const AValue: TBCEditorLeftMarginBorderStyle);
 begin
-  FStyle := Value;
+  FStyle := AValue;
   DoChange
 end;
 

@@ -3,14 +3,14 @@ unit BCEditor.Editor.Bookmarks;
 interface
 
 uses
-  Controls, Classes, Contnrs, BCEditor.Consts;
+  Vcl.Controls, System.Classes, System.Contnrs, BCEditor.Consts;
 
 type
   TBCEditorBookmark = class
   protected
     FChar: Integer;
     FData: Pointer;
-    FEdit: TCustomControl;
+    FEditor: TCustomControl;
     FImage: Integer;
     FIndex: Integer;
     FInternalImage: Boolean;
@@ -18,11 +18,11 @@ type
     FVisible: Boolean;
     function GetIsBookmark: Boolean;
     procedure Invalidate;
-    procedure SetChar(const Value: Integer); virtual;
-    procedure SetImage(const Value: Integer); virtual;
-    procedure SetInternalImage(const Value: Boolean);
-    procedure SetLine(const Value: Integer); virtual;
-    procedure SetVisible(const Value: Boolean);
+    procedure SetChar(const AValue: Integer); virtual;
+    procedure SetImage(const AValue: Integer); virtual;
+    procedure SetInternalImage(const AValue: Boolean);
+    procedure SetLine(const AValue: Integer); virtual;
+    procedure SetVisible(const AValue: Boolean);
   public
     constructor Create(AOwner: TCustomControl);
 
@@ -41,7 +41,7 @@ type
 
   TBCEditorBookmarkList = class(TObjectList)
   protected
-    FEdit: TCustomControl;
+    FEditor: TCustomControl;
     FOnChange: TNotifyEvent;
     function GetItem(AIndex: Integer): TBCEditorBookmark;
     procedure Notify(Ptr: Pointer; Action: TListNotification); override;
@@ -64,7 +64,7 @@ type
 implementation
 
 uses
-  BCEditor.Editor.Base, Types;
+  BCEditor.Editor.Base, System.Types;
 
 { TBCEditorBookmark }
 
@@ -73,7 +73,7 @@ begin
   inherited Create;
 
   FIndex := -1;
-  FEdit := AOwner as TBCBaseEditor;
+  FEditor := AOwner;
 end;
 
 function TBCEditorBookmark.GetIsBookmark: Boolean;
@@ -81,47 +81,48 @@ begin
   Result := FIndex >= 0;
 end;
 
-procedure TBCEditorBookmark.SetChar(const Value: Integer);
+procedure TBCEditorBookmark.SetChar(const AValue: Integer);
 begin
-  FChar := Value;
+  FChar := AValue;
 end;
 
 procedure TBCEditorBookmark.Invalidate;
 begin
-  if FVisible and Assigned(FEdit) and (FEdit is TBCBaseEditor) then
-    (FEdit as TBCBaseEditor).InvalidateLeftMarginLines(FLine, FLine);
+  if FVisible then
+    if Assigned(FEditor) and (FEditor is TBCBaseEditor) then
+     (FEditor as TBCBaseEditor).InvalidateLeftMarginLines(FLine, FLine);
 end;
 
-procedure TBCEditorBookmark.SetImage(const Value: Integer);
+procedure TBCEditorBookmark.SetImage(const AValue: Integer);
 begin
-  FImage := Value;
+  FImage := AValue;
   Invalidate;
 end;
 
-procedure TBCEditorBookmark.SetInternalImage(const Value: Boolean);
+procedure TBCEditorBookmark.SetInternalImage(const AValue: Boolean);
 begin
-  FInternalImage := Value;
+  FInternalImage := AValue;
   Invalidate;
 end;
 
-procedure TBCEditorBookmark.SetLine(const Value: Integer);
+procedure TBCEditorBookmark.SetLine(const AValue: Integer);
 begin
-  if FVisible and Assigned(FEdit) then
+  if FVisible and Assigned(FEditor) then
   begin
     if FLine > 0 then
       Invalidate;
-    FLine := Value;
+    FLine := AValue;
     Invalidate;
   end
   else
-    FLine := Value;
+    FLine := AValue;
 end;
 
-procedure TBCEditorBookmark.SetVisible(const Value: Boolean);
+procedure TBCEditorBookmark.SetVisible(const AValue: Boolean);
 begin
-  if FVisible <> Value then
+  if FVisible <> AValue then
   begin
-    FVisible := Value;
+    FVisible := AValue;
     Invalidate;
   end;
 end;
@@ -148,7 +149,7 @@ end;
 constructor TBCEditorBookmarkList.Create(AOwner: TCustomControl);
 begin
   inherited Create;
-  FEdit := AOwner as TBCBaseEditor;
+  FEditor := AOwner;
 end;
 
 function TBCEditorBookmarkList.First: TBCEditorBookmark;
@@ -194,15 +195,20 @@ begin
 end;
 
 procedure TBCEditorBookmarkList.Place(AMark: TBCEditorBookmark);
+var
+  LEditor: TBCBaseEditor;
 begin
-  if Assigned(FEdit) and (FEdit is TBCBaseEditor) then
-    if Assigned((FEdit as TBCBaseEditor).OnBeforeBookmarkPlaced) then
-      (FEdit as TBCBaseEditor).OnBeforeBookmarkPlaced(FEdit, AMark);
+  LEditor := nil;
+  if Assigned(FEditor) and (FEditor is TBCBaseEditor) then
+    LEditor := FEditor as TBCBaseEditor;
+  if Assigned(LEditor) then
+    if Assigned(LEditor.OnBeforeBookmarkPlaced) then
+      LEditor.OnBeforeBookmarkPlaced(FEditor, AMark);
   if Assigned(AMark) then
     Add(AMark);
-  if Assigned(FEdit) and (FEdit is TBCBaseEditor) then
-    if Assigned((FEdit as TBCBaseEditor).OnAfterBookmarkPlaced) then
-      (FEdit as TBCBaseEditor).OnAfterBookmarkPlaced(FEdit);
+  if Assigned(LEditor) then
+    if Assigned(LEditor.OnAfterBookmarkPlaced) then
+      LEditor.OnAfterBookmarkPlaced(FEditor);
 end;
 
 end.

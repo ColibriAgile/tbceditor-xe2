@@ -12,7 +12,7 @@ type
   TBCEditorCodeFoldingRanges = class(TPersistent)
   strict private
     FList: TList;
-    function Get(Index: Integer): TBCEditorCodeFoldingRange;
+    function Get(AIndex: Integer): TBCEditorCodeFoldingRange;
     function GetCount: Integer;
   public
     constructor Create;
@@ -23,15 +23,15 @@ type
     procedure Clear;
 
     property Count: Integer read GetCount;
-    property Items[Index: Integer]: TBCEditorCodeFoldingRange read Get; default;
+    property Items[AIndex: Integer]: TBCEditorCodeFoldingRange read Get; default;
   end;
 
   TBCEditorAllCodeFoldingRanges = class(TBCEditorCodeFoldingRanges)
   strict private
     FList: TList;
     function GetAllCount: Integer;
-    function GetRange(Index: Integer): TBCEditorCodeFoldingRange;
-    procedure SetRange(Index: Integer; Value: TBCEditorCodeFoldingRange);
+    function GetRange(AIndex: Integer): TBCEditorCodeFoldingRange;
+    procedure SetRange(AIndex: Integer; Value: TBCEditorCodeFoldingRange);
   public
     constructor Create;
     destructor Destroy; override;
@@ -43,7 +43,7 @@ type
     procedure SetParentCollapsedOfSubCodeFoldingRanges(AFoldRange: TBCEditorCodeFoldingRange);
 
     property AllCount: Integer read GetAllCount;
-    property Items[Index: Integer]: TBCEditorCodeFoldingRange read GetRange write SetRange; default;
+    property Items[AIndex: Integer]: TBCEditorCodeFoldingRange read GetRange write SetRange; default;
     property List: TList read FList;
   end;
 
@@ -53,15 +53,15 @@ type
     FCollapsed: Boolean;
     FCollapsedBy: Integer;
     FCollapseMarkRect: TRect;
-    FRegionItem: TBCEditorCodeFoldingRegionItem;
+    FFoldRangeLevel: Integer;
     FFromLine: Integer;
     FIndentLevel: Integer;
+    FIsExtraTokenFound: Boolean;
     FParentCollapsed: Boolean;
-    FUndoListed: Boolean;
-    FFoldRangeLevel: Integer;
+    FRegionItem: TBCEditorCodeFoldingRegionItem;
     FSubCodeFoldingRanges: TBCEditorCodeFoldingRanges;
     FToLine: Integer;
-    FIsExtraTokenFound: Boolean;
+    FUndoListed: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -75,15 +75,15 @@ type
     property Collapsed: Boolean read FCollapsed write FCollapsed default False;
     property CollapsedBy: Integer read FCollapsedBy write FCollapsedBy;
     property CollapseMarkRect: TRect read FCollapseMarkRect write FCollapseMarkRect;
-    property RegionItem: TBCEditorCodeFoldingRegionItem read FRegionItem write FRegionItem;
-    property FromLine: Integer read FFromLine write FFromLine;
-    property IsExtraTokenFound: Boolean read FIsExtraTokenFound write FIsExtraTokenFound default False;
-    property IndentLevel: Integer read FIndentLevel write FIndentLevel;
-    property ParentCollapsed: Boolean read FParentCollapsed write FParentCollapsed;
-    property UndoListed: Boolean read FUndoListed write FUndoListed default False;
     property FoldRangeLevel: Integer read FFoldRangeLevel write FFoldRangeLevel;
+    property FromLine: Integer read FFromLine write FFromLine;
+    property IndentLevel: Integer read FIndentLevel write FIndentLevel;
+    property IsExtraTokenFound: Boolean read FIsExtraTokenFound write FIsExtraTokenFound default False;
+    property ParentCollapsed: Boolean read FParentCollapsed write FParentCollapsed;
+    property RegionItem: TBCEditorCodeFoldingRegionItem read FRegionItem write FRegionItem;
     property SubCodeFoldingRanges: TBCEditorCodeFoldingRanges read FSubCodeFoldingRanges;
     property ToLine: Integer read FToLine write FToLine;
+    property UndoListed: Boolean read FUndoListed write FUndoListed default False;
   end;
 
 implementation
@@ -137,27 +137,27 @@ begin
   Result := FList.Count;
 end;
 
-function TBCEditorAllCodeFoldingRanges.GetRange(Index: Integer): TBCEditorCodeFoldingRange;
+function TBCEditorAllCodeFoldingRanges.GetRange(AIndex: Integer): TBCEditorCodeFoldingRange;
 begin
-  if Cardinal(Index) < Cardinal(FList.Count) then
-    Result := FList.List[index]
+  if Cardinal(AIndex) < Cardinal(FList.Count) then
+    Result := FList.List[AIndex]
   else
     Result := nil;
 end;
 
-procedure TBCEditorAllCodeFoldingRanges.SetRange(Index: Integer; Value: TBCEditorCodeFoldingRange);
+procedure TBCEditorAllCodeFoldingRanges.SetRange(AIndex: Integer; Value: TBCEditorCodeFoldingRange);
 begin
-  FList[Index] := Value;
+  FList[AIndex] := Value;
 end;
 
 procedure TBCEditorAllCodeFoldingRanges.SetParentCollapsedOfSubCodeFoldingRanges(AFoldRange: TBCEditorCodeFoldingRange);
 var
-	I: Integer;
+	i: Integer;
   FoldRange: TBCEditorCodeFoldingRange;
 begin
-  for I := 0 to AllCount - 1 do
+  for i := 0 to AllCount - 1 do
   begin
-    FoldRange := GetRange(I);
+    FoldRange := GetRange(i);
     if FoldRange = AFoldRange then
       Continue;
     if FoldRange.FromLine > AFoldRange.ToLine then
@@ -230,9 +230,9 @@ begin
   Result := FList.Count;
 end;
 
-function TBCEditorCodeFoldingRanges.Get(Index: Integer): TBCEditorCodeFoldingRange;
+function TBCEditorCodeFoldingRanges.Get(AIndex: Integer): TBCEditorCodeFoldingRange;
 begin
-  Result := FList[index];
+  Result := FList[AIndex];
 end;
 
 { TBCEditorCodeFoldingRange }
