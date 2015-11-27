@@ -9,7 +9,6 @@ type
   TBCEditorMinimap = class(TPersistent)
   strict private
     FCharHeight: Integer;
-    FCharWidth: Integer;
     FClicked: Boolean;
     FColors: TBCEditorMinimapColors;
     FCursor: TCursor;
