@@ -2953,7 +2953,7 @@ var
   LOldCaretPosition, LOldBlockBeginPosition, LOldBlockEndPosition: TBCEditorTextPosition;
   LWasSelectionAvailable: Boolean;
 begin
-  Assert((ACommand >= ecUpperCase) and (ACommand <= ecAlternatingCaseBlock));
+  Assert((ACommand >= bceUpperCase) and (ACommand <= bceAlternatingCaseBlock));
   if SelectionAvailable then
   begin
     LWasSelectionAvailable := True;
@@ -2968,15 +2968,15 @@ begin
     if LSelectedText <> '' then
     begin
       case ACommand of
-        ecUpperCase, ecUpperCaseBlock:
+        bceUpperCase, bceUpperCaseBlock:
           LSelectedText := UpperCase(LSelectedText);
-        ecLowerCase, ecLowerCaseBlock:
+        bceLowerCase, bceLowerCaseBlock:
           LSelectedText := LowerCase(LSelectedText);
-        ecAlternatingCase, ecAlternatingCaseBlock:
+        bceAlternatingCase, bceAlternatingCaseBlock:
           LSelectedText := ToggleCase(LSelectedText);
-        ecSentenceCase:
+        bceSentenceCase:
           LSelectedText := UpperCase(LSelectedText[1]) + LowerCase(Copy(LSelectedText, 2, Length(LSelectedText)));
-        ecTitleCase:
+        bceTitleCase:
           LSelectedText := TitleCase(LSelectedText);
       end;
       BeginUndoBlock;
@@ -2992,12 +2992,12 @@ begin
       end;
     end;
   finally
-    if LWasSelectionAvailable and (ACommand >= ecUpperCaseBlock) then
+    if LWasSelectionAvailable and (ACommand >= bceUpperCaseBlock) then
     begin
       SelectionBeginPosition := LOldBlockBeginPosition;
       SelectionEndPosition := LOldBlockEndPosition;
     end;
-    if LWasSelectionAvailable or (ACommand < ecUpperCaseBlock) then
+    if LWasSelectionAvailable or (ACommand < bceUpperCaseBlock) then
       TextCaretPosition := LOldCaretPosition;
   end;
 end;
@@ -5103,7 +5103,7 @@ begin
       try
         ImmGetCompositionStringW(LImc, GCS_RESULTSTR, LPBuffer, LImeCount);
         LPBuffer[LImeCount div SizeOf(Char)] := BCEDITOR_NONE_CHAR;
-        CommandProcessor(ecImeStr, BCEDITOR_NONE_CHAR, LPBuffer);
+        CommandProcessor(bceImeStr, BCEDITOR_NONE_CHAR, LPBuffer);
       finally
         FreeMem(LPBuffer);
       end;
@@ -5141,7 +5141,7 @@ procedure TBCBaseEditor.WMKillFocus(var Msg: TWMKillFocus);
 begin
   inherited;
   FreeCompletionProposalPopupWindow;
-  CommandProcessor(ecLostFocus, BCEDITOR_NONE_CHAR, nil);
+  CommandProcessor(bceLostFocus, BCEDITOR_NONE_CHAR, nil);
   if Focused or FAlwaysShowCaret then
     Exit;
   HideCaret;
@@ -5199,7 +5199,7 @@ end;
 
 procedure TBCBaseEditor.WMSetFocus(var Msg: TWMSetFocus);
 begin
-  CommandProcessor(ecGotFocus, BCEDITOR_NONE_CHAR, nil);
+  CommandProcessor(bceGotFocus, BCEDITOR_NONE_CHAR, nil);
 
   ResetCaret;
   if not Selection.Visible and SelectionAvailable then
@@ -5388,9 +5388,9 @@ begin
     if i >= 0 then
       Result := KeyCommands[i].Command
     else
-      Result := ecNone;
+      Result := bceNone;
   end;
-  if (Result = ecNone) and (ACode >= VK_ACCEPT) and (ACode <= VK_SCROLL) then
+  if (Result = bceNone) and (ACode >= VK_ACCEPT) and (ACode <= VK_SCROLL) then
   begin
     FLastKey := ACode;
     FLastShiftState := AShift;
@@ -5830,7 +5830,7 @@ end;
 
 procedure TBCBaseEditor.DoUndo;
 begin
-  CommandProcessor(ecUndo, BCEDITOR_NONE_CHAR, nil);
+  CommandProcessor(bceUndo, BCEDITOR_NONE_CHAR, nil);
 end;
 
 procedure TBCBaseEditor.DoInternalUndo;
@@ -5957,24 +5957,24 @@ begin
   begin
     LTextCaretY := GetTextCaretY;
     if FRescanCodeFolding or
-      ((ACommand = ecChar) or (ACommand = ecBackspace) or (ACommand = ecDeleteChar)) and IsKeywordAtLine(LTextCaretY) or
-      ((ACommand = ecLineBreak) and IsKeywordAtLine(LTextCaretY - 1)) or { the caret is already in the new line }
-      (ACommand = ecUndo) or (ACommand = ecRedo) then
+      ((ACommand = bceChar) or (ACommand = bceBackspace) or (ACommand = bceDeleteChar)) and IsKeywordAtLine(LTextCaretY) or
+      ((ACommand = bceLineBreak) and IsKeywordAtLine(LTextCaretY - 1)) or { the caret is already in the new line }
+      (ACommand = bceUndo) or (ACommand = bceRedo) then
       RescanCodeFoldingRanges
   end;
 
   if FMatchingPair.Enabled then
   case ACommand of
-    ecPaste, ecUndo, ecRedo, ecBackspace, ecTab, ecLeft, ecRight, ecUp, ecDown, ecPageUp, ecPageDown, ecPageTop,
-    ecPageBottom, ecEditorTop, ecEditorBottom, ecGotoXY, ecBlockIndent, ecBlockUnindent, ecShiftTab, ecInsertLine, ecChar,
-    ecString, ecLineBreak, ecDeleteChar, ecDeleteWord, ecDeleteLastWord, ecDeleteBeginningOfLine, ecDeleteEndOfLine,
-    ecDeleteLine, ecClear:
+    bcePaste, bceUndo, bceRedo, bceBackspace, bceTab, bceLeft, bceRight, bceUp, bceDown, bcePageUp, bcePageDown, bcePageTop,
+    bcePageBottom, bceEditorTop, bceEditorBottom, bceGotoXY, bceBlockIndent, bceBlockUnindent, bceShiftTab, bceInsertLine, bceChar,
+    bceString, bceLineBreak, bceDeleteChar, bceDeleteWord, bceDeleteLastWord, bceDeleteBeginningOfLine, bceDeleteEndOfLine,
+    bceDeleteLine, bceClear:
       ScanMatchingPair;
   end;
 
   if cfoShowIndentGuides in CodeFolding.Options then
   case ACommand of
-    ecCut, ecPaste, ecUndo, ecRedo, ecBackspace, ecDeleteChar:
+    bceCut, bcePaste, bceUndo, bceRedo, bceBackspace, bceDeleteChar:
       CheckIfAtMatchingKeywords;
   end;
   if Assigned(FOnCommandProcessed) then
@@ -6109,7 +6109,7 @@ end;
 
 procedure TBCBaseEditor.DoOnProcessCommand(var ACommand: TBCEditorCommand; var AChar: Char; AData: pointer);
 begin
-  if ACommand < ecUserFirst then
+  if ACommand < bceUserFirst then
   begin
     if Assigned(FOnProcessCommand) then
       FOnProcessCommand(Self, ACommand, AChar, AData);
@@ -6276,7 +6276,7 @@ begin
   LChar := BCEDITOR_NONE_CHAR;
   try
     LEditorCommand := TranslateKeyCode(Key, Shift, LData);
-    if (LEditorCommand <> ecNone) then
+    if (LEditorCommand <> bceNone) then
     begin
       Key := 0;
       Include(FStateFlags, sfIgnoreNextChar);
@@ -6295,7 +6295,7 @@ begin
   if not (sfIgnoreNextChar in FStateFlags) then
   begin
     FKeyboardHandler.ExecuteKeyPress(Self, Key);
-    CommandProcessor(ecChar, Key, nil);
+    CommandProcessor(bceChar, Key, nil);
   end
   else
     Exclude(FStateFlags, sfIgnoreNextChar);
@@ -6403,7 +6403,7 @@ begin
     if FLines.Count > 0 then
     begin
       LRunner := RescanHighlighterRangesFrom(AIndex - 1);
-      { This is necessary because a line can be deleted with ecDeleteChar command and above, what've done, is rescanned
+      { This is necessary because a line can be deleted with bceDeleteChar command and above, what've done, is rescanned
         a line joined with deleted one. But if range on that line hadn't changed, it still could've been changed on
         lines below. In case if range on line with join had changed the above rescan already did the job. }
       if LRunner = AIndex - 1 then
@@ -6895,7 +6895,7 @@ begin
     LHookedCommandHandler.Event(Self, AfterProcessing, LHandled, ACommand, AChar, AData, LHookedCommandHandler.Data);
   end;
   if LHandled then
-    ACommand := ecNone;
+    ACommand := bceNone;
 end;
 
 procedure TBCBaseEditor.Paint;
@@ -8662,7 +8662,7 @@ begin
         begin
           LTextPosition := LUndoItem.ChangeBeginPosition;
           SetCaretAndSelection(LTextPosition, LTextPosition, LTextPosition);
-          CommandProcessor(ecLineBreak, BCEDITOR_CARRIAGE_RETURN, nil);
+          CommandProcessor(bceLineBreak, BCEDITOR_CARRIAGE_RETURN, nil);
         end;
       crIndent:
         begin
@@ -9836,7 +9836,7 @@ begin
           end;
           if LIsDeleteLine then
           begin
-            ExecuteCommand(ecDeleteLine, 'Y', nil);
+            ExecuteCommand(bceDeleteLine, 'Y', nil);
             Dec(LCurrentTextPosition.Line);
           end
           else
@@ -10377,25 +10377,25 @@ var
 begin
   { first the program event handler gets a chance to process the command }
   DoOnProcessCommand(ACommand, AChar, AData);
-  if ACommand <> ecNone then
+  if ACommand <> bceNone then
   begin
     { notify hooked command handlers before the command is executed inside of the class }
     NotifyHookedCommandHandlers(False, ACommand, AChar, AData);
 
-    FRescanCodeFolding := (ACommand = ecCut) or (ACommand = ecPaste) or (ACommand = ecDeleteLine) or
+    FRescanCodeFolding := (ACommand = bceCut) or (ACommand = bcePaste) or (ACommand = bceDeleteLine) or
 
-      ((ACommand = ecChar) or (ACommand = ecTab) or (ACommand = ecDeleteChar) or (ACommand = ecBackspace) or
-       (ACommand = ecLineBreak)) and IsKeywordAtCursorPosition or
+      ((ACommand = bceChar) or (ACommand = bceTab) or (ACommand = bceDeleteChar) or (ACommand = bceBackspace) or
+       (ACommand = bceLineBreak)) and IsKeywordAtCursorPosition or
 
-      SelectionAvailable and ((ACommand = ecLineBreak) or (ACommand = ecBackspace) or (ACommand = ecChar)) or
+      SelectionAvailable and ((ACommand = bceLineBreak) or (ACommand = bceBackspace) or (ACommand = bceChar)) or
 
-      ((ACommand = ecChar) and CharInSet(AChar, FHighlighter.SkipOpenKeyChars + FHighlighter.SkipCloseKeyChars));
+      ((ACommand = bceChar) and CharInSet(AChar, FHighlighter.SkipOpenKeyChars + FHighlighter.SkipCloseKeyChars));
 
     if FCodeFolding.Visible then
     begin
       case ACommand of
-        ecBackspace, ecDeleteChar, ecDeleteWord, ecDeleteLastWord, ecDeleteLine, ecClear, ecLineBreak, ecChar,
-        ecString, ecImeStr, ecCut, ecPaste, ecBlockIndent, ecBlockUnindent, ecTab:
+        bceBackspace, bceDeleteChar, bceDeleteWord, bceDeleteLastWord, bceDeleteLine, bceClear, bceLineBreak, bceChar,
+        bceString, bceImeStr, bceCut, bcePaste, bceBlockIndent, bceBlockUnindent, bceTab:
           if SelectionAvailable then
           begin
             LOldSelectionBeginPosition := GetSelectionBeginPosition;
@@ -10417,7 +10417,7 @@ begin
     end;
 
     { internal command handler }
-    if ACommand < ecUserFirst then
+    if ACommand < bceUserFirst then
       ExecuteCommand(ACommand, AChar, AData);
 
     { notify hooked command handlers after the command was executed inside of the class }
@@ -10464,7 +10464,7 @@ end;
 
 procedure TBCBaseEditor.CutToClipboard;
 begin
-  CommandProcessor(ecCut, BCEDITOR_NONE_CHAR, nil);
+  CommandProcessor(bceCut, BCEDITOR_NONE_CHAR, nil);
   DoChange;
 end;
 
@@ -10581,7 +10581,7 @@ begin
           else
             FUndoList.AddChange(crInsert, LNewCaretPosition, LNewCaretPosition, SelectionEndPosition, SelectedText, FSelection.ActiveMode);
           SelectionEndPosition := TextCaretPosition;
-          CommandProcessor(ecSelectionGotoXY, BCEDITOR_NONE_CHAR, @LNewCaretPosition);
+          CommandProcessor(bceSelectionGotoXY, BCEDITOR_NONE_CHAR, @LNewCaretPosition);
         finally
           EndUndoBlock;
         end;
@@ -10736,61 +10736,61 @@ begin
   LTextCaretPosition := TextCaretPosition;
   try
     case ACommand of
-      ecLeft, ecSelectionLeft:
-        MoveCaretHorizontally(-1, ACommand = ecSelectionLeft);
-      ecRight, ecSelectionRight:
-        MoveCaretHorizontally(1, ACommand = ecSelectionRight);
-      ecPageLeft, ecSelectionPageLeft:
-        MoveCaretHorizontally(-FVisibleChars, ACommand = ecSelectionPageLeft);
-      ecPageRight, ecSelectionPageRight:
-        MoveCaretHorizontally(FVisibleChars, ACommand = ecSelectionPageRight);
-      ecLineStart, ecSelectionLineStart:
-        DoHomeKey(ACommand = ecSelectionLineStart);
-      ecLineEnd, ecSelectionLineEnd:
-        DoEndKey(ACommand = ecSelectionLineEnd);
-      ecUp, ecSelectionUp:
+      bceLeft, bceSelectionLeft:
+        MoveCaretHorizontally(-1, ACommand = bceSelectionLeft);
+      bceRight, bceSelectionRight:
+        MoveCaretHorizontally(1, ACommand = bceSelectionRight);
+      bcePageLeft, bceSelectionPageLeft:
+        MoveCaretHorizontally(-FVisibleChars, ACommand = bceSelectionPageLeft);
+      bcePageRight, bceSelectionPageRight:
+        MoveCaretHorizontally(FVisibleChars, ACommand = bceSelectionPageRight);
+      bceLineStart, bceSelectionLineStart:
+        DoHomeKey(ACommand = bceSelectionLineStart);
+      bceLineEnd, bceSelectionLineEnd:
+        DoEndKey(ACommand = bceSelectionLineEnd);
+      bceUp, bceSelectionUp:
         begin
-          MoveCaretVertically(-1, ACommand = ecSelectionUp);
+          MoveCaretVertically(-1, ACommand = bceSelectionUp);
           Invalidate;
         end;
-      ecDown, ecSelectionDown:
+      bceDown, bceSelectionDown:
         begin
-          MoveCaretVertically(1, ACommand = ecSelectionDown);
+          MoveCaretVertically(1, ACommand = bceSelectionDown);
           Invalidate;
         end;
-      ecPageUp, ecSelectionPageUp, ecPageDown, ecSelectionPageDown:
+      bcePageUp, bceSelectionPageUp, bcePageDown, bceSelectionPageDown:
         begin
           LCounter := FVisibleLines shr Ord(soHalfPage in FScroll.Options);
 
-          if ACommand in [ecPageUp, ecSelectionPageUp] then
+          if ACommand in [bcePageUp, bceSelectionPageUp] then
             LCounter := -LCounter;
           TopLine := TopLine + LCounter;
-          MoveCaretVertically(LCounter, ACommand in [ecSelectionPageUp, ecSelectionPageDown]);
+          MoveCaretVertically(LCounter, ACommand in [bceSelectionPageUp, bceSelectionPageDown]);
           Invalidate;
         end;
-      ecPageTop, ecSelectionPageTop:
+      bcePageTop, bceSelectionPageTop:
         begin
           LCaretNewPosition := DisplayToTextPosition(GetDisplayPosition(DisplayCaretX, TopLine));
-          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = ecSelectionPageTop);
+          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = bceSelectionPageTop);
           Invalidate;
         end;
-      ecPageBottom, ecSelectionPageBottom:
+      bcePageBottom, bceSelectionPageBottom:
         begin
           LCaretNewPosition := DisplayToTextPosition(GetDisplayPosition(DisplayCaretX, TopLine + VisibleLines - 1));
-          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = ecSelectionPageBottom);
+          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = bceSelectionPageBottom);
           Invalidate;
         end;
-      ecEditorTop, ecSelectionEditorTop:
+      bceEditorTop, bceSelectionEditorTop:
         begin
           with LCaretNewPosition do
           begin
             Char := 1;
             Line := 0;
           end;
-          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = ecSelectionEditorTop);
+          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = bceSelectionEditorTop);
           Invalidate;
         end;
-      ecEditorBottom, ecSelectionEditorBottom:
+      bceEditorBottom, bceSelectionEditorBottom:
         begin
           with LCaretNewPosition do
           begin
@@ -10799,25 +10799,25 @@ begin
             if Line > 0 then
               Char := Length(Lines.ExpandedStrings[Line]) + 1;
           end;
-          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = ecSelectionEditorBottom);
+          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = bceSelectionEditorBottom);
           Invalidate;
         end;
-      ecGotoXY, ecSelectionGotoXY:
+      bceGotoXY, bceSelectionGotoXY:
         if Assigned(AData) then
         begin
-          MoveCaretAndSelection(LTextCaretPosition, TBCEditorTextPosition(AData^), ACommand = ecSelectionGotoXY);
+          MoveCaretAndSelection(LTextCaretPosition, TBCEditorTextPosition(AData^), ACommand = bceSelectionGotoXY);
           Invalidate;
         end;
-      ecGotoBookmark1 .. ecGotoBookmark9:
+      bceGotoBookmark1 .. bceGotoBookmark9:
         begin
           if FLeftMargin.Bookmarks.ShortCuts then
-            GotoBookmark(ACommand - ecGotoBookmark1);
+            GotoBookmark(ACommand - bceGotoBookmark1);
         end;
-      ecSetBookmark1 .. ecSetBookmark9:
+      bceSetBookmark1 .. bceSetBookmark9:
         begin
           if FLeftMargin.Bookmarks.ShortCuts then
           begin
-            i := ACommand - ecSetBookmark1;
+            i := ACommand - bceSetBookmark1;
             if Assigned(AData) then
               LTextCaretPosition := TBCEditorTextPosition(AData^);
             if Assigned(FBookmarks[i]) then
@@ -10831,25 +10831,25 @@ begin
               SetBookmark(i, LTextCaretPosition);
           end;
         end;
-      ecWordLeft, ecSelectionWordLeft:
+      bceWordLeft, bceSelectionWordLeft:
         begin
           LCaretNewPosition := WordStart;
           if AreCaretsEqual(LCaretNewPosition, LTextCaretPosition) then
             LCaretNewPosition := PreviousWordPosition;
-          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = ecSelectionWordLeft);
+          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = bceSelectionWordLeft);
         end;
-      ecWordRight, ecSelectionWordRight:
+      bceWordRight, bceSelectionWordRight:
         begin
           LCaretNewPosition := WordEnd;
           if AreCaretsEqual(LCaretNewPosition, LTextCaretPosition) then
             LCaretNewPosition := NextWordPosition;
-          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = ecSelectionWordRight);
+          MoveCaretAndSelection(LTextCaretPosition, LCaretNewPosition, ACommand = bceSelectionWordRight);
         end;
-      ecSelectionWord:
+      bceSelectionWord:
         SetSelectedWord;
-      ecSelectAll:
+      bceSelectAll:
         SelectAll;
-      ecBackspace:
+      bceBackspace:
         if not ReadOnly then
         begin
           if SelectionAvailable then
@@ -11021,7 +11021,7 @@ begin
             end;
           end;
         end;
-      ecDeleteChar:
+      bceDeleteChar:
         if not ReadOnly then
         begin
           if SelectionAvailable then
@@ -11071,12 +11071,12 @@ begin
             end;
           end;
         end;
-      ecDeleteWord, ecDeleteEndOfLine:
+      bceDeleteWord, bceDeleteEndOfLine:
         if not ReadOnly then
         begin
           LLineText := FLines.ExpandedStrings[LTextCaretPosition.Line];
           LLength := Length(LLineText);
-          if ACommand = ecDeleteWord then
+          if ACommand = bceDeleteWord then
           begin
             LWordPosition := WordEnd;
             if (LWordPosition.Char < LTextCaretPosition.Char) or ((LWordPosition.Char = LTextCaretPosition.Char) and (LWordPosition.Line < FLines.Count)) then
@@ -11116,10 +11116,10 @@ begin
             FUndoList.AddChange(crDelete, LTextCaretPosition, LTextCaretPosition, LWordPosition, LHelper, smNormal);
           end;
         end;
-      ecDeleteLastWord, ecDeleteBeginningOfLine:
+      bceDeleteLastWord, bceDeleteBeginningOfLine:
         if not ReadOnly then
         begin
-          if ACommand = ecDeleteLastWord then
+          if ACommand = bceDeleteLastWord then
             LWordPosition := PreviousWordPosition
           else
           begin
@@ -11142,7 +11142,7 @@ begin
             end;
           end;
         end;
-      ecDeleteLine:
+      bceDeleteLine:
         if not ReadOnly and (Lines.Count > 0) then
         begin
           if SelectionAvailable then
@@ -11163,7 +11163,7 @@ begin
           end;
           TextCaretPosition := GetTextPosition(1, LTextCaretPosition.Line);
         end;
-      ecMoveLineUp:
+      bceMoveLineUp:
         begin
           FCommandDrop := True;
           try
@@ -11181,7 +11181,7 @@ begin
             FCommandDrop := False;
           end;
         end;
-      ecMoveLineDown:
+      bceMoveLineDown:
         begin
           FCommandDrop := True;
           try
@@ -11199,7 +11199,7 @@ begin
             FCommandDrop := False;
           end;
         end;
-      ecMoveCharLeft:
+      bceMoveCharLeft:
         begin
           FCommandDrop := True;
           try
@@ -11217,7 +11217,7 @@ begin
             FCommandDrop := False;
           end;
         end;
-      ecMoveCharRight:
+      bceMoveCharRight:
         begin
           FCommandDrop := True;
           try
@@ -11235,14 +11235,14 @@ begin
             FCommandDrop := False;
           end;
         end;
-      ecSearchNext:
+      bceSearchNext:
         FindNext;
-      ecSearchPrevious:
+      bceSearchPrevious:
         FindPrevious;
-      ecClear:
+      bceClear:
         if not ReadOnly then
           Clear;
-      ecInsertLine, ecLineBreak:
+      bceInsertLine, bceLineBreak:
         if not ReadOnly then
         begin
           UndoList.BeginBlock;
@@ -11309,7 +11309,7 @@ begin
                     Attributes[LTextCaretPosition.Line + 1].LineState := lsModified;
                   end;
 
-                  if ACommand = ecLineBreak then
+                  if ACommand = bceLineBreak then
                   begin
                     DisplayCaretX := LSpaceCount2 + 1;
                     DisplayCaretY := FDisplayCaretY + 1;
@@ -11327,7 +11327,7 @@ begin
                     Attributes[LTextCaretPosition.Line + 1].LineState := lsModified;
                   end;
 
-                  if ACommand = ecLineBreak then
+                  if ACommand = bceLineBreak then
                     DisplayCaretY := DisplayCaretY + 1;
                 end;
               end
@@ -11336,7 +11336,7 @@ begin
                 LSpaceCount1 := 0;
                 LSpaceCount2 := 0;
                 LBackCounterLine := LTextCaretPosition.Line + 1;
-                if (ACommand = ecLineBreak) and (eoAutoIndent in FOptions) then
+                if (ACommand = bceLineBreak) and (eoAutoIndent in FOptions) then
                 begin
                   repeat
                     Dec(LBackCounterLine);
@@ -11364,7 +11364,7 @@ begin
                   Attributes[LTextCaretPosition.Line + 1].LineState := lsModified;
                 end;
 
-                if ACommand = ecLineBreak then
+                if ACommand = bceLineBreak then
                 begin
                   if LSpaceCount1 > 0 then
                   begin
@@ -11395,7 +11395,7 @@ begin
               LSpaceCount2 := 0;
               LBackCounterLine := LTextCaretPosition.Line;
 
-              if (ACommand = ecLineBreak) and (eoAutoIndent in FOptions) and (FLines.Count > 1) then
+              if (ACommand = bceLineBreak) and (eoAutoIndent in FOptions) and (FLines.Count > 1) then
               begin
                 Dec(LBackCounterLine);
                 if FLines.StringLength(LBackCounterLine) > 0 then
@@ -11420,7 +11420,7 @@ begin
                 Attributes[LTextCaretPosition.Line + 1].LineState := lsModified;
               end;
 
-              if ACommand = ecLineBreak then
+              if ACommand = bceLineBreak then
               begin
                 if LSpaceCount1 > 0 then
                 begin
@@ -11448,13 +11448,13 @@ begin
             UndoList.EndBlock;
           end;
         end;
-      ecTab:
+      bceTab:
         if not ReadOnly then
           DoTabKey;
-      ecShiftTab:
+      bceShiftTab:
         if not ReadOnly then
           DoShiftTabKey;
-      ecChar:
+      bceChar:
         if not ReadOnly and (AChar >= BCEDITOR_SPACE_CHAR) and (AChar <> BCEDITOR_CTRL_BACKSPACE) then
         begin
           if SelectionAvailable then
@@ -11561,11 +11561,11 @@ begin
               LeftChar := LeftChar + Min(25, FVisibleChars - 1);
           end;
         end;
-      ecUpperCase, ecLowerCase, ecAlternatingCase, ecSentenceCase, ecTitleCase, ecUpperCaseBlock, ecLowerCaseBlock,
-      ecAlternatingCaseBlock:
+      bceUpperCase, bceLowerCase, bceAlternatingCase, bceSentenceCase, bceTitleCase, bceUpperCaseBlock, bceLowerCaseBlock,
+      bceAlternatingCaseBlock:
         if not ReadOnly then
           DoToggleSelectedCase(ACommand);
-      ecUndo:
+      bceUndo:
         if not readonly then
         begin
           FUndoRedo := True;
@@ -11575,7 +11575,7 @@ begin
             FUndoRedo := False;
           end;
         end;
-      ecRedo:
+      bceRedo:
         if not readonly then
         begin
           FUndoRedo := True;
@@ -11585,22 +11585,22 @@ begin
             FUndoRedo := False;
           end;
         end;
-      ecCut:
+      bceCut:
         if (not ReadOnly) and SelectionAvailable then
           DoCutToClipboard;
-      ecCopy:
+      bceCopy:
         CopyToClipboard;
-      ecPaste:
+      bcePaste:
         if not ReadOnly then
           DoPasteFromClipboard;
-      ecScrollUp, ecScrollDown:
+      bceScrollUp, bceScrollDown:
         begin
           LCaretRow := DisplayCaretY;
           if (LCaretRow < TopLine) or (LCaretRow >= TopLine + VisibleLines) then
             EnsureCursorPositionVisible
           else
           begin
-            if ACommand = ecScrollUp then
+            if ACommand = bceScrollUp then
             begin
               TopLine := TopLine - 1;
               if LCaretRow > TopLine + VisibleLines - 1 then
@@ -11616,40 +11616,40 @@ begin
             Invalidate;
           end;
         end;
-      ecScrollLeft:
+      bceScrollLeft:
         begin
           LeftChar := LeftChar - 1;
           Update;
         end;
-      ecScrollRight:
+      bceScrollRight:
         begin
           LeftChar := LeftChar + 1;
           Update;
         end;
-      ecInsertMode:
+      bceInsertMode:
         InsertMode := True;
-      ecOverwriteMode:
+      bceOverwriteMode:
         InsertMode := False;
-      ecToggleMode:
+      bceToggleMode:
         InsertMode := not InsertMode;
-      ecBlockIndent:
+      bceBlockIndent:
         if not ReadOnly then
           DoBlockIndent;
-      ecBlockUnindent:
+      bceBlockUnindent:
         if not ReadOnly then
           DoBlockUnindent;
-      ecNormalSelect:
+      bceNormalSelect:
         FSelection.Mode := smNormal;
-      ecColumnSelect:
+      bceColumnSelect:
         FSelection.Mode := smColumn;
-      ecLineSelect:
+      bceLineSelect:
         FSelection.Mode := smLine;
-      ecContextHelp:
+      bceContextHelp:
         begin
           if Assigned(FOnContextHelp) then
             FOnContextHelp(Self, WordAtCursor);
         end;
-      ecImeStr:
+      bceImeStr:
         if not ReadOnly then
         begin
           LPChar := PChar(AData);
@@ -12059,7 +12059,7 @@ end;
 
 procedure TBCBaseEditor.PasteFromClipboard;
 begin
-  CommandProcessor(ecPaste, BCEDITOR_NONE_CHAR, nil);
+  CommandProcessor(bcePaste, BCEDITOR_NONE_CHAR, nil);
   DoChange;
 end;
 
@@ -12164,7 +12164,7 @@ end;
 
 procedure TBCBaseEditor.DoRedo;
 begin
-  CommandProcessor(ecRedo, BCEDITOR_NONE_CHAR, nil);
+  CommandProcessor(bceRedo, BCEDITOR_NONE_CHAR, nil);
 end;
 
 procedure TBCBaseEditor.DoInternalRedo;
@@ -12565,23 +12565,23 @@ begin
   case FSelectedCaseCycle of
     cUpper: { UPPERCASE }
       if FSelection.ActiveMode = smColumn then
-        CommandProcessor(ecUpperCaseBlock, BCEDITOR_NONE_CHAR, nil)
+        CommandProcessor(bceUpperCaseBlock, BCEDITOR_NONE_CHAR, nil)
       else
-        CommandProcessor(ecUpperCase, BCEDITOR_NONE_CHAR, nil);
+        CommandProcessor(bceUpperCase, BCEDITOR_NONE_CHAR, nil);
     cLower: { lowercase }
       if FSelection.ActiveMode = smColumn then
-        CommandProcessor(ecLowerCaseBlock, BCEDITOR_NONE_CHAR, nil)
+        CommandProcessor(bceLowerCaseBlock, BCEDITOR_NONE_CHAR, nil)
       else
-        CommandProcessor(ecLowerCase, BCEDITOR_NONE_CHAR, nil);
+        CommandProcessor(bceLowerCase, BCEDITOR_NONE_CHAR, nil);
     cAlternating: { aLtErNaTiNg cAsE }
       if FSelection.ActiveMode = smColumn then
-        CommandProcessor(ecAlternatingCaseBlock, BCEDITOR_NONE_CHAR, nil)
+        CommandProcessor(bceAlternatingCaseBlock, BCEDITOR_NONE_CHAR, nil)
       else
-        CommandProcessor(ecAlternatingCase, BCEDITOR_NONE_CHAR, nil);
+        CommandProcessor(bceAlternatingCase, BCEDITOR_NONE_CHAR, nil);
     cSentence: { Sentence case }
-       CommandProcessor(ecSentenceCase, BCEDITOR_NONE_CHAR, nil);
+       CommandProcessor(bceSentenceCase, BCEDITOR_NONE_CHAR, nil);
     cTitle: { Title Case }
-      CommandProcessor(ecTitleCase, BCEDITOR_NONE_CHAR, nil);
+      CommandProcessor(bceTitleCase, BCEDITOR_NONE_CHAR, nil);
     cOriginal: { Original text }
       SelectedText := FSelectedCaseText;
   end;

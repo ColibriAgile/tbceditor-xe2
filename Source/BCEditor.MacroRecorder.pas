@@ -257,10 +257,10 @@ begin
 end;
 
 const
-  ecPluginBase = 64000;
+  bcePluginBase = 64000;
 
 var
-  GCurrentCommand: Integer = ecPluginBase;
+  GCurrentCommand: Integer = bcePluginBase;
 
 function NewPluginCommand: TBCEditorCommand;
 begin
@@ -289,19 +289,19 @@ function TBCBaseEditorMacroRecorder.CreateMacroEvent(ACommand: TBCEditorCommand)
 
 begin
   case ACommand of
-    ecGotoXY, ecSelectionGotoXY, ecSetBookmark1 .. ecSetBookmark9:
+    bceGotoXY, bceSelectionGotoXY, bceSetBookmark1 .. bceSetBookmark9:
       begin
         Result := TBCEditorPositionEvent.Create;
         TBCEditorPositionEvent(Result).Command := ACommand;
       end;
-    ecChar:
+    bceChar:
       Result := TBCEditorCharEvent.Create;
-    ecString:
+    bceString:
       Result := TBCEditorStringEvent.Create;
   else
     begin
       Result := nil;
-      if (ACommand < ecUserFirst) or WantDefaultEvent(Result) then
+      if (ACommand < bceUserFirst) or WantDefaultEvent(Result) then
       begin
         Result := TBCEditorBasicEvent.Create;
         TBCEditorBasicEvent(Result).Command := ACommand;
@@ -476,7 +476,7 @@ begin
       LEvent := CreateMacroEvent(Command);
       LEvent.Initialize(Command, AChar, Data);
       FEvents.Add(LEvent);
-      if SaveMarkerPos and (Command >= ecSetBookmark1) and (Command <= ecSetBookmark9) and not Assigned(Data) then
+      if SaveMarkerPos and (Command >= bceSetBookmark1) and (Command <= bceSetBookmark9) and not Assigned(Data) then
         TBCEditorPositionEvent(LEvent).Position := FCurrentEditor.TextCaretPosition;
     end;
   end
@@ -690,7 +690,7 @@ begin
       LPosition := Pos(' ', LCommandString);
       if LPosition = 0 then
         LPosition := Length(LCommandString) + 1;
-      LCommand := ecNone;
+      LCommand := bceNone;
       if IdentToEditorCommand(Copy(LCommandString, 1, LPosition - 1), Longint(LCommand)) then
       begin
         Delete(LCommandString, 1, LPosition);
@@ -830,7 +830,7 @@ function TBCEditorCharEvent.GetAsString: string;
 var
   LIdent: string;
 begin
-  EditorCommandToIdent(ecChar, LIdent);
+  EditorCommandToIdent(bceChar, LIdent);
   Result := LIdent + ' ' + Key;
   if RepeatCount > 1 then
     Result := Result + ' ' + IntToStr(RepeatCount);
@@ -863,12 +863,12 @@ var
   i: Integer;
 begin
   for i := 1 to RepeatCount do
-    AEditor.CommandProcessor(ecChar, Key, nil);
+    AEditor.CommandProcessor(bceChar, Key, nil);
 end;
 
 procedure TBCEditorCharEvent.SaveToStream(AStream: TStream);
 const
-  CharCommand: TBCEditorCommand = ecChar;
+  CharCommand: TBCEditorCommand = bceChar;
 begin
   AStream.Write(CharCommand, SizeOf(TBCEditorCommand));
   AStream.Write(Key, SizeOf(Key));
@@ -948,7 +948,7 @@ function TBCEditorStringEvent.GetAsString: string;
 var
   LIdent: string;
 begin
-  EditorCommandToIdent(ecString, LIdent);
+  EditorCommandToIdent(bceString, LIdent);
   Result := LIdent + ' ' + WideQuotedStr(Value, #39);
   if RepeatCount > 1 then
     Result := Result + ' ' + IntToStr(RepeatCount);
@@ -1010,12 +1010,12 @@ var
 begin
   for j := 1 to RepeatCount do
     for i := 1 to Length(Value) do
-      AEditor.CommandProcessor(ecChar, Value[i], nil);
+      AEditor.CommandProcessor(bceChar, Value[i], nil);
 end;
 
 procedure TBCEditorStringEvent.SaveToStream(AStream: TStream);
 const
-  Command: TBCEditorCommand = ecString;
+  Command: TBCEditorCommand = bceString;
 var
   LLength: Integer;
   LPBuffer: PChar;

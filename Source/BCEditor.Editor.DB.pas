@@ -233,10 +233,10 @@ end;
 
 procedure TBCCustomDBEditor.ExecuteCommand(ACommand: TBCEditorCommand; AChar: Char; AData: pointer);
 begin
-  if (ACommand = ecChar) and (AChar = BCEDITOR_ESCAPE) then
+  if (ACommand = bceChar) and (AChar = BCEDITOR_ESCAPE) then
     FDataLink.Reset
   else
-  if (ACommand >= ecEditCommandFirst) and (ACommand <= ecEditCommandLast) then
+  if (ACommand >= bceEditCommandFirst) and (ACommand <= bceEditCommandLast) then
     if not FDataLink.Edit then
       Exit;
 

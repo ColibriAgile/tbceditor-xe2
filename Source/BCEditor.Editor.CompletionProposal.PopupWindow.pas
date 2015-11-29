@@ -197,12 +197,12 @@ begin
         begin
           CurrentString := Copy(FCurrentString, 1, Length(FCurrentString) - 1);
           if Assigned(LEditor) then
-            LEditor.CommandProcessor(ecLeft, BCEDITOR_NONE_CHAR, nil);
+            LEditor.CommandProcessor(bceLeft, BCEDITOR_NONE_CHAR, nil);
         end
         else
         begin
           if Assigned(LEditor) then
-            LEditor.CommandProcessor(ecLeft, BCEDITOR_NONE_CHAR, nil);
+            LEditor.CommandProcessor(bceLeft, BCEDITOR_NONE_CHAR, nil);
           Hide;
         end;
       end;
@@ -222,7 +222,7 @@ begin
             else
               CurrentString := FCurrentString + LChar;
 
-            CommandProcessor(ecRight, BCEDITOR_NONE_CHAR, nil);
+            CommandProcessor(bceRight, BCEDITOR_NONE_CHAR, nil);
           end;
       end;
     VK_PRIOR:
@@ -251,19 +251,19 @@ begin
           CurrentString := Copy(FCurrentString, 1, Length(FCurrentString) - 1);
 
           if Assigned(LEditor) then
-            LEditor.CommandProcessor(ecBackspace, BCEDITOR_NONE_CHAR, nil);
+            LEditor.CommandProcessor(bceBackspace, BCEDITOR_NONE_CHAR, nil);
         end
         else
         begin
           if Assigned(LEditor) then
-            LEditor.CommandProcessor(ecBackspace, BCEDITOR_NONE_CHAR, nil);
+            LEditor.CommandProcessor(bceBackspace, BCEDITOR_NONE_CHAR, nil);
 
           Hide;
         end;
       end;
     VK_DELETE:
       if Assigned(LEditor) then
-        LEditor.CommandProcessor(ecDeleteChar, BCEDITOR_NONE_CHAR, nil);
+        LEditor.CommandProcessor(bceDeleteChar, BCEDITOR_NONE_CHAR, nil);
   end;
   AKey := 0;
   Invalidate;
@@ -291,7 +291,7 @@ begin
       end;
     BCEDITOR_BACKSPACE_CHAR:
       with Owner as TBCBaseEditor do
-        CommandProcessor(ecChar, AKey, nil);
+        CommandProcessor(bceChar, AKey, nil);
   end;
   Invalidate;
 end;

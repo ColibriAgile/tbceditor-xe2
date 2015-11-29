@@ -6,148 +6,145 @@ uses
   Classes, SysUtils, Menus;
 
 const
-  ecNone = 0;
-  ecEditCommandFirst = 501;
-  ecEditCommandLast = 1000;
+  bceNone = 0;
+  bceEditCommandFirst = 501;
+  bceEditCommandLast = 1000;
   { Caret moving }
-  ecLeft = 1;
-  ecRight = 2;
-  ecUp = 3;
-  ecDown = 4;
-  ecWordLeft = 5;
-  ecWordRight = 6;
-  ecLineStart = 7;
-  ecLineEnd = 8;
-  ecPageUp = 9;
-  ecPageDown = 10;
-  ecPageLeft = 11;
-  ecPageRight = 12;
-  ecPageTop = 13;
-  ecPageBottom = 14;
-  ecEditorTop = 15;
-  ecEditorBottom = 16;
-  ecGotoXY = 17;
+  bceLeft = 1;
+  bceRight = 2;
+  bceUp = 3;
+  bceDown = 4;
+  bceWordLeft = 5;
+  bceWordRight = 6;
+  bceLineStart = 7;
+  bceLineEnd = 8;
+  bcePageUp = 9;
+  bcePageDown = 10;
+  bcePageLeft = 11;
+  bcePageRight = 12;
+  bcePageTop = 13;
+  bcePageBottom = 14;
+  bceEditorTop = 15;
+  bceEditorBottom = 16;
+  bceGotoXY = 17;
   { Selection }
-  ecSelection = 100;
-  ecSelectionLeft = ecLeft + ecSelection;
-  ecSelectionRight = ecRight + ecSelection;
-  ecSelectionUp = ecUp + ecSelection;
-  ecSelectionDown = ecDown + ecSelection;
-  ecSelectionWordLeft = ecWordLeft + ecSelection;
-  ecSelectionWordRight = ecWordRight + ecSelection;
-  ecSelectionLineStart = ecLineStart + ecSelection;
-  ecSelectionLineEnd = ecLineEnd + ecSelection;
-  ecSelectionPageUp = ecPageUp + ecSelection;
-  ecSelectionPageDown = ecPageDown + ecSelection;
-  ecSelectionPageLeft = ecPageLeft + ecSelection;
-  ecSelectionPageRight = ecPageRight + ecSelection;
-  ecSelectionPageTop = ecPageTop + ecSelection;
-  ecSelectionPageBottom = ecPageBottom + ecSelection;
-  ecSelectionEditorTop = ecEditorTop + ecSelection;
-  ecSelectionEditorBottom = ecEditorBottom + ecSelection;
-  ecSelectionGotoXY = ecGotoXY + ecSelection;
-  ecSelectionScope = ecSelection + 21;
-  ecSelectionWord = ecSelection + 22;
-  ecSelectAll = ecSelection + 23;
+  bceSelection = 100;
+  bceSelectionLeft = bceLeft + bceSelection;
+  bceSelectionRight = bceRight + bceSelection;
+  bceSelectionUp = bceUp + bceSelection;
+  bceSelectionDown = bceDown + bceSelection;
+  bceSelectionWordLeft = bceWordLeft + bceSelection;
+  bceSelectionWordRight = bceWordRight + bceSelection;
+  bceSelectionLineStart = bceLineStart + bceSelection;
+  bceSelectionLineEnd = bceLineEnd + bceSelection;
+  bceSelectionPageUp = bcePageUp + bceSelection;
+  bceSelectionPageDown = bcePageDown + bceSelection;
+  bceSelectionPageLeft = bcePageLeft + bceSelection;
+  bceSelectionPageRight = bcePageRight + bceSelection;
+  bceSelectionPageTop = bcePageTop + bceSelection;
+  bceSelectionPageBottom = bcePageBottom + bceSelection;
+  bceSelectionEditorTop = bceEditorTop + bceSelection;
+  bceSelectionEditorBottom = bceEditorBottom + bceSelection;
+  bceSelectionGotoXY = bceGotoXY + bceSelection;
+  bceSelectionScope = bceSelection + 21;
+  bceSelectionWord = bceSelection + 22;
+  bceSelectAll = bceSelection + 23;
   { Scrolling }
-  ecScrollUp = 211;
-  ecScrollDown = 212;
-  ecScrollLeft = 213;
-  ecScrollRight = 214;
+  bceScrollUp = 211;
+  bceScrollDown = 212;
+  bceScrollLeft = 213;
+  bceScrollRight = 214;
   { Mode }
-  ecInsertMode = 221;
-  ecOverwriteMode = 222;
-  ecToggleMode = 223;
+  bceInsertMode = 221;
+  bceOverwriteMode = 222;
+  bceToggleMode = 223;
   { Selection modes }
-  ecNormalSelect = 231;
-  ecColumnSelect = 232;
-  ecLineSelect = 233;
+  bceNormalSelect = 231;
+  bceColumnSelect = 232;
+  bceLineSelect = 233;
   { Bookmark }
-  ecGotoBookmark1 = 302;
-  ecGotoBookmark2 = 303;
-  ecGotoBookmark3 = 304;
-  ecGotoBookmark4 = 305;
-  ecGotoBookmark5 = 306;
-  ecGotoBookmark6 = 307;
-  ecGotoBookmark7 = 308;
-  ecGotoBookmark8 = 309;
-  ecGotoBookmark9 = 310;
-  ecSetBookmark1 = 352;
-  ecSetBookmark2 = 353;
-  ecSetBookmark3 = 354;
-  ecSetBookmark4 = 355;
-  ecSetBookmark5 = 356;
-  ecSetBookmark6 = 357;
-  ecSetBookmark7 = 358;
-  ecSetBookmark8 = 359;
-  ecSetBookmark9 = 360;
+  bceGotoBookmark1 = 302;
+  bceGotoBookmark2 = 303;
+  bceGotoBookmark3 = 304;
+  bceGotoBookmark4 = 305;
+  bceGotoBookmark5 = 306;
+  bceGotoBookmark6 = 307;
+  bceGotoBookmark7 = 308;
+  bceGotoBookmark8 = 309;
+  bceGotoBookmark9 = 310;
+  bceSetBookmark1 = 352;
+  bceSetBookmark2 = 353;
+  bceSetBookmark3 = 354;
+  bceSetBookmark4 = 355;
+  bceSetBookmark5 = 356;
+  bceSetBookmark6 = 357;
+  bceSetBookmark7 = 358;
+  bceSetBookmark8 = 359;
+  bceSetBookmark9 = 360;
   { Focus }
-  ecGotFocus = 480;
-  ecLostFocus = 481;
+  bceGotFocus = 480;
+  bceLostFocus = 481;
   { Help }
-  ecContextHelp = 490;
+  bceContextHelp = 490;
   { Deletion }
-  ecBackspace = 501;
-  ecDeleteChar = 502;
-  ecDeleteWord = 503;
-  ecDeleteLastWord = 504;
-  ecDeleteBeginningOfLine = 505;
-  ecDeleteEndOfLine = 506;
-  ecDeleteLine = 507;
-  ecClear = 508;
+  bceBackspace = 501;
+  bceDeleteChar = 502;
+  bceDeleteWord = 503;
+  bceDeleteLastWord = 504;
+  bceDeleteBeginningOfLine = 505;
+  bceDeleteEndOfLine = 506;
+  bceDeleteLine = 507;
+  bceClear = 508;
   { Insert }
-  ecLineBreak = 509;
-  ecInsertLine = 510;
-  ecChar = 511;
-  ecString = 512;
-  ecImeStr = 550;
+  bceLineBreak = 509;
+  bceInsertLine = 510;
+  bceChar = 511;
+  bceString = 512;
+  bceImeStr = 550;
   { Clipboard }
-  ecUndo = 601;
-  ecRedo = 602;
-  ecCopy = 603;
-  ecCut = 604;
-  ecPaste = 605;
+  bceUndo = 601;
+  bceRedo = 602;
+  bceCopy = 603;
+  bceCut = 604;
+  bcePaste = 605;
   { Indent }
-  ecBlockIndent = 610;
-  ecBlockUnindent = 611;
-  ecTab = 612;
-  ecShiftTab = 613;
+  bceBlockIndent = 610;
+  bceBlockUnindent = 611;
+  bceTab = 612;
+  bceShiftTab = 613;
   { Case }
-  ecUpperCase = 620;
-  ecLowerCase = 621;
-  ecAlternatingCase = 622;
-  ecSentenceCase = 623;
-  ecTitleCase = 624;
-  ecUpperCaseBlock = 625;
-  ecLowerCaseBlock = 626;
-  ecAlternatingCaseBlock = 627;
+  bceUpperCase = 620;
+  bceLowerCase = 621;
+  bceAlternatingCase = 622;
+  bceSentenceCase = 623;
+  bceTitleCase = 624;
+  bceUpperCaseBlock = 625;
+  bceLowerCaseBlock = 626;
+  bceAlternatingCaseBlock = 627;
   { Move }
-  ecMoveLineUp      = 701;
-  ecMoveLineDown    = 702;
-  ecMoveCharLeft    = 703;
-  ecMoveCharRight   = 704;
+  bceMoveLineUp      = 701;
+  bceMoveLineDown    = 702;
+  bceMoveCharLeft    = 703;
+  bceMoveCharRight   = 704;
   { Search }
-  ecSearchNext = 800;
-  ecSearchPrevious = 801;
+  bceSearchNext = 800;
+  bceSearchPrevious = 801;
 
-  ecUserFirst = 1001;
+  bceUserFirst = 1001;
   { code folding }
-  ecCollapse = ecUserFirst + 100;
-  ecUncollapse = ecUserFirst + 101;
-  ecCollapseLevel = ecUserFirst + 102;
-  ecUncollapseLevel = ecUserFirst + 103;
-  ecCollapseAll = ecUserFirst + 104;
-  ecUncollapseAll = ecUserFirst + 105;
-  ecCollapseCurrent = ecUserFirst + 109;
+  bceCollapse = bceUserFirst + 100;
+  bceUncollapse = bceUserFirst + 101;
+  bceCollapseLevel = bceUserFirst + 102;
+  bceUncollapseLevel = bceUserFirst + 103;
+  bceCollapseAll = bceUserFirst + 104;
+  bceUncollapseAll = bceUserFirst + 105;
+  bceCollapseCurrent = bceUserFirst + 109;
 
 type
-  TBCEditorCommand = Word;
+  TBCEditorCommand = type Word;
 
-  TBCEditorHookedCommandEvent = procedure(Sender: TObject; AfterProcessing: Boolean; var AHandled: Boolean;
-    var ACommand: TBCEditorCommand; var AChar: Char; Data: Pointer; AHandlerData: Pointer) of object;
-  TBCEditorProcessCommandEvent = procedure(Sender: TObject; var ACommand: TBCEditorCommand; var AChar: Char;
-    AData: Pointer) of object;
-
+  TBCEditorHookedCommandEvent = procedure(Sender: TObject; AfterProcessing: Boolean; var AHandled: Boolean; var ACommand: TBCEditorCommand; var AChar: Char; Data: Pointer; AHandlerData: Pointer) of object;
+  TBCEditorProcessCommandEvent = procedure(Sender: TObject; var ACommand: TBCEditorCommand; var AChar: Char; AData: Pointer) of object;
   TBCEditorHookedCommandHandler = class(TObject)
   strict private
     FEvent: TBCEditorHookedCommandEvent;
@@ -198,7 +195,6 @@ type
     function GetOwner: TPersistent; override;
   public
     constructor Create(AOwner: TPersistent);
-
     function FindCommand(ACommand: TBCEditorCommand): Integer;
     function FindKeyCode(AKeyCode: Word; AShift: TShiftState): Integer;
     function FindKeyCodes(AKeyCode: Word; AShift: TShiftState; ASecondaryKeycode: Word; ASecondaryShift: TShiftState): Integer;
@@ -228,116 +224,116 @@ type
 
 const
   EditorCommandStrings: array [0 .. 109] of TBCEditorCommandString = (
-    (Value: ecNone; Name: 'ecNone'),
-    (Value: ecLeft; Name: 'ecLeft'),
-    (Value: ecRight; Name: 'ecRight'),
-    (Value: ecUp; Name: 'ecUp'),
-    (Value: ecDown; Name: 'ecDown'),
-    (Value: ecWordLeft; Name: 'ecWordLeft'),
-    (Value: ecWordRight; Name: 'ecWordRight'),
-    (Value: ecLineStart; Name: 'ecLineStart'),
-    (Value: ecLineEnd; Name: 'ecLineEnd'),
-    (Value: ecPageUp; Name: 'ecPageUp'),
-    (Value: ecPageDown; Name: 'ecPageDown'),
-    (Value: ecPageLeft; Name: 'ecPageLeft'),
-    (Value: ecPageRight; Name: 'ecPageRight'),
-    (Value: ecPageTop; Name: 'ecPageTop'),
-    (Value: ecPageBottom; Name: 'ecPageBottom'),
-    (Value: ecEditorTop; Name: 'ecEditorTop'),
-    (Value: ecEditorBottom; Name: 'ecEditorBottom'),
-    (Value: ecGotoXY; Name: 'ecGotoXY'),
-    (Value: ecSelectionLeft; Name: 'ecSelectionLeft'),
-    (Value: ecSelectionRight; Name: 'ecSelectionRight'),
-    (Value: ecSelectionUp; Name: 'ecSelectionUp'),
-    (Value: ecSelectionDown; Name: 'ecSelectionDown'),
-    (Value: ecSelectionWordLeft; Name: 'ecSelectionWordLeft'),
-    (Value: ecSelectionWordRight; Name: 'ecSelectionWordRight'),
-    (Value: ecSelectionLineStart; Name: 'ecSelectionLineStart'),
-    (Value: ecSelectionLineEnd; Name: 'ecSelectionLineEnd'),
-    (Value: ecSelectionPageUp; Name: 'ecSelectionPageUp'),
-    (Value: ecSelectionPageDown; Name: 'ecSelectionPageDown'),
-    (Value: ecSelectionPageLeft; Name: 'ecSelectionPageLeft'),
-    (Value: ecSelectionPageRight; Name: 'ecSelectionPageRight'),
-    (Value: ecSelectionPageTop; Name: 'ecSelectionPageTop'),
-    (Value: ecSelectionPageBottom; Name: 'ecSelectionPageBottom'),
-    (Value: ecSelectionEditorTop; Name: 'ecSelectionEditorTop'),
-    (Value: ecSelectionEditorBottom; Name: 'ecSelectionEditorBottom'),
-    (Value: ecSelectionGotoXY; Name: 'ecSelectionGotoXY'),
-    (Value: ecSelectionWord; Name: 'ecSelectionWord'),
-    (Value: ecSelectAll; Name: 'ecSelectAll'),
-    (Value: ecScrollUp; Name: 'ecScrollUp'),
-    (Value: ecScrollDown; Name: 'ecScrollDown'),
-    (Value: ecScrollLeft; Name: 'ecScrollLeft'),
-    (Value: ecScrollRight; Name: 'ecScrollRight'),
-    (Value: ecBackspace; Name: 'ecBackspace'),
-    (Value: ecDeleteChar; Name: 'ecDeleteChar'),
-    (Value: ecDeleteWord; Name: 'ecDeleteWord'),
-    (Value: ecDeleteLastWord; Name: 'ecDeleteLastWord'),
-    (Value: ecDeleteBeginningOfLine; Name: 'ecDeleteBeginningOfLine'),
-    (Value: ecDeleteEndOfLine; Name: 'ecDeleteEndOfLine'),
-    (Value: ecDeleteLine; Name: 'ecDeleteLine'),
-    (Value: ecClear; Name: 'ecClear'),
-    (Value: ecLineBreak; Name: 'ecLineBreak'),
-    (Value: ecInsertLine; Name: 'ecInsertLine'),
-    (Value: ecChar; Name: 'ecChar'),
-    (Value: ecImeStr; Name: 'ecImeStr'),
-    (Value: ecUndo; Name: 'ecUndo'),
-    (Value: ecRedo; Name: 'ecRedo'),
-    (Value: ecCut; Name: 'ecCut'),
-    (Value: ecCopy; Name: 'ecCopy'),
-    (Value: ecPaste; Name: 'ecPaste'),
-    (Value: ecInsertMode; Name: 'ecInsertMode'),
-    (Value: ecOverwriteMode; Name: 'ecOverwriteMode'),
-    (Value: ecToggleMode; Name: 'ecToggleMode'),
-    (Value: ecBlockIndent; Name: 'ecBlockIndent'),
-    (Value: ecBlockUnindent; Name: 'ecBlockUnindent'),
-    (Value: ecTab; Name: 'ecTab'),
-    (Value: ecShiftTab; Name: 'ecShiftTab'),
-    (Value: ecNormalSelect; Name: 'ecNormalSelect'),
-    (Value: ecColumnSelect; Name: 'ecColumnSelect'),
-    (Value: ecLineSelect; Name: 'ecLineSelect'),
-    (Value: ecUserFirst; Name: 'ecUserFirst'),
-    (Value: ecContextHelp; Name: 'ecContextHelp'),
-    (Value: ecGotoBookmark1; Name: 'ecGotoBookmark1'),
-    (Value: ecGotoBookmark2; Name: 'ecGotoBookmark2'),
-    (Value: ecGotoBookmark3; Name: 'ecGotoBookmark3'),
-    (Value: ecGotoBookmark4; Name: 'ecGotoBookmark4'),
-    (Value: ecGotoBookmark5; Name: 'ecGotoBookmark5'),
-    (Value: ecGotoBookmark6; Name: 'ecGotoBookmark6'),
-    (Value: ecGotoBookmark7; Name: 'ecGotoBookmark7'),
-    (Value: ecGotoBookmark8; Name: 'ecGotoBookmark8'),
-    (Value: ecGotoBookmark9; Name: 'ecGotoBookmark9'),
-    (Value: ecSetBookmark1; Name: 'ecSetBookmark1'),
-    (Value: ecSetBookmark2; Name: 'ecSetBookmark2'),
-    (Value: ecSetBookmark3; Name: 'ecSetBookmark3'),
-    (Value: ecSetBookmark4; Name: 'ecSetBookmark4'),
-    (Value: ecSetBookmark5; Name: 'ecSetBookmark5'),
-    (Value: ecSetBookmark6; Name: 'ecSetBookmark6'),
-    (Value: ecSetBookmark7; Name: 'ecSetBookmark7'),
-    (Value: ecSetBookmark8; Name: 'ecSetBookmark8'),
-    (Value: ecSetBookmark9; Name: 'ecSetBookmark9'),
-    (Value: ecString; Name: 'ecString'),
-    (Value: ecMoveLineUp; Name: 'ecMoveLineUp'),
-    (Value: ecMoveLineDown; Name: 'ecMoveLineDown'),
-    (Value: ecMoveCharLeft; Name: 'ecMoveCharLeft'),
-    (Value: ecMoveCharRight; Name: 'ecMoveCharRight'),
-    (Value: ecUpperCase; Name: 'ecUpperCase'),
-    (Value: ecLowerCase; Name: 'ecLowerCase'),
-    (Value: ecAlternatingCase; Name: 'ecAlternatingCase'),
-    (Value: ecSentenceCase; Name: 'ecSentenceCase'),
-    (Value: ecTitleCase; Name: 'ecTitleCase'),
-    (Value: ecUpperCaseBlock; Name: 'ecUpperCaseBlock'),
-    (Value: ecLowerCaseBlock; Name: 'ecLowerCaseBlock'),
-    (Value: ecAlternatingCaseBlock; Name: 'ecAlternatingCaseBlock'),
-    (Value: ecCollapse; Name: 'ecCollapse'),
-    (Value: ecUncollapse; Name: 'ecUncollapse'),
-    (Value: ecCollapseLevel; Name: 'ecCollapseLevel'),
-    (Value: ecUncollapseLevel; Name: 'ecUncollapseLevel'),
-    (Value: ecCollapseAll; Name: 'ecCollapseAll'),
-    (Value: ecUncollapseAll; Name: 'ecUncollapseAll'),
-    (Value: ecCollapseCurrent; Name: 'ecCollapseCurrent'),
-    (Value: ecSearchNext; Name: 'ecSearchNext'),
-    (Value: ecSearchPrevious; Name: 'ecSearchPrevious')
+    (Value: bceNone; Name: 'ecNone'),
+    (Value: bceLeft; Name: 'ecLeft'),
+    (Value: bceRight; Name: 'ecRight'),
+    (Value: bceUp; Name: 'ecUp'),
+    (Value: bceDown; Name: 'ecDown'),
+    (Value: bceWordLeft; Name: 'ecWordLeft'),
+    (Value: bceWordRight; Name: 'ecWordRight'),
+    (Value: bceLineStart; Name: 'ecLineStart'),
+    (Value: bceLineEnd; Name: 'ecLineEnd'),
+    (Value: bcePageUp; Name: 'ecPageUp'),
+    (Value: bcePageDown; Name: 'ecPageDown'),
+    (Value: bcePageLeft; Name: 'ecPageLeft'),
+    (Value: bcePageRight; Name: 'ecPageRight'),
+    (Value: bcePageTop; Name: 'ecPageTop'),
+    (Value: bcePageBottom; Name: 'ecPageBottom'),
+    (Value: bceEditorTop; Name: 'ecEditorTop'),
+    (Value: bceEditorBottom; Name: 'ecEditorBottom'),
+    (Value: bceGotoXY; Name: 'ecGotoXY'),
+    (Value: bceSelectionLeft; Name: 'ecSelectionLeft'),
+    (Value: bceSelectionRight; Name: 'ecSelectionRight'),
+    (Value: bceSelectionUp; Name: 'ecSelectionUp'),
+    (Value: bceSelectionDown; Name: 'ecSelectionDown'),
+    (Value: bceSelectionWordLeft; Name: 'ecSelectionWordLeft'),
+    (Value: bceSelectionWordRight; Name: 'ecSelectionWordRight'),
+    (Value: bceSelectionLineStart; Name: 'ecSelectionLineStart'),
+    (Value: bceSelectionLineEnd; Name: 'ecSelectionLineEnd'),
+    (Value: bceSelectionPageUp; Name: 'ecSelectionPageUp'),
+    (Value: bceSelectionPageDown; Name: 'ecSelectionPageDown'),
+    (Value: bceSelectionPageLeft; Name: 'ecSelectionPageLeft'),
+    (Value: bceSelectionPageRight; Name: 'ecSelectionPageRight'),
+    (Value: bceSelectionPageTop; Name: 'ecSelectionPageTop'),
+    (Value: bceSelectionPageBottom; Name: 'ecSelectionPageBottom'),
+    (Value: bceSelectionEditorTop; Name: 'ecSelectionEditorTop'),
+    (Value: bceSelectionEditorBottom; Name: 'ecSelectionEditorBottom'),
+    (Value: bceSelectionGotoXY; Name: 'ecSelectionGotoXY'),
+    (Value: bceSelectionWord; Name: 'ecSelectionWord'),
+    (Value: bceSelectAll; Name: 'ecSelectAll'),
+    (Value: bceScrollUp; Name: 'ecScrollUp'),
+    (Value: bceScrollDown; Name: 'ecScrollDown'),
+    (Value: bceScrollLeft; Name: 'ecScrollLeft'),
+    (Value: bceScrollRight; Name: 'ecScrollRight'),
+    (Value: bceBackspace; Name: 'ecBackspace'),
+    (Value: bceDeleteChar; Name: 'ecDeleteChar'),
+    (Value: bceDeleteWord; Name: 'ecDeleteWord'),
+    (Value: bceDeleteLastWord; Name: 'ecDeleteLastWord'),
+    (Value: bceDeleteBeginningOfLine; Name: 'ecDeleteBeginningOfLine'),
+    (Value: bceDeleteEndOfLine; Name: 'ecDeleteEndOfLine'),
+    (Value: bceDeleteLine; Name: 'ecDeleteLine'),
+    (Value: bceClear; Name: 'ecClear'),
+    (Value: bceLineBreak; Name: 'ecLineBreak'),
+    (Value: bceInsertLine; Name: 'ecInsertLine'),
+    (Value: bceChar; Name: 'ecChar'),
+    (Value: bceImeStr; Name: 'ecImeStr'),
+    (Value: bceUndo; Name: 'ecUndo'),
+    (Value: bceRedo; Name: 'ecRedo'),
+    (Value: bceCut; Name: 'ecCut'),
+    (Value: bceCopy; Name: 'ecCopy'),
+    (Value: bcePaste; Name: 'ecPaste'),
+    (Value: bceInsertMode; Name: 'ecInsertMode'),
+    (Value: bceOverwriteMode; Name: 'ecOverwriteMode'),
+    (Value: bceToggleMode; Name: 'ecToggleMode'),
+    (Value: bceBlockIndent; Name: 'ecBlockIndent'),
+    (Value: bceBlockUnindent; Name: 'ecBlockUnindent'),
+    (Value: bceTab; Name: 'ecTab'),
+    (Value: bceShiftTab; Name: 'ecShiftTab'),
+    (Value: bceNormalSelect; Name: 'ecNormalSelect'),
+    (Value: bceColumnSelect; Name: 'ecColumnSelect'),
+    (Value: bceLineSelect; Name: 'ecLineSelect'),
+    (Value: bceUserFirst; Name: 'ecUserFirst'),
+    (Value: bceContextHelp; Name: 'ecContextHelp'),
+    (Value: bceGotoBookmark1; Name: 'ecGotoBookmark1'),
+    (Value: bceGotoBookmark2; Name: 'ecGotoBookmark2'),
+    (Value: bceGotoBookmark3; Name: 'ecGotoBookmark3'),
+    (Value: bceGotoBookmark4; Name: 'ecGotoBookmark4'),
+    (Value: bceGotoBookmark5; Name: 'ecGotoBookmark5'),
+    (Value: bceGotoBookmark6; Name: 'ecGotoBookmark6'),
+    (Value: bceGotoBookmark7; Name: 'ecGotoBookmark7'),
+    (Value: bceGotoBookmark8; Name: 'ecGotoBookmark8'),
+    (Value: bceGotoBookmark9; Name: 'ecGotoBookmark9'),
+    (Value: bceSetBookmark1; Name: 'ecSetBookmark1'),
+    (Value: bceSetBookmark2; Name: 'ecSetBookmark2'),
+    (Value: bceSetBookmark3; Name: 'ecSetBookmark3'),
+    (Value: bceSetBookmark4; Name: 'ecSetBookmark4'),
+    (Value: bceSetBookmark5; Name: 'ecSetBookmark5'),
+    (Value: bceSetBookmark6; Name: 'ecSetBookmark6'),
+    (Value: bceSetBookmark7; Name: 'ecSetBookmark7'),
+    (Value: bceSetBookmark8; Name: 'ecSetBookmark8'),
+    (Value: bceSetBookmark9; Name: 'ecSetBookmark9'),
+    (Value: bceString; Name: 'ecString'),
+    (Value: bceMoveLineUp; Name: 'ecMoveLineUp'),
+    (Value: bceMoveLineDown; Name: 'ecMoveLineDown'),
+    (Value: bceMoveCharLeft; Name: 'ecMoveCharLeft'),
+    (Value: bceMoveCharRight; Name: 'ecMoveCharRight'),
+    (Value: bceUpperCase; Name: 'ecUpperCase'),
+    (Value: bceLowerCase; Name: 'ecLowerCase'),
+    (Value: bceAlternatingCase; Name: 'ecAlternatingCase'),
+    (Value: bceSentenceCase; Name: 'ecSentenceCase'),
+    (Value: bceTitleCase; Name: 'ecTitleCase'),
+    (Value: bceUpperCaseBlock; Name: 'ecUpperCaseBlock'),
+    (Value: bceLowerCaseBlock; Name: 'ecLowerCaseBlock'),
+    (Value: bceAlternatingCaseBlock; Name: 'ecAlternatingCaseBlock'),
+    (Value: bceCollapse; Name: 'ecCollapse'),
+    (Value: bceUncollapse; Name: 'ecUncollapse'),
+    (Value: bceCollapseLevel; Name: 'ecCollapseLevel'),
+    (Value: bceUncollapseLevel; Name: 'ecUncollapseLevel'),
+    (Value: bceCollapseAll; Name: 'ecCollapseAll'),
+    (Value: bceUncollapseAll; Name: 'ecUncollapseAll'),
+    (Value: bceCollapseCurrent; Name: 'ecCollapseCurrent'),
+    (Value: bceSearchNext; Name: 'ecSearchNext'),
+    (Value: bceSearchPrevious; Name: 'ecSearchPrevious')
   );
 
 function IdentToEditorCommand(const AIdent: string; var ACommand: LongInt): Boolean;
@@ -618,102 +614,102 @@ begin
   Clear;
 
   { Scrolling, caret moving and selection }
-  Add(ecUp, [], VK_UP);
-  Add(ecSelectionUp, [ssShift], VK_UP);
-  Add(ecScrollUp, [ssCtrl], VK_UP);
-  Add(ecDown, [], VK_DOWN);
-  Add(ecSelectionDown, [ssShift], VK_DOWN);
-  Add(ecScrollDown, [ssCtrl], VK_DOWN);
-  Add(ecLeft, [], VK_LEFT);
-  Add(ecSelectionLeft, [ssShift], VK_LEFT);
-  Add(ecWordLeft, [ssCtrl], VK_LEFT);
-  Add(ecSelectionWordLeft, [ssShift, ssCtrl], VK_LEFT);
-  Add(ecRight, [], VK_RIGHT);
-  Add(ecSelectionRight, [ssShift], VK_RIGHT);
-  Add(ecWordRight, [ssCtrl], VK_RIGHT);
-  Add(ecSelectionWordRight, [ssShift, ssCtrl], VK_RIGHT);
-  Add(ecPageDown, [], VK_NEXT);
-  Add(ecSelectionPageDown, [ssShift], VK_NEXT);
-  Add(ecPageBottom, [ssCtrl], VK_NEXT);
-  Add(ecSelectionPageBottom, [ssShift, ssCtrl], VK_NEXT);
-  Add(ecPageUp, [], VK_PRIOR);
-  Add(ecSelectionPageUp, [ssShift], VK_PRIOR);
-  Add(ecPageTop, [ssCtrl], VK_PRIOR);
-  Add(ecSelectionPageTop, [ssShift, ssCtrl], VK_PRIOR);
-  Add(ecLineStart, [], VK_HOME);
-  Add(ecSelectionLineStart, [ssShift], VK_HOME);
-  Add(ecEditorTop, [ssCtrl], VK_HOME);
-  Add(ecSelectionEditorTop, [ssShift, ssCtrl], VK_HOME);
-  Add(ecLineEnd, [], VK_END);
-  Add(ecSelectionLineEnd, [ssShift], VK_END);
-  Add(ecEditorBottom, [ssCtrl], VK_END);
-  Add(ecSelectionEditorBottom, [ssShift, ssCtrl], VK_END);
+  Add(bceUp, [], VK_UP);
+  Add(bceSelectionUp, [ssShift], VK_UP);
+  Add(bceScrollUp, [ssCtrl], VK_UP);
+  Add(bceDown, [], VK_DOWN);
+  Add(bceSelectionDown, [ssShift], VK_DOWN);
+  Add(bceScrollDown, [ssCtrl], VK_DOWN);
+  Add(bceLeft, [], VK_LEFT);
+  Add(bceSelectionLeft, [ssShift], VK_LEFT);
+  Add(bceWordLeft, [ssCtrl], VK_LEFT);
+  Add(bceSelectionWordLeft, [ssShift, ssCtrl], VK_LEFT);
+  Add(bceRight, [], VK_RIGHT);
+  Add(bceSelectionRight, [ssShift], VK_RIGHT);
+  Add(bceWordRight, [ssCtrl], VK_RIGHT);
+  Add(bceSelectionWordRight, [ssShift, ssCtrl], VK_RIGHT);
+  Add(bcePageDown, [], VK_NEXT);
+  Add(bceSelectionPageDown, [ssShift], VK_NEXT);
+  Add(bcePageBottom, [ssCtrl], VK_NEXT);
+  Add(bceSelectionPageBottom, [ssShift, ssCtrl], VK_NEXT);
+  Add(bcePageUp, [], VK_PRIOR);
+  Add(bceSelectionPageUp, [ssShift], VK_PRIOR);
+  Add(bcePageTop, [ssCtrl], VK_PRIOR);
+  Add(bceSelectionPageTop, [ssShift, ssCtrl], VK_PRIOR);
+  Add(bceLineStart, [], VK_HOME);
+  Add(bceSelectionLineStart, [ssShift], VK_HOME);
+  Add(bceEditorTop, [ssCtrl], VK_HOME);
+  Add(bceSelectionEditorTop, [ssShift, ssCtrl], VK_HOME);
+  Add(bceLineEnd, [], VK_END);
+  Add(bceSelectionLineEnd, [ssShift], VK_END);
+  Add(bceEditorBottom, [ssCtrl], VK_END);
+  Add(bceSelectionEditorBottom, [ssShift, ssCtrl], VK_END);
   { Insert key alone }
-  Add(ecToggleMode, [], VK_INSERT);
+  Add(bceToggleMode, [], VK_INSERT);
   { Clipboard }
-  Add(ecUndo, [ssAlt], VK_BACK);
-  Add(ecRedo, [ssAlt, ssShift], VK_BACK);
-  Add(ecCopy, [ssCtrl], VK_INSERT);
-  Add(ecCut, [ssShift], VK_DELETE);
-  Add(ecPaste, [ssShift], VK_INSERT);
+  Add(bceUndo, [ssAlt], VK_BACK);
+  Add(bceRedo, [ssAlt, ssShift], VK_BACK);
+  Add(bceCopy, [ssCtrl], VK_INSERT);
+  Add(bceCut, [ssShift], VK_DELETE);
+  Add(bcePaste, [ssShift], VK_INSERT);
   { Deletion }
-  Add(ecDeleteChar, [], VK_DELETE);
-  Add(ecBackspace, [], VK_BACK);
-  Add(ecBackspace, [ssShift], VK_BACK);
-  Add(ecDeleteLastWord, [ssCtrl], VK_BACK);
+  Add(bceDeleteChar, [], VK_DELETE);
+  Add(bceBackspace, [], VK_BACK);
+  Add(bceBackspace, [ssShift], VK_BACK);
+  Add(bceDeleteLastWord, [ssCtrl], VK_BACK);
   { Search }
-  Add(ecSearchNext, [], VK_F3);
-  Add(ecSearchPrevious, [ssShift], VK_F3);
+  Add(bceSearchNext, [], VK_F3);
+  Add(bceSearchPrevious, [ssShift], VK_F3);
   { Enter (return) & Tab }
-  Add(ecLineBreak, [], VK_RETURN);
-  Add(ecLineBreak, [ssShift], VK_RETURN);
-  Add(ecTab, [], VK_TAB);
-  Add(ecShiftTab, [ssShift], VK_TAB);
+  Add(bceLineBreak, [], VK_RETURN);
+  Add(bceLineBreak, [ssShift], VK_RETURN);
+  Add(bceTab, [], VK_TAB);
+  Add(bceShiftTab, [ssShift], VK_TAB);
   { Help }
-  Add(ecContextHelp, [], VK_F1);
+  Add(bceContextHelp, [], VK_F1);
   { Standard edit commands }
-  Add(ecUndo, [ssCtrl], Ord('Z'));
-  Add(ecRedo, [ssCtrl, ssShift], Ord('Z'));
-  Add(ecCut, [ssCtrl], Ord('X'));
-  Add(ecCopy, [ssCtrl], Ord('C'));
-  Add(ecPaste, [ssCtrl], Ord('V'));
-  Add(ecSelectAll, [ssCtrl], Ord('A'));
+  Add(bceUndo, [ssCtrl], Ord('Z'));
+  Add(bceRedo, [ssCtrl, ssShift], Ord('Z'));
+  Add(bceCut, [ssCtrl], Ord('X'));
+  Add(bceCopy, [ssCtrl], Ord('C'));
+  Add(bcePaste, [ssCtrl], Ord('V'));
+  Add(bceSelectAll, [ssCtrl], Ord('A'));
   { Block commands }
-  Add(ecBlockIndent, [ssCtrl, ssShift], Ord('I'));
-  Add(ecBlockUnindent, [ssCtrl, ssShift], Ord('U'));
+  Add(bceBlockIndent, [ssCtrl, ssShift], Ord('I'));
+  Add(bceBlockUnindent, [ssCtrl, ssShift], Ord('U'));
   { Fragment deletion }
-  Add(ecDeleteWord, [ssCtrl], Ord('T'));
+  Add(bceDeleteWord, [ssCtrl], Ord('T'));
   { Line operations }
-  Add(ecInsertLine, [ssCtrl], Ord('M'));
-  Add(ecMoveLineUp, [ssCtrl, ssAlt], VK_UP);
-  Add(ecMoveLineDown, [ssCtrl, ssAlt], VK_DOWN);
-  Add(ecDeleteLine, [ssCtrl], Ord('Y'));
-  Add(ecDeleteEndOfLine, [ssCtrl, ssShift], Ord('Y'));
-  Add(ecMoveCharLeft, [ssAlt, ssCtrl], VK_LEFT);
-  Add(ecMoveCharRight, [ssAlt, ssCtrl], VK_RIGHT);
+  Add(bceInsertLine, [ssCtrl], Ord('M'));
+  Add(bceMoveLineUp, [ssCtrl, ssAlt], VK_UP);
+  Add(bceMoveLineDown, [ssCtrl, ssAlt], VK_DOWN);
+  Add(bceDeleteLine, [ssCtrl], Ord('Y'));
+  Add(bceDeleteEndOfLine, [ssCtrl, ssShift], Ord('Y'));
+  Add(bceMoveCharLeft, [ssAlt, ssCtrl], VK_LEFT);
+  Add(bceMoveCharRight, [ssAlt, ssCtrl], VK_RIGHT);
   { Bookmarks }
-  Add(ecGotoBookmark1, [ssCtrl], Ord('1'));
-  Add(ecGotoBookmark2, [ssCtrl], Ord('2'));
-  Add(ecGotoBookmark3, [ssCtrl], Ord('3'));
-  Add(ecGotoBookmark4, [ssCtrl], Ord('4'));
-  Add(ecGotoBookmark5, [ssCtrl], Ord('5'));
-  Add(ecGotoBookmark6, [ssCtrl], Ord('6'));
-  Add(ecGotoBookmark7, [ssCtrl], Ord('7'));
-  Add(ecGotoBookmark8, [ssCtrl], Ord('8'));
-  Add(ecGotoBookmark9, [ssCtrl], Ord('9'));
-  Add(ecSetBookmark1, [ssCtrl, ssShift], Ord('1'));
-  Add(ecSetBookmark2, [ssCtrl, ssShift], Ord('2'));
-  Add(ecSetBookmark3, [ssCtrl, ssShift], Ord('3'));
-  Add(ecSetBookmark4, [ssCtrl, ssShift], Ord('4'));
-  Add(ecSetBookmark5, [ssCtrl, ssShift], Ord('5'));
-  Add(ecSetBookmark6, [ssCtrl, ssShift], Ord('6'));
-  Add(ecSetBookmark7, [ssCtrl, ssShift], Ord('7'));
-  Add(ecSetBookmark8, [ssCtrl, ssShift], Ord('8'));
-  Add(ecSetBookmark9, [ssCtrl, ssShift], Ord('9'));
+  Add(bceGotoBookmark1, [ssCtrl], Ord('1'));
+  Add(bceGotoBookmark2, [ssCtrl], Ord('2'));
+  Add(bceGotoBookmark3, [ssCtrl], Ord('3'));
+  Add(bceGotoBookmark4, [ssCtrl], Ord('4'));
+  Add(bceGotoBookmark5, [ssCtrl], Ord('5'));
+  Add(bceGotoBookmark6, [ssCtrl], Ord('6'));
+  Add(bceGotoBookmark7, [ssCtrl], Ord('7'));
+  Add(bceGotoBookmark8, [ssCtrl], Ord('8'));
+  Add(bceGotoBookmark9, [ssCtrl], Ord('9'));
+  Add(bceSetBookmark1, [ssCtrl, ssShift], Ord('1'));
+  Add(bceSetBookmark2, [ssCtrl, ssShift], Ord('2'));
+  Add(bceSetBookmark3, [ssCtrl, ssShift], Ord('3'));
+  Add(bceSetBookmark4, [ssCtrl, ssShift], Ord('4'));
+  Add(bceSetBookmark5, [ssCtrl, ssShift], Ord('5'));
+  Add(bceSetBookmark6, [ssCtrl, ssShift], Ord('6'));
+  Add(bceSetBookmark7, [ssCtrl, ssShift], Ord('7'));
+  Add(bceSetBookmark8, [ssCtrl, ssShift], Ord('8'));
+  Add(bceSetBookmark9, [ssCtrl, ssShift], Ord('9'));
   { Selection modes }
-  Add(ecNormalSelect, [ssCtrl, ssAlt], Ord('N'));
-  Add(ecColumnSelect, [ssCtrl, ssAlt], Ord('C'));
-  Add(ecLineSelect, [ssCtrl, ssAlt], Ord('L'));
+  Add(bceNormalSelect, [ssCtrl, ssAlt], Ord('N'));
+  Add(bceColumnSelect, [ssCtrl, ssAlt], Ord('C'));
+  Add(bceLineSelect, [ssCtrl, ssAlt], Ord('L'));
 end;
 
 procedure TBCEditorKeyCommands.SetItem(AIndex: Integer; AValue: TBCEditorKeyCommand);
@@ -722,7 +718,6 @@ begin
 end;
 
 initialization
-
   RegisterIntegerConsts(TypeInfo(TBCEditorCommand), IdentToEditorCommand, EditorCommandToIdent);
 
 //finalization
