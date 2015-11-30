@@ -18,6 +18,8 @@ uses
   BCEditor.Types, BCEditor.Utils{$IFDEF USE_ALPHASKINS}, sCommonData, acSBUtils{$ENDIF};
 
 type
+  TBCEDitorBeforeURIOpen = procedure (const uri: string; var handled: Boolean) of object;
+
   TBCBaseEditor = class(TCustomControl)
   strict private
     FActiveLine: TBCEditorActiveLine;
@@ -126,6 +128,7 @@ type
     FOnCompleteExecute: TBCEditorExecuteEvent;
     FCompletionProposalEvent: TBCEditorCompletionProposalEvent;
     FBeforeCompletionProposalEvent: TBCEditorBeforeCompletionProposalEvent;
+    FBeforeURIOpen: TBCEDitorBeforeURIOpen;
     FOptions: TBCEditorOptions;
     FOriginalLines: TBCEditorLines;
     FOriginalRedoList: TBCEditorUndoList;
@@ -612,6 +615,7 @@ type
     property OnScroll: TBCEditorScrollEvent read FOnScroll write FOnScroll;
     property OnCompleteProposal: TBCEditorCompletionProposalEvent read FCompletionProposalEvent write FCompletionProposalEvent;
     property OnBeforeCompleteProposal: TBCEditorBeforeCompletionProposalEvent read FBeforeCompletionProposalEvent write FBeforeCompletionProposalEvent;
+    property OnBeforeURIOpen: TBCEDitorBeforeURIOpen read FBeforeURIOpen write FBeforeURIOpen;
     property OnCompleteExecute: TBCEditorExecuteEvent read FOnCompleteExecute write FOnCompleteExecute;
     property Options: TBCEditorOptions read FOptions write SetOptions default BCEDITOR_DEFAULT_OPTIONS;
     property PaintLock: Integer read FPaintLock;
@@ -2650,6 +2654,7 @@ begin
   Self.OnCompleteProposal := sourceEditor.OnCompleteProposal;
   Self.OnCompleteExecute := sourceEditor.OnCompleteExecute;
   Self.OnBeforeCompleteProposal := sourceEditor.OnBeforeCompleteProposal;
+  Self.OnBeforeURIOpen := sourceEditor.OnBeforeURIOpen;
 end;
 
 procedure TBCBaseEditor.AssignSearchEngine;
@@ -3400,7 +3405,15 @@ begin
 end;
 
 procedure TBCBaseEditor.OpenLink(AURI: string; ALinkType: Integer);
+var
+  handled: Boolean;
 begin
+  handled := False;
+  if Assigned(FBeforeURIOpen) then
+    FBeforeURIOpen(AURI, handled);
+
+  if handled then
+    Exit;
   case TBCEditorRangeType(ALinkType) of
     ttMailtoLink:
       if (Pos(BCEDITOR_MAILTO, AURI) <> 1) then

@@ -96,6 +96,7 @@ type
     property OnCompleteProposal;
     property OnCompleteExecute;
     property OnBeforeCompleteProposal;
+    property OnBeforeURIOpen;
     property Options;
     property ParentColor;
     property ParentCtl3D;
