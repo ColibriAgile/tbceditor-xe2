@@ -1,4 +1,4 @@
-﻿unit BCEditor.Editor.Base;
+unit BCEditor.Editor.Base;
 
 interface
 
