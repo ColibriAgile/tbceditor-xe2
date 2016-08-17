@@ -50,7 +50,7 @@
 			<DCC_UnitSearchPath>$(xe2lib);$(xe2bpl);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_BplOutput>$(xe2bpl)</DCC_BplOutput>
 			<DCC_DcuOutput>$(xe2lib)</DCC_DcuOutput>
-			<DCC_DcpOutput>$(xe2lib)</DCC_DcpOutput>
+			<DCC_DcpOutput>$(xe2bpl)</DCC_DcpOutput>
 			<DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
 			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<VerInfo_Locale>1033</VerInfo_Locale>
