@@ -225,11 +225,10 @@ type
     function NextWordPosition: TBCEditorTextPosition; overload;
     function NextWordPosition(const ATextPosition: TBCEditorTextPosition): TBCEditorTextPosition; overload;
     function PreviousWordPosition: TBCEditorTextPosition; overload;
-    function PreviousWordPosition(const ATextPosition: TBCEditorTextPosition): TBCEditorTextPosition; overload;
+    function PreviousWordPosition(const ATextPosition: TBCEditorTextPosition; APreviousLine: Boolean = False): TBCEditorTextPosition; overload;
     function RescanHighlighterRangesFrom(Index: Integer): Integer;
     function RowColumnToCharIndex(ATextPosition: TBCEditorTextPosition): Integer;
     function SearchText(const ASearchText: string; AChanged: Boolean = False): Integer;
-    function StringReverseScan(const ALine: string; AStart: Integer; ACharMethod: TBCEditorCharMethod): Integer;
     function StringScan(const ALine: string; AStart: Integer; ACharMethod: TBCEditorCharMethod): Integer;
     function StringWordEnd(const ALine: string; AStart: Integer): Integer;
     function StringWordStart(const ALine: string; AStart: Integer): Integer;
@@ -275,6 +274,7 @@ type
     procedure MoveCaretHorizontally(const X: Integer; SelectionCommand: Boolean);
     procedure MoveCaretVertically(const Y: Integer; SelectionCommand: Boolean);
     procedure OpenLink(AURI: string; ALinkType: Integer);
+    procedure RefreshFind;
     procedure RightMarginChanged(Sender: TObject);
     procedure ScrollChanged(Sender: TObject);
     procedure ScrollTimerHandler(Sender: TObject);
@@ -2294,65 +2294,58 @@ begin
   Result := PreviousWordPosition(TextCaretPosition);
 end;
 
-function TBCBaseEditor.PreviousWordPosition(const ATextPosition: TBCEditorTextPosition): TBCEditorTextPosition;
+function TBCBaseEditor.PreviousWordPosition(const ATextPosition: TBCEditorTextPosition; APreviousLine: Boolean = False): TBCEditorTextPosition;
 var
-  X, Y: Integer;
   LLine: string;
+  LChar: Integer;
 begin
-  X := ATextPosition.Char;
-  Y := ATextPosition.Line;
-  if (Y >= 0) and (Y < FLines.Count) then
-  begin
-    LLine := FLines.ExpandedStrings[Y];
-    X := Min(X, Length(LLine) + 1);
+  Result := ATextPosition;
 
-    if X <= 1 then
+  if (Result.Line >= 0) and (Result.Line < FLines.Count) then
+  begin
+    LLine := FLines[Result.Line];
+    Result.Char := Min(Result.Char, Length(LLine) + 1);
+
+    if Result.Char <= 1 then
     begin
-      if Y > 0 then
+      if Result.Line > 0 then
       begin
-        Dec(Y);
-        LLine := FLines.ExpandedStrings[Y];
-        X := StringWordStart(LLine, Length(LLine));
+        Dec(Result.Line);
+        Result.Char := Length(FLines[Result.Line]) + 1;
+        Result := PreviousWordPosition(Result, True);
       end
       else
-        Y := FLines.Count - 1
+      if not SelectionAvailable then
+        Result.Line := FLines.Count - 1
     end
     else
     begin
-      if X > 0 then
-        X := StringReverseScan(LLine, X - 1, IsWordBreakChar) + 1;
-      if X = 0 then
+      if Result.Char > 1 then
       begin
-        if Y > 1 then
-        begin
-          Dec(Y);
-          LLine := FLines[Y];
-          X := Length(LLine) + 1;
-        end
-        else
-          X := 1;
-
-        { if previous char is a word-break-char search for the last IdentChar }
-        if IsWordBreakChar(LLine[X - 1]) then
-          X := StringReverseScan(LLine, X - 1, IsWordChar);
-        if X > 0 then
-          X := StringReverseScan(LLine, X - 1, IsWordBreakChar) + 1;
-        if X = 0 then
-        begin
-          if Y > 1 then
-          begin
-            Dec(Y);
-            LLine := FLines[Y - 1];
-            X := Length(LLine) + 1;
-          end
-          else
-            X := 1;
-        end;
+        LChar := Result.Char;
+        if not APreviousLine then
+          Dec(LChar);
+        if not IsWordBreakChar(LLine[LChar]) then
+          Dec(Result.Char);
       end;
+
+      if IsWordBreakChar(LLine[Result.Char]) then
+      begin
+        while (Result.Char > 0) and IsWordBreakChar(LLine[Result.Char]) do
+          Dec(Result.Char);
+      end
+      else
+      begin
+        while (Result.Char > 0) and not IsWordBreakChar(LLine[Result.Char]) do
+          Dec(Result.Char);
+        while (Result.Char > 0) and IsWordBreakChar(LLine[Result.Char]) do
+          Dec(Result.Char);
+      end;
+
+      if Result.Char > 0 then
+        Inc(Result.Char);
     end;
   end;
-  Result.Char := X;
-  Result.Line := Y;
 end;
 
 function TBCBaseEditor.RescanHighlighterRangesFrom(Index: Integer): Integer;
@@ -2527,17 +2520,6 @@ begin
     if LIsEndUndoBlock then
       EndUndoBlock;
   end;
-end;
-
-function TBCBaseEditor.StringReverseScan(const ALine: string; AStart: Integer; ACharMethod: TBCEditorCharMethod): Integer;
-var
-  i: Integer;
-begin
-  Result := 0;
-  if (AStart > 0) and (AStart <= Length(ALine)) then
-    for i := AStart downto 1 do
-      if ACharMethod(ALine[i]) then
-        Exit(i);
 end;
 
 function TBCBaseEditor.StringScan(const ALine: string; AStart: Integer; ACharMethod: TBCEditorCharMethod): Integer;
@@ -3441,6 +3423,14 @@ begin
 
   if not (csLoading in ComponentState) then
     Invalidate;
+end;
+
+procedure TBCBaseEditor.RefreshFind;
+begin
+  if FSearch.Enabled then
+    if soHighlightResults in FSearch.Options then
+      if FSearch.SearchText <> '' then
+        FindAll;
 end;
 
 procedure TBCBaseEditor.ScanCodeFoldingRanges;
@@ -5559,10 +5549,10 @@ var
   LStringToInsert: string;
   LEndOfLine, LCaretPositionX, i: Integer;
   LSpaces: string;
-  LOrgSelectionMode: TBCEditorSelectionMode;
+  LOldSelectionMode: TBCEditorSelectionMode;
   LInsertionPosition: TBCEditorTextPosition;
 begin
-  LOrgSelectionMode := FSelection.ActiveMode;
+  LOldSelectionMode := FSelection.ActiveMode;
   LOldCaretPosition := TextCaretPosition;
 
   LStringToInsert := '';
@@ -5570,9 +5560,13 @@ begin
   try
     LBlockBeginPosition := SelectionBeginPosition;
     LBlockEndPosition := SelectionEndPosition;
+
     LEndOfLine := LBlockEndPosition.Line;
     if LBlockEndPosition.Char = 1 then
-      LCaretPositionX := 1
+    begin
+      LCaretPositionX := 1;
+      Dec(LEndOfLine);
+    end
     else
     begin
       if toTabsToSpaces in FTabs.Options then
@@ -5584,12 +5578,14 @@ begin
       LSpaces := StringOfChar(BCEDITOR_SPACE_CHAR, FTabs.Width)
     else
       LSpaces := BCEDITOR_TAB_CHAR;
-    for I := LBlockBeginPosition.Line to LEndOfLine - 1 do
+    for i := LBlockBeginPosition.Line to LEndOfLine - 1 do //FI:W528 FixInsight ignore
       LStringToInsert := LStringToInsert + LSpaces + BCEDITOR_CARRIAGE_RETURN + BCEDITOR_LINEFEED;
     LStringToInsert := LStringToInsert + LSpaces;
 
     FUndoList.BeginBlock;
     try
+      FUndoList.AddChange(crSelection, LOldCaretPosition, LBlockBeginPosition, LBlockEndPosition, '', LOldSelectionMode);
+
       LInsertionPosition.Line := LBlockBeginPosition.Line;
       if FSelection.ActiveMode = smColumn then
         LInsertionPosition.Char := LBlockBeginPosition.Char
@@ -5601,10 +5597,12 @@ begin
       FUndoList.EndBlock;
     end;
     LOldCaretPosition.Char := LCaretPositionX;
+    if LCaretPositionX <> 1 then
+      LBlockEndPosition := GetTextPosition(LBlockEndPosition.Char + Length(LSpaces), LBlockEndPosition.Line);
   finally
     SetCaretAndSelection(LOldCaretPosition, GetTextPosition(LBlockBeginPosition.Char + Length(LSpaces),
-      LBlockBeginPosition.Line), GetTextPosition(LBlockEndPosition.Char + Length(LSpaces), LBlockEndPosition.Line){LBlockEndPosition});
-    FSelection.ActiveMode := LOrgSelectionMode;
+      LBlockBeginPosition.Line), LBlockEndPosition);
+    FSelection.ActiveMode := LOldSelectionMode;
   end;
 end;
 
@@ -5697,7 +5695,14 @@ begin
         FLines[i] := LLineText;
       end;
       LLastIndent := LLength;
-      FUndoList.AddChange(crUnindent, LOldCaretPosition, LBlockBeginPosition, LBlockEndPosition, LFullStringToDelete, FSelection.ActiveMode);
+      FUndoList.BeginBlock;
+      try
+        FUndoList.AddChange(crSelection, LOldCaretPosition, LBlockBeginPosition, LBlockEndPosition, '', LOldSelectionMode);
+        FUndoList.AddChange(crUnindent, LOldCaretPosition, LBlockBeginPosition, LBlockEndPosition, LFullStringToDelete,
+          FSelection.ActiveMode);
+      finally
+        FUndoList.EndBlock;
+      end;
     end;
     if LFirstIndent = -1 then
       LFirstIndent := 0;
@@ -6394,14 +6399,18 @@ end;
 
 procedure TBCBaseEditor.ListDeleted(Sender: TObject; AIndex: Integer; ACount: Integer);
 var
-  i, LNativeIndex, LRunner: Integer;
+  i, LRunner: Integer;
+  LMark: TBCEditorBookmark;
 begin
   for i := 0 to Marks.Count - 1 do
-    if Marks[i].Line >= AIndex + ACount then
-      Marks[i].Line := Marks[i].Line - ACount
+  begin
+    LMark := Marks[i];
+    if LMark.Line >= AIndex + ACount then
+      LMark.Line := LMark.Line - ACount
     else
-    if Marks[i].Line > AIndex then
-      Marks[i].Line := AIndex;
+    if LMark.Line > AIndex then
+      LMark.Line := AIndex;
+  end;
 
   if FCodeFolding.Visible then
     CodeFoldingLinesDeleted(AIndex + 1, ACount);
@@ -6409,16 +6418,12 @@ begin
   if Assigned(FOnLinesDeleted) then
     FOnLinesDeleted(Self, AIndex, ACount);
 
-  LNativeIndex := AIndex;
   if Assigned(FHighlighter) then
   begin
     AIndex := Max(AIndex, 1);
     if FLines.Count > 0 then
     begin
       LRunner := RescanHighlighterRangesFrom(AIndex - 1);
-      { This is necessary because a line can be deleted with bceDeleteChar command and above, what've done, is rescanned
-        a line joined with deleted one. But if range on that line hadn't changed, it still could've been changed on
-        lines below. In case if range on line with join had changed the above rescan already did the job. }
       if LRunner = AIndex - 1 then
         RescanHighlighterRangesFrom(AIndex - 1);
     end;
@@ -6426,9 +6431,9 @@ begin
 
   CreateLineNumbersCache(True);
   CodeFoldingResetCaches;
+  RefreshFind;
 
-  InvalidateLines(LNativeIndex + 1, LNativeIndex + FVisibleLines + 1);
-  InvalidateLeftMarginLines(LNativeIndex + 1, LNativeIndex + FVisibleLines + 1);
+  Invalidate;
 end;
 
 procedure TBCBaseEditor.ListInserted(Sender: TObject; Index: Integer; ACount: Integer);
@@ -9681,8 +9686,8 @@ end;
 
 function TBCBaseEditor.IsWordBreakChar(AChar: Char): Boolean;
 begin
-  Result := CharInSet(AChar, [BCEDITOR_NONE_CHAR .. BCEDITOR_SPACE_CHAR, '.', ',', ';', ':', '"', '''', 'Â´', '`', 'Â°',
-    '^', '!', '?', '&', '$', '@', 'Â§', '%', '#', '~', '[', ']', '(', ')', '{', '}', '<', '>', '-', '=', '+', '*', '/',
+  Result := CharInSet(AChar, [BCEDITOR_NONE_CHAR .. BCEDITOR_SPACE_CHAR, '.', ',', ';', ':', '"', '''', '´', '`', '°',
+    '^', '!', '?', '&', '$', '@', '§', '%', '#', '~', '[', ']', '(', ')', '{', '}', '<', '>', '-', '=', '+', '*', '/',
     '\', '|']);
 end;
 
@@ -12495,6 +12500,7 @@ procedure TBCBaseEditor.ToggleBookmark(AIndex: Integer = -1);
 var
   i: Integer;
   LTextPosition: TBCEditorTextPosition;
+  LMark: TBCEditorBookmark;
 begin
   if AIndex <> -1 then
   begin
@@ -12506,10 +12512,13 @@ begin
   else
   begin
     for i := 0 to Marks.Count - 1 do
-      if GetTextCaretY = Marks[i].Line then
+    begin
+      LMark := Marks[i];
+      if GetTextCaretY = LMark.Line then
       begin
-        ClearBookmark(Marks[i].Index);
+        ClearBookmark(LMark.Index);
         Exit;
+      end;
       end;
     LTextPosition := TextCaretPosition;
     for i := 0 to 8 do
