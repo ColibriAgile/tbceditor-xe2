@@ -175,6 +175,7 @@ type
     FVisibleChars: Integer;
     FVisibleLines: Integer;
     FWordWrap: TBCEditorWordWrap;
+    FWordBreakChars: TSysCharSet;
     FWordWrapLineLengths: array of Integer;
     function CodeFoldingCollapsableFoldRangeForLine(ALine: Integer): TBCEditorCodeFoldingRange;
     function CodeFoldingFoldRangeForLineTo(ALine: Integer): TBCEditorCodeFoldingRange;
@@ -651,6 +652,7 @@ type
     property WordAtCursor: string read GetWordAtCursor;
     property WordAtMouse: string read GetWordAtMouse;
     property WordWrap: TBCEditorWordWrap read FWordWrap write SetWordWrap;
+    property WordBreakChars: TSysCharSet read FWordBreakChars write FWordBreakChars;
   end;
 
 implementation
@@ -703,6 +705,10 @@ begin
   if FCommonData.SkinSection = '' then
     FCommonData.SkinSection := s_Edit;
   {$ENDIF}
+
+  FWordBreakChars := [BCEDITOR_NONE_CHAR .. BCEDITOR_SPACE_CHAR, '.', ',', ';', ':', '"', '''', '´', '`', '°',
+    '^', '!', '?', '&', '$', '@', '§', '%', '#', '~', '[', ']', '(', ')', '{', '}', '<', '>', '-', '=', '+', '*', '/',
+    '\', '|'];
 
   Height := 150;
   Width := 200;
@@ -2579,6 +2585,7 @@ begin
     Self.LeftMargin.Assign(sourceEditor.LeftMargin);
     Self.Search.Assign(sourceEditor.Search);
     Self.Lines.Assign(sourceEditor.Lines);
+    Self.WordBreakChars := sourceEditor.WordBreakChars;
   end
   else
     inherited;
@@ -9686,9 +9693,7 @@ end;
 
 function TBCBaseEditor.IsWordBreakChar(AChar: Char): Boolean;
 begin
-  Result := CharInSet(AChar, [BCEDITOR_NONE_CHAR .. BCEDITOR_SPACE_CHAR, '.', ',', ';', ':', '"', '''', '´', '`', '°',
-    '^', '!', '?', '&', '$', '@', '§', '%', '#', '~', '[', ']', '(', ')', '{', '}', '<', '>', '-', '=', '+', '*', '/',
-    '\', '|']);
+  Result := CharInSet(AChar, FWordBreakChars);
 end;
 
 function TBCBaseEditor.IsWordChar(AChar: Char): Boolean;
