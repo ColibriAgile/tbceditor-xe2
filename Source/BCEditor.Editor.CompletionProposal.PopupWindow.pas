@@ -10,6 +10,7 @@ uses
 type
   TBCEditorValidateEvent = procedure(Sender: TObject; Shift: TShiftState; EndToken: Char) of object;
   TBCEditorExecuteEvent = procedure(Sender: TObject; SelectedText: string; var Value: string) of object;
+  TBCEditorAfterExecuteEvent = procedure(Sender: TObject; SelectedText: string; const Value: string) of object;
 
   TBCEditorCompletionProposalPopupWindow = class(TBCEditorPopupWindow)
   strict private
@@ -31,6 +32,7 @@ type
     FMouseWheelAccumulator: Integer;
     FOnValidate: TBCEditorValidateEvent;
     FOnCompleteExecute: TBCEditorExecuteEvent;
+    FOnAfterCompleteExecute: TBCEditorAfterExecuteEvent;
 {$IFDEF USE_ALPHASKINS}
     FScrollWnd: TacScrollWnd;
 {$ENDIF}
@@ -70,6 +72,7 @@ type
     property TopLine: Integer read FTopLine write SetTopLine;
     property OnValidate: TBCEditorValidateEvent read FOnValidate write FOnValidate;
     property OnCompleteExecute: TBCEditorExecuteEvent read FOnCompleteExecute write FOnCompleteExecute;
+    property OnAfterCompleteExecute: TBCEditorAfterExecuteEvent read FOnAfterCompleteExecute write FOnAfterCompleteExecute;
 {$IFDEF USE_ALPHASKINS}
     property SkinData: TsScrollWndData read FCommonData write FCommonData;
 {$ENDIF}
@@ -641,6 +644,9 @@ begin
       EnsureCursorPositionVisible;
       TextCaretPosition := SelectionEndPosition;
       SelectionBeginPosition := TextCaretPosition;
+
+      if Assigned(FOnAfterCompleteExecute) then
+        FOnAfterCompleteExecute(Self, SelectedText, Value);
     finally
       EndUndoBlock;
       EndUpdate;

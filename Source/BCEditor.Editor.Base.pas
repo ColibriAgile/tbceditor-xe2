@@ -127,6 +127,7 @@ type
     FOnSelectionChanged: TNotifyEvent;
     FOnCompleteExecute: TBCEditorExecuteEvent;
     FCompletionProposalEvent: TBCEditorCompletionProposalEvent;
+    FOnAfterCompleteExecute: TBCEditorAfterExecuteEvent;
     FBeforeCompletionProposalEvent: TBCEditorBeforeCompletionProposalEvent;
     FBeforeURIOpen: TBCEDitorBeforeURIOpen;
     FOptions: TBCEditorOptions;
@@ -616,6 +617,7 @@ type
     property OnScroll: TBCEditorScrollEvent read FOnScroll write FOnScroll;
     property OnCompleteProposal: TBCEditorCompletionProposalEvent read FCompletionProposalEvent write FCompletionProposalEvent;
     property OnBeforeCompleteProposal: TBCEditorBeforeCompletionProposalEvent read FBeforeCompletionProposalEvent write FBeforeCompletionProposalEvent;
+    property OnAfterCompleteExecute: TBCEditorAfterExecuteEvent read FOnAfterCompleteExecute write FOnAfterCompleteExecute;
     property OnBeforeURIOpen: TBCEDitorBeforeURIOpen read FBeforeURIOpen write FBeforeURIOpen;
     property OnCompleteExecute: TBCEditorExecuteEvent read FOnCompleteExecute write FOnCompleteExecute;
     property Options: TBCEditorOptions read FOptions write SetOptions default BCEDITOR_DEFAULT_OPTIONS;
@@ -2644,6 +2646,7 @@ begin
   Self.OnCompleteExecute := sourceEditor.OnCompleteExecute;
   Self.OnBeforeCompleteProposal := sourceEditor.OnBeforeCompleteProposal;
   Self.OnBeforeURIOpen := sourceEditor.OnBeforeURIOpen;
+  Self.OnAfterCompleteExecute := sourceEditor.OnAfterCompleteExecute;
 end;
 
 procedure TBCBaseEditor.AssignSearchEngine;
@@ -5842,6 +5845,7 @@ begin
     Parent := Self;
     Assign(FCompletionProposal);
     FCompletionProposalPopupWindow.OnCompleteExecute := Self.FOnCompleteExecute;
+    FCompletionProposalPopupWindow.OnAfterCompleteExecute := Self.FOnAfterCompleteExecute;
     if cpoParseItemsFromText in FCompletionProposal.Options then
       SplitTextIntoWords(ItemList, False);
 

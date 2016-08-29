@@ -95,6 +95,7 @@ type
     property OnStartDrag;
     property OnCompleteProposal;
     property OnCompleteExecute;
+    property OnAfterCompleteExecute;
     property OnBeforeCompleteProposal;
     property OnBeforeURIOpen;
     property Options;

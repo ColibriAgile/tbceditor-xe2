@@ -116,6 +116,7 @@ type
     property OnCompleteProposal;
     property OnCompleteExecute;
     property OnBeforeCompleteProposal;
+    property OnAfterCompleteExecute;
     property OnBeforeURIOpen;
     property Options;
     property ParentColor;
