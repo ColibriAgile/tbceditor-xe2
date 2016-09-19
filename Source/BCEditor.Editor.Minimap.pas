@@ -26,13 +26,15 @@ type
     procedure SetOnChange(Value: TNotifyEvent);
     procedure SetVisible(Value: Boolean);
     procedure SetWidth(Value: Integer);
+  private
+    function GetCharHeight: Integer;
   public
     constructor Create;
     destructor Destroy; override;
 
     function GetWidth: Integer;
     procedure Assign(ASource: TPersistent); override;
-    property CharHeight: Integer read FCharHeight write FCharHeight;
+    property CharHeight: Integer read GetCharHeight write FCharHeight;
     property Clicked: Boolean read FClicked write FClicked;
     property Dragging: Boolean read FDragging write FDragging;
     property TopLine: Integer read FTopLine write FTopLine default 1;
@@ -130,6 +132,13 @@ begin
     FWidth := Value;
     DoChange;
   end;
+end;
+
+function TBCEditorMinimap.GetCharHeight: Integer;
+begin
+  if FCharHeight = 0 then
+    FCharHeight := 3;
+  Result := FCharHeight;
 end;
 
 function TBCEditorMinimap.GetWidth: Integer;
