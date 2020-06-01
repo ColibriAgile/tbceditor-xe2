@@ -1,3 +1,3 @@
-This is a backport for Delphi XE of https://github.com/bonecode/TBCEditor
+Versão do TBCEditor para o Delphi XE2 https://github.com/bonecode/TBCEditor
 
-Note that only Delphi XE is the only version supported in this backport, though the code will likely compile in older and more recent versions, no promises are made.
+Fizemos várias alterações em relação a versão oficial.
