@@ -24,6 +24,7 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
 			<VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
 			<DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
 			<DesignOnlyPackage>true</DesignOnlyPackage>
@@ -45,6 +46,7 @@
 			<DCC_UsePackage>dbrtl;$(DCC_UsePackage)</DCC_UsePackage>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base_Win32)'!=''">
+			<DCC_MapFile>3</DCC_MapFile>
 			<DCC_UsePackage>vcldb;BCEditorRuntime;$(DCC_UsePackage)</DCC_UsePackage>
 			<DCC_BplOutput>$(xe2bpl)</DCC_BplOutput>
 			<DCC_UnitSearchPath>$(xe2lib);$(xe2bpl);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>

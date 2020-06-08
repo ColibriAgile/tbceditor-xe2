@@ -27,7 +27,7 @@ package BCEditorDesign;
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'BCEditor component suite'}
 {$DESIGNONLY}
-{$IMPLICITBUILD ON}
+{$IMPLICITBUILD OFF}
 
 requires
   designide,
